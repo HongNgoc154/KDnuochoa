@@ -1,0 +1,373 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ page_title|default:'Ami Perfumery – Danh mục nước hoa' }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'app/style.css' %}">
+</head>
+<body class="category-page" data-segment="{{ segment|default:'men' }}">
+
+<header id="site-header">
+  <div class="header-inner">
+    <a href="{% url 'home' %}" class="logo">ami <span>perfumery</span></a>
+    <div class="header-right">
+      <div class="search-wrap">
+        <input type="text" placeholder="Tìm kiếm nước hoa...">
+        <span class="search-icon">⌕</span>
+      </div>
+      <div class="header-icons">
+        <button class="icon-btn" title="Yêu thích">❤️</button>
+        <button class="icon-btn" title="Giỏ hàng" style="position:relative">🛒<span class="cart-badge">2</span></button>
+        <button class="icon-btn" title="Tài khoản">👤</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav id="navbar">
+  <ul class="nav-list">
+    <li><a href="{% url 'home' %}">Trang chủ</a></li>
+    <li class="has-dropdown">
+      <a href="{% url 'category-all' %}">Nước hoa</a>
+      <ul class="dropdown-menu">
+        <li><a href="{% url 'category-all' %}">Tất cả</a></li>
+        <li><a href="{% url 'category-segment' 'nam' %}">Nước hoa Nam</a></li>
+        <li><a href="{% url 'category-segment' 'nu' %}">Nước hoa Nữ</a></li>
+        <li><a href="{% url 'category-segment' 'unisex' %}">Nước hoa Unisex</a></li>
+      </ul>
+    </li>
+    <li><a href="#">Thương hiệu</a></li>
+    <li><a href="#">Bài viết</a></li>
+    <li><a href="#">Liên hệ</a></li>
+  </ul>
+</nav>
+
+<main>
+  <section class="category-hero" id="hero">
+    <video class="category-hero-video" autoplay muted loop playsinline poster="https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&w=1800&q=80">
+      <source src="https://cdn.coverr.co/videos/coverr-applying-perfume-1576750999709?download=1080p" type="video/mp4">
+    </video>
+    <div class="category-hero-overlay"></div>
+    <div class="category-hero-content reveal">
+      <p class="category-hero-eyebrow">{{ eyebrow|default:'For Him' }}</p>
+      <h1 class="category-hero-title">{{ title|default:'Nước hoa Nam' }}</h1>
+      <p class="category-hero-sub">{{ subtitle|default:'Tuyển chọn các tầng hương woody, leathery, citrus hiện đại dành cho quý ông thanh lịch.' }}</p>
+    </div>
+  </section>
+
+  <section class="brand-strip section-space-sm reveal">
+    <div class="container">
+      <div class="strip-header">
+        <p class="section-label">Maison Selection</p>
+      </div>
+      <div class="edge-carousel" data-carousel data-step="0.75">
+        <button class="edge-arrow edge-arrow-left" type="button" aria-label="Scroll trái">←</button>
+        <button class="edge-arrow edge-arrow-right" type="button" aria-label="Scroll phải">→</button>
+        <div class="edge-track brand-track" data-carousel-track>
+          <a class="brand-chip stagger-1" href="#"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Chanel_logo_interlocking_cs.svg/512px-Chanel_logo_interlocking_cs.svg.png" alt="Chanel"><span>Chanel</span></a>
+          <a class="brand-chip stagger-2" href="#"><img src="https://i.pinimg.com/736x/ad/23/59/ad23591aa7a2f2839d1ff1d1b2238aa0.jpg" alt="Dior"><span>Dior</span></a>
+          <a class="brand-chip stagger-1" href="#"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/1960s_Gucci_Logo.svg/512px-1960s_Gucci_Logo.svg.png" alt="Gucci"><span>Gucci</span></a>
+          <a class="brand-chip stagger-2" href="#"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Hermes_logo.svg/512px-Hermes_logo.svg.png" alt="Hermes"><span>Hermès</span></a>
+          <a class="brand-chip stagger-1" href="#"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Yves_Saint_Laurent_%28brand%2C_2012%29_logo.svg/512px-Yves_Saint_Laurent_%28brand%2C_2012%29_logo.svg.png" alt="YSL"><span>YSL</span></a>
+          <a class="brand-chip stagger-2" href="#"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Tom_Ford_logo.svg/512px-Tom_Ford_logo.svg.png" alt="Tom Ford"><span>Tom Ford</span></a>
+          <a class="brand-chip stagger-1" href="#"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Versace_logo.svg/512px-Versace_logo.svg.png" alt="Versace"><span>Versace</span></a>
+          <a class="brand-chip stagger-2" href="#"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Lanc%C3%B4me_logo.svg/512px-Lanc%C3%B4me_logo.svg.png" alt="Lancome"><span>Lancôme</span></a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="category-toolbar">
+    <div class="container category-toolbar-inner reveal">
+      <nav class="breadcrumb" aria-label="breadcrumb">
+        <a href="{% url 'home' %}">Trang chủ</a>
+        <span>/</span>
+        <a href="{% url 'category-all' %}">Nước hoa</a>
+        <span>/</span>
+        <strong>{{ breadcrumb|default:'Nam' }}</strong>
+      </nav>
+      <button class="filter-trigger" id="openFilter">Bộ lọc</button>
+    </div>
+  </section>
+
+  <aside class="filter-overlay" id="filterOverlay"></aside>
+  <aside class="filter-sidebar" id="filterSidebar" aria-hidden="true">
+    <div class="filter-head">
+      <h2>Bộ lọc</h2>
+      <button class="filter-close" id="closeFilter" aria-label="Đóng bộ lọc">✕</button>
+    </div>
+
+    <form id="filterForm">
+      <div class="filter-block">
+        <h3>Mùi hương</h3>
+        <label><input type="checkbox" name="scent" value="woody"> Woody</label>
+        <label><input type="checkbox" name="scent" value="floral"> Floral</label>
+        <label><input type="checkbox" name="scent" value="citrus"> Citrus</label>
+        <label><input type="checkbox" name="scent" value="amber"> Amber</label>
+      </div>
+
+      <div class="filter-block">
+        <h3>Thương hiệu</h3>
+        <input type="search" id="brandSearch" class="filter-search" placeholder="Tìm thương hiệu...">
+        <div class="brand-options" id="brandOptions">
+          <label><input type="checkbox" name="brand" value="chanel"> Chanel</label>
+          <label><input type="checkbox" name="brand" value="dior"> Dior</label>
+          <label><input type="checkbox" name="brand" value="ysl"> YSL</label>
+          <label><input type="checkbox" name="brand" value="gucci"> Gucci</label>
+          <label><input type="checkbox" name="brand" value="tom-ford"> Tom Ford</label>
+          <label><input type="checkbox" name="brand" value="versace"> Versace</label>
+        </div>
+      </div>
+
+      <div class="filter-block">
+        <h3>Giá</h3>
+        <input type="range" id="priceRange" min="1000000" max="8000000" step="100000" value="8000000">
+        <p class="range-value">Đến <strong id="priceValue">8.000.000₫</strong></p>
+      </div>
+
+      <div class="filter-block">
+        <h3>Nồng độ</h3>
+        <label><input type="checkbox" name="concentration" value="edt"> EDT</label>
+        <label><input type="checkbox" name="concentration" value="edp"> EDP</label>
+        <label><input type="checkbox" name="concentration" value="parfum"> Parfum</label>
+      </div>
+
+      <div class="filter-actions">
+        <button type="submit" class="btn-filter-apply">Áp dụng</button>
+        <button type="button" class="btn-filter-reset" id="resetFilters">Reset</button>
+      </div>
+    </form>
+  </aside>
+
+  <section class="category-products section-space">
+    <div class="container">
+      <div class="products-head reveal">
+        <h2 class="section-title">Bộ sưu tập <em>signature</em></h2>
+        <p id="productResult">Hiển thị 8 sản phẩm cao cấp.</p>
+      </div>
+      <p class="fav-counter reveal">Wishlist: <strong id="favoriteCount">0</strong> sản phẩm</p>
+
+      <div class="product-grid">
+        <article class="product-card reveal" data-brand="dior" data-scent="woody" data-price="4200000" data-concentration="edp">
+          <div class="product-media">
+            <span class="product-badge">NEW</span>
+            <img class="img-primary" src="https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=700&q=80" alt="Dior Sauvage Elixir">
+            <img class="img-hover" src="https://images.unsplash.com/photo-1541643600914-78b084683702?auto=format&fit=crop&w=700&q=80" alt="Dior Sauvage Elixir chi tiết">
+          </div>
+          <div class="product-meta">
+            <p class="product-brand">Dior</p>
+            <h3>Dior Sauvage Elixir</h3>
+            <p class="product-price">4.200.000₫</p>
+            <div class="product-actions">
+              <button class="action-icon favorite-btn" aria-pressed="false"><span class="heart-core">♡</span></button>
+              <button class="action-icon add-cart-btn">🛒</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="product-card reveal" data-brand="chanel" data-scent="citrus" data-price="3800000" data-concentration="edp">
+          <div class="product-media">
+            <img class="img-primary" src="https://images.unsplash.com/photo-1619994403073-2cec5a97dd6d?auto=format&fit=crop&w=700&q=80" alt="Bleu de Chanel">
+            <img class="img-hover" src="https://images.unsplash.com/photo-1618331835717-801e976710b2?auto=format&fit=crop&w=700&q=80" alt="Bleu de Chanel close-up">
+          </div>
+          <div class="product-meta">
+            <p class="product-brand">Chanel</p>
+            <h3>Bleu de Chanel EDP</h3>
+            <p class="product-price">3.800.000₫</p>
+            <div class="product-actions">
+              <button class="action-icon favorite-btn" aria-pressed="false"><span class="heart-core">♡</span></button>
+              <button class="action-icon add-cart-btn">🛒</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="product-card sold-out reveal" data-brand="tom-ford" data-scent="amber" data-price="6900000" data-concentration="parfum">
+          <div class="product-media">
+            <span class="product-sold">SOLD OUT</span>
+            <img class="img-primary" src="https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&w=700&q=80" alt="Tom Ford Oud Wood">
+            <img class="img-hover" src="https://images.unsplash.com/photo-1590736704728-f4730bb30770?auto=format&fit=crop&w=700&q=80" alt="Tom Ford Oud Wood detail">
+          </div>
+          <div class="product-meta">
+            <p class="product-brand">Tom Ford</p>
+            <h3>Oud Wood Parfum</h3>
+            <p class="product-price">6.900.000₫</p>
+            <div class="product-actions">
+              <button class="action-icon favorite-btn" aria-pressed="false"><span class="heart-core">♡</span></button>
+              <button class="action-icon add-cart-btn" disabled>🛒</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="product-card reveal" data-brand="ysl" data-scent="woody" data-price="3400000" data-concentration="edp">
+          <div class="product-media">
+            <span class="product-badge">NEW</span>
+            <img class="img-primary" src="https://images.unsplash.com/photo-1588405748880-12d1d2a59a75?auto=format&fit=crop&w=700&q=80" alt="YSL Y EDP">
+            <img class="img-hover" src="https://images.unsplash.com/photo-1590736969955-71cc94901144?auto=format&fit=crop&w=700&q=80" alt="YSL Y EDP detail">
+          </div>
+          <div class="product-meta">
+            <p class="product-brand">YSL</p>
+            <h3>Y Eau de Parfum</h3>
+            <p class="product-price">3.400.000₫</p>
+            <div class="product-actions">
+              <button class="action-icon favorite-btn" aria-pressed="false"><span class="heart-core">♡</span></button>
+              <button class="action-icon add-cart-btn">🛒</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="product-card reveal" data-brand="gucci" data-scent="floral" data-price="3200000" data-concentration="edt">
+          <div class="product-media">
+            <img class="img-primary" src="https://images.unsplash.com/photo-1608528577891-eb055944f2e7?auto=format&fit=crop&w=700&q=80" alt="Gucci Guilty Pour Homme">
+            <img class="img-hover" src="https://images.unsplash.com/photo-1547887538-e3a2f32cb1cc?auto=format&fit=crop&w=700&q=80" alt="Gucci Guilty detail">
+          </div>
+          <div class="product-meta">
+            <p class="product-brand">Gucci</p>
+            <h3>Gucci Guilty EDT</h3>
+            <p class="product-price">3.200.000₫</p>
+            <div class="product-actions">
+              <button class="action-icon favorite-btn" aria-pressed="false"><span class="heart-core">♡</span></button>
+              <button class="action-icon add-cart-btn">🛒</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="product-card reveal" data-brand="versace" data-scent="citrus" data-price="2600000" data-concentration="edt">
+          <div class="product-media">
+            <img class="img-primary" src="https://images.unsplash.com/photo-1587017539504-67cfbddac569?auto=format&fit=crop&w=700&q=80" alt="Versace Dylan Blue">
+            <img class="img-hover" src="https://images.unsplash.com/photo-1595425964071-9e6b82f3f986?auto=format&fit=crop&w=700&q=80" alt="Versace Dylan Blue detail">
+          </div>
+          <div class="product-meta">
+            <p class="product-brand">Versace</p>
+            <h3>Dylan Blue EDT</h3>
+            <p class="product-price">2.600.000₫</p>
+            <div class="product-actions">
+              <button class="action-icon favorite-btn" aria-pressed="false"><span class="heart-core">♡</span></button>
+              <button class="action-icon add-cart-btn">🛒</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="product-card reveal" data-brand="dior" data-scent="amber" data-price="4700000" data-concentration="parfum">
+          <div class="product-media">
+            <img class="img-primary" src="https://images.unsplash.com/photo-1563170351-be82bc888aa4?auto=format&fit=crop&w=700&q=80" alt="Dior Homme Parfum">
+            <img class="img-hover" src="https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&w=700&q=80" alt="Dior Homme Parfum detail">
+          </div>
+          <div class="product-meta">
+            <p class="product-brand">Dior</p>
+            <h3>Dior Homme Parfum</h3>
+            <p class="product-price">4.700.000₫</p>
+            <div class="product-actions">
+              <button class="action-icon favorite-btn" aria-pressed="false"><span class="heart-core">♡</span></button>
+              <button class="action-icon add-cart-btn">🛒</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="product-card reveal" data-brand="chanel" data-scent="woody" data-price="5100000" data-concentration="parfum">
+          <div class="product-media">
+            <img class="img-primary" src="https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?auto=format&fit=crop&w=700&q=80" alt="Chanel Egoiste">
+            <img class="img-hover" src="https://images.unsplash.com/photo-1610461888750-10bfc601b874?auto=format&fit=crop&w=700&q=80" alt="Chanel Egoiste detail">
+          </div>
+          <div class="product-meta">
+            <p class="product-brand">Chanel</p>
+            <h3>Égoïste Platinum</h3>
+            <p class="product-price">5.100.000₫</p>
+            <div class="product-actions">
+              <button class="action-icon favorite-btn" aria-pressed="false"><span class="heart-core">♡</span></button>
+              <button class="action-icon add-cart-btn">🛒</button>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="related-posts section-space">
+    <div class="container">
+      <div class="strip-header reveal"><p class="section-label">Bài viết liên quan</p></div>
+      <div class="edge-carousel reveal" data-carousel data-step="0.85">
+        <button class="edge-arrow edge-arrow-left" type="button" aria-label="Scroll trái">←</button>
+        <button class="edge-arrow edge-arrow-right" type="button" aria-label="Scroll phải">→</button>
+        <div class="edge-track article-track" data-carousel-track>
+          <a href="#" class="article-card article-slide">
+            <div class="article-img"><div class="article-img-bg" style="background-image:url('https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&w=1000&q=80')"></div></div>
+            <div class="article-body"><p class="article-cat">For Him</p><h3 class="article-title">Top notes nam tính: bergamot, pepper và hương gỗ</h3><p class="article-desc">Gợi ý layer mùi cho phong cách business casual hiện đại.</p></div>
+          </a>
+          <a href="#" class="article-card article-slide">
+            <div class="article-img"><div class="article-img-bg" style="background-image:url('https://images.unsplash.com/photo-1588405748880-12d1d2a59a75?auto=format&fit=crop&w=1000&q=80')"></div></div>
+            <div class="article-body"><p class="article-cat">Guide</p><h3 class="article-title">Cách chọn nồng độ EDT/EDP theo thời tiết Việt Nam</h3><p class="article-desc">Mẹo chọn độ tỏa hương phù hợp đi làm, đi tiệc và du lịch.</p></div>
+          </a>
+          <a href="#" class="article-card article-slide">
+            <div class="article-img"><div class="article-img-bg" style="background-image:url('https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&w=1000&q=80')"></div></div>
+            <div class="article-body"><p class="article-cat">Cinematic</p><h3 class="article-title">Hương thơm và dấu ấn cá nhân trong không gian tối giản</h3><p class="article-desc">Cân bằng giữa sự tinh gọn thị giác và chiều sâu cảm xúc.</p></div>
+          </a>
+          <a href="#" class="article-card article-slide">
+            <div class="article-img"><div class="article-img-bg" style="background-image:url('https://images.unsplash.com/photo-1608528577891-eb055944f2e7?auto=format&fit=crop&w=1000&q=80')"></div></div>
+            <div class="article-body"><p class="article-cat">Editorial</p><h3 class="article-title">Signature scent cho quý ông hiện đại: chọn sao cho đúng</h3><p class="article-desc">Nguyên tắc chọn mùi theo bối cảnh công việc và lifestyle.</p></div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="customer-reviews section-space">
+    <div class="container">
+      <div class="strip-header reveal"><p class="section-label">Đánh giá khách hàng</p></div>
+      <div class="review-strip reveal" id="reviewStrip">
+        <div class="review-track" id="reviewsGrid">
+          <article class="review-card" data-segment="men all"><div class="review-head"><strong>Minh Khang</strong><span>⭐⭐⭐⭐⭐</span></div><p>“Mùi woody rất sang, lưu hương ổn 8-10h. Đóng gói premium đúng tinh thần boutique niche.”</p></article>
+          <article class="review-card" data-segment="men all"><div class="review-head"><strong>Quốc Đạt</strong><span>⭐⭐⭐⭐⭐</span></div><p>“Được tư vấn rất kỹ theo phong cách cá nhân. Bản Dior mình chọn nhận nhiều lời khen.”</p></article>
+          <article class="review-card" data-segment="women all"><div class="review-head"><strong>Ngọc Ánh</strong><span>⭐⭐⭐⭐⭐</span></div><p>“Trang nữ cũng rất đẹp, note hoa trắng lên da rất sạch và thanh lịch.”</p></article>
+          <article class="review-card" data-segment="unisex all"><div class="review-head"><strong>Hoài Nam</strong><span>⭐⭐⭐⭐</span></div><p>“Unisex collection có nhiều mùi lạ mà dễ dùng. Layout website mượt và tối giản.”</p></article>
+          <article class="review-card" data-segment="men all"><div class="review-head"><strong>Khôi Trần</strong><span>⭐⭐⭐⭐⭐</span></div><p>“UI cực kỳ premium, card trung tâm trong slider nhìn cinematic rất thích.”</p></article>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="footer-grid">
+    <div>
+      <div class="footer-brand">
+        <div class="footer-logo">ami <span>perfumery</span></div>
+        <div class="footer-tagline">Nước hoa chính hãng · Cần Thơ</div>
+      </div>
+      <p class="footer-desc">Ami Perfumery mang đến trải nghiệm mua sắm nước hoa cao cấp chính hãng với dịch vụ tư vấn chuyên nghiệp và tận tâm nhất tại Cần Thơ.</p>
+      <div class="social-links">
+        <a href="#" class="social-btn" title="Facebook">f</a>
+        <a href="#" class="social-btn" title="Instagram">📸</a>
+        <a href="#" class="social-btn" title="TikTok">♪</a>
+        <a href="#" class="social-btn" title="Zalo">Z</a>
+      </div>
+    </div>
+    <div>
+      <p class="footer-col-title">Sản phẩm</p>
+      <ul class="footer-links">
+        <li><a href="{% url 'category-segment' 'nam' %}">Nước hoa Nam</a></li>
+        <li><a href="{% url 'category-segment' 'nu' %}">Nước hoa Nữ</a></li>
+        <li><a href="{% url 'category-segment' 'unisex' %}">Nước hoa Unisex</a></li>
+        <li><a href="#">Mini / Travel Size</a></li>
+      </ul>
+    </div>
+    <div>
+      <p class="footer-col-title">Liên hệ</p>
+      <div class="footer-contact-item"><span class="icon">📍</span><span>123 Đường 30/4, Cần Thơ</span></div>
+      <div class="footer-contact-item"><span class="icon">📞</span><span>0901 234 567</span></div>
+      <div class="footer-contact-item"><span class="icon">✉️</span><span>hello@amiperfumery.vn</span></div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2026 Ami Perfumery. Tất cả quyền được bảo lưu.</span>
+    <span>Thiết kế với ❤️ tại Cần Thơ</span>
+  </div>
+</footer>
+
+<script src="{% static 'app/main.js' %}"></script>
+</body>
+</html>

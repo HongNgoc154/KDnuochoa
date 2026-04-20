@@ -40,8 +40,16 @@
 <!-- ─── NAVBAR ─── -->
 <nav id="navbar">
   <ul class="nav-list">
-    <li><a href="#">Trang chủ</a></li>
-    <li><a href="#">Nước hoa</a></li>
+    <li><a href="{% url 'home' %}">Trang chủ</a></li>
+    <li class="has-dropdown">
+      <a href="{% url 'category-all' %}">Nước hoa</a>
+      <ul class="dropdown-menu">
+        <li><a href="{% url 'category-all' %}">Tất cả</a></li>
+        <li><a href="{% url 'category-segment' 'nam' %}">Nước hoa Nam</a></li>
+        <li><a href="{% url 'category-segment' 'nu' %}">Nước hoa Nữ</a></li>
+        <li><a href="{% url 'category-segment' 'unisex' %}">Nước hoa Unisex</a></li>
+      </ul>
+    </li>
     <li><a href="#">Thương hiệu</a></li>
     <li><a href="#">Bài viết</a></li>
     <li><a href="#">Liên hệ</a></li>
@@ -55,7 +63,7 @@
     <p class="hero-eyebrow">Nước hoa chính hãng · Cần Thơ</p>
     <h1 class="hero-title">Nghệ thuật<br><em>của hương thơm</em></h1>
     <p class="hero-sub">Khám phá bộ sưu tập nước hoa cao cấp từ những thương hiệu danh tiếng thế giới.<br>Mỗi mùi hương là một câu chuyện riêng.</p>
-    <a href="#" class="btn-primary">Khám phá ngay →</a>
+    <a href="{% url 'category-all' %}" class="btn-primary">Khám phá ngay →</a>
   </div>
   <div class="hero-scroll">
     <div class="scroll-line"></div>
@@ -231,7 +239,7 @@
         <p class="cat-row-tag">For Him</p>
         <h3 class="cat-row-title">Nước hoa <em>Nam</em></h3>
         <p class="cat-row-desc">Hương gỗ trầm, da thuộc, cam bergamot — những mùi hương mạnh mẽ và đẳng cấp dành riêng cho người đàn ông hiện đại.</p>
-        <a href="#" class="cat-row-btn">
+        <a href="{% url 'category-segment' 'nam' %}" class="cat-row-btn">
           Xem bộ sưu tập
           <span class="cat-row-btn-arrow">→</span>
         </a>
@@ -249,7 +257,7 @@
         <p class="cat-row-tag">For Her</p>
         <h3 class="cat-row-title">Nước hoa <em>Nữ</em></h3>
         <p class="cat-row-desc">Hoa hồng, jasmine, vanilla ngọt ngào — những làn hương dịu dàng, quyến rũ và tinh tế dành cho người phụ nữ của mọi thời đại.</p>
-        <a href="#" class="cat-row-btn">
+        <a href="{% url 'category-segment' 'nu' %}" class="cat-row-btn">
           Xem bộ sưu tập
           <span class="cat-row-btn-arrow">→</span>
         </a>
@@ -267,7 +275,7 @@
         <p class="cat-row-tag">For All</p>
         <h3 class="cat-row-title">Nước hoa <em>Unisex</em></h3>
         <p class="cat-row-desc">Vượt qua mọi ranh giới giới tính, những mùi hương unisex tôn vinh cá tính tự do và phong cách riêng không thể nhầm lẫn.</p>
-        <a href="#" class="cat-row-btn">
+        <a href="{% url 'category-segment' 'unisex' %}" class="cat-row-btn">
           Xem bộ sưu tập
           <span class="cat-row-btn-arrow">→</span>
         </a>
@@ -285,7 +293,7 @@
         <p class="cat-row-tag">On The Go</p>
         <h3 class="cat-row-title">Mini &amp; <em>Travel Size</em></h3>
         <p class="cat-row-desc">Nhỏ gọn, tiện lợi, không kém phần sang trọng. Mang theo mùi hương yêu thích của bạn trên mọi hành trình.</p>
-        <a href="#" class="cat-row-btn">
+        <a href="{% url 'category-all' %}" class="cat-row-btn">
           Xem bộ sưu tập
           <span class="cat-row-btn-arrow">→</span>
         </a>
@@ -367,9 +375,9 @@
     <div>
       <p class="footer-col-title">Sản phẩm</p>
       <ul class="footer-links">
-        <li><a href="#">Nước hoa Nam</a></li>
-        <li><a href="#">Nước hoa Nữ</a></li>
-        <li><a href="#">Nước hoa Unisex</a></li>
+        <li><a href="{% url 'category-segment' 'nam' %}">Nước hoa Nam</a></li>
+        <li><a href="{% url 'category-segment' 'nu' %}">Nước hoa Nữ</a></li>
+        <li><a href="{% url 'category-segment' 'unisex' %}">Nước hoa Unisex</a></li>
         <li><a href="#">Mini / Travel Size</a></li>
         <li><a href="#">Set quà tặng</a></li>
       </ul>
