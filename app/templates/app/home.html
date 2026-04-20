@@ -1,288 +1,421 @@
+{% load static %}
+<!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Parfumerie</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Playfair+Display:ital,wght@1,600&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --green: #2f6548;
-            --light: #f4f4f4;
-            --border: #1994ff;
-            --text: #141414;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ami Perfumery – Nước Hoa Chính Hãng</title>
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-        body {
-            font-family: "Montserrat", sans-serif;
-            background: #f0f0f0;
-            color: var(--text);
-            min-height: 100vh;
-        }
-
-        .page {
-            width: 100%;
-            min-height: 100vh;
-            background: #fff;
-        }
-
-        .top-bar {
-            background: var(--green);
-            color: #fff;
-            display: grid;
-            grid-template-columns: 220px 1fr 330px;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 18px;
-            font-size: 16px;
-        }
-
-        .shop-text {
-            text-align: center;
-            line-height: 1.3;
-        }
-
-        .search {
-            position: relative;
-        }
-
-        .search input {
-            width: 100%;
-            border: none;
-            border-radius: 24px;
-            padding: 12px 40px 12px 24px;
-            background: #e9e9e9;
-            font-size: 16px;
-            outline: none;
-        }
-
-        .search-icon {
-            position: absolute;
-            right: 14px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 20px;
-        }
-
-        .top-links {
-            display: flex;
-            justify-content: flex-end;
-            gap: 28px;
-            align-items: center;
-            font-size: 18px;
-        }
-
-        .top-links span {
-            display: inline-flex;
-            gap: 8px;
-            align-items: center;
-            white-space: nowrap;
-        }
-
-        .menu {
-            display: grid;
-            grid-template-columns: 220px 1fr 160px;
-            align-items: center;
-            padding: 14px 18px;
-            border-bottom: 1px solid #e6e6e6;
-            background: #fff;
-        }
-
-        .brand {
-            font-family: "Playfair Display", serif;
-            color: var(--green);
-            font-size: 44px;
-            font-style: italic;
-            letter-spacing: 0.5px;
-        }
-
-        .menu-links {
-            display: flex;
-            justify-content: center;
-            gap: 56px;
-            list-style: none;
-            font-size: 34px;
-            font-weight: 500;
-        }
-
-        .menu-icons {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            font-size: 38px;
-        }
-
-        .hero {
-            position: relative;
-            height: calc(100vh - 154px);
-            min-height: 610px;
-            border: 2px solid var(--border);
-            background:
-                linear-gradient(to right, rgba(19, 15, 12, 0.55), rgba(26, 28, 32, 0.63)),
-                url("https://images.unsplash.com/photo-1615634262417-d5f326344f5f?auto=format&fit=crop&w=1600&q=80")
-                    center/cover no-repeat;
-            overflow: hidden;
-        }
-
-        .hero-overlay {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -52%);
-            width: 56%;
-            border-radius: 34px;
-            background: rgba(225, 225, 225, 0.2);
-            text-align: center;
-            padding: 120px 20px 110px;
-            backdrop-filter: blur(2px);
-        }
-
-        .hero-title {
-            font-size: 54px;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
-        }
-
-        .hero-subtitle {
-            font-size: 36px;
-            margin-bottom: 28px;
-        }
-
-        .hero-btn {
-            display: inline-block;
-            background: rgba(72, 72, 72, 0.64);
-            color: #fff;
-            font-size: 40px;
-            text-decoration: none;
-            padding: 16px 42px;
-            min-width: 330px;
-        }
-
-        .floating-icons {
-            position: absolute;
-            right: 18px;
-            bottom: 90px;
-            display: flex;
-            flex-direction: column;
-            gap: 18px;
-        }
-
-        .bubble {
-            width: 58px;
-            height: 58px;
-            border-radius: 999px;
-            display: grid;
-            place-items: center;
-            color: #fff;
-            font-size: 28px;
-        }
-
-        .bubble.messenger {
-            background: radial-gradient(circle at 30% 30%, #ff7ecb, #4564ff);
-        }
-
-        .bubble.chat {
-            background: #57d6cc;
-            border-radius: 12px;
-            font-size: 30px;
-        }
-
-        @media (max-width: 1200px) {
-            .page {
-                max-width: 100%;
-            }
-
-            .top-bar {
-                grid-template-columns: 1fr;
-                gap: 8px;
-            }
-
-            .menu {
-                grid-template-columns: 1fr;
-                gap: 14px;
-            }
-
-            .menu-links {
-                flex-wrap: wrap;
-                gap: 18px;
-                font-size: 26px;
-            }
-
-            .brand {
-                text-align: center;
-                font-size: 38px;
-            }
-
-            .hero {
-                min-height: 500px;
-            }
-
-            .hero-overlay {
-                width: 86%;
-                padding: 60px 12px;
-            }
-
-            .hero-title {
-                font-size: 36px;
-            }
-
-            .hero-subtitle {
-                font-size: 24px;
-            }
-
-            .hero-btn {
-                font-size: 24px;
-                min-width: 220px;
-            }
-        }
-    </style>
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="{% static 'app/style.css' %}">
 </head>
 <body>
-<div class="page">
-    <header class="top-bar">
-        <div class="shop-text">Cửa hàng nước hoa chính hãng<br>Cần Thơ</div>
-        <label class="search" for="search">
-            <input id="search" type="text" placeholder="Tìm kiếm...">
-            <span class="search-icon">⌕</span>
-        </label>
-        <div class="top-links">
-            <span>ℹ️ Giới thiệu</span>
-            <span>🚚 Tra cứu đơn hàng</span>
-        </div>
-    </header>
 
-    <nav class="menu">
-        <div class="brand">PARFUMERIE</div>
-        <ul class="menu-links">
-            <li>Trang chủ</li>
-            <li>Nước hoa</li>
-            <li>Bài viết</li>
-            <li>Liên hệ</li>
-        </ul>
-        <div class="menu-icons">
-            <span>🛒</span>
-            <span>👤</span>
-        </div>
-    </nav>
+<!-- ─── HEADER ─── -->
+<header id="site-header">
+  <div class="header-inner">
+    <a href="#" class="logo">ami <span>perfumery</span></a>
+    <div class="header-right">
+      <div class="search-wrap">
+        <input type="text" placeholder="Tìm kiếm nước hoa...">
+        <span class="search-icon">⌕</span>
+      </div>
+      <div class="header-icons">
+        <button class="icon-btn" title="Yêu thích">❤️</button>
+        <button class="icon-btn" title="Giỏ hàng" style="position:relative">
+          🛒
+          <span class="cart-badge">3</span>
+        </button>
+        <button class="icon-btn" title="Tài khoản">👤</button>
+      </div>
+    </div>
+  </div>
+</header>
 
-    <section class="hero">
-        <div class="hero-overlay">
-            <h1 class="hero-title">FARRFUMERIE</h1>
-            <p class="hero-subtitle">Khám phá thế giới nước hoa đa dạng</p>
-            <a href="#" class="hero-btn">Khám phá ngay →</a>
+<!-- ─── NAVBAR ─── -->
+<nav id="navbar">
+  <ul class="nav-list">
+    <li><a href="#">Trang chủ</a></li>
+    <li><a href="#">Nước hoa</a></li>
+    <li><a href="#">Thương hiệu</a></li>
+    <li><a href="#">Bài viết</a></li>
+    <li><a href="#">Liên hệ</a></li>
+  </ul>
+</nav>
+
+<!-- ─── HERO ─── -->
+<section class="hero" id="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-content">
+    <p class="hero-eyebrow">Nước hoa chính hãng · Cần Thơ</p>
+    <h1 class="hero-title">Nghệ thuật<br><em>của hương thơm</em></h1>
+    <p class="hero-sub">Khám phá bộ sưu tập nước hoa cao cấp từ những thương hiệu danh tiếng thế giới.<br>Mỗi mùi hương là một câu chuyện riêng.</p>
+    <a href="#" class="btn-primary">Khám phá ngay →</a>
+  </div>
+  <div class="hero-scroll">
+    <div class="scroll-line"></div>
+    <span>Scroll</span>
+  </div>
+</section>
+
+<!-- ─── BRANDS ─── -->
+<!-- [EDITED] Xóa tiêu đề "Thương hiệu nổi bật", giữ ticker -->
+<section class="brands-section">
+  <div class="brands-ticker-wrap">
+    <div class="brands-ticker" id="brandsTicker">
+      <!-- Set 1 -->
+      <a href="#" class="brand-item">
+        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Chanel_logo_interlocking_cs.svg/512px-Chanel_logo_interlocking_cs.svg.png" alt="Chanel"></div>
+        <span class="brand-item-name">Chanel</span>
+      </a>
+      <div class="brand-item-sep"></div>
+      <a href="#" class="brand-item">
+        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Christian_Dior_SE_logo.svg/512px-Christian_Dior_SE_logo.svg.png" alt="Dior"></div>
+        <span class="brand-item-name">Dior</span>
+      </a>
+      <div class="brand-item-sep"></div>
+      <a href="#" class="brand-item">
+        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/1960s_Gucci_Logo.svg/512px-1960s_Gucci_Logo.svg.png" alt="Gucci"></div>
+        <span class="brand-item-name">Gucci</span>
+      </a>
+      <div class="brand-item-sep"></div>
+      <a href="#" class="brand-item">
+        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Hermes_logo.svg/512px-Hermes_logo.svg.png" alt="Hermès"></div>
+        <span class="brand-item-name">Hermès</span>
+      </a>
+      <div class="brand-item-sep"></div>
+      <a href="#" class="brand-item">
+        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Yves_Saint_Laurent_%28brand%2C_2012%29_logo.svg/512px-Yves_Saint_Laurent_%28brand%2C_2012%29_logo.svg.png" alt="YSL"></div>
+        <span class="brand-item-name">YSL</span>
+      </a>
+      <div class="brand-item-sep"></div>
+      <a href="#" class="brand-item">
+        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Lanc%C3%B4me_logo.svg/512px-Lanc%C3%B4me_logo.svg.png" alt="Lancôme"></div>
+        <span class="brand-item-name">Lancôme</span>
+      </a>
+      <div class="brand-item-sep"></div>
+      <!-- Set 2 (duplicate for seamless loop) -->
+      <a href="#" class="brand-item">
+        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Chanel_logo_interlocking_cs.svg/512px-Chanel_logo_interlocking_cs.svg.png" alt="Chanel"></div>
+        <span class="brand-item-name">Chanel</span>
+      </a>
+      <div class="brand-item-sep"></div>
+      <a href="#" class="brand-item">
+        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Christian_Dior_SE_logo.svg/512px-Christian_Dior_SE_logo.svg.png" alt="Dior"></div>
+        <span class="brand-item-name">Dior</span>
+      </a>
+      <div class="brand-item-sep"></div>
+      <a href="#" class="brand-item">
+        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/1960s_Gucci_Logo.svg/512px-1960s_Gucci_Logo.svg.png" alt="Gucci"></div>
+        <span class="brand-item-name">Gucci</span>
+      </a>
+      <div class="brand-item-sep"></div>
+      <a href="#" class="brand-item">
+        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Hermes_logo.svg/512px-Hermes_logo.svg.png" alt="Hermès"></div>
+        <span class="brand-item-name">Hermès</span>
+      </a>
+      <div class="brand-item-sep"></div>
+      <a href="#" class="brand-item">
+        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Yves_Saint_Laurent_%28brand%2C_2012%29_logo.svg/512px-Yves_Saint_Laurent_%28brand%2C_2012%29_logo.svg.png" alt="YSL"></div>
+        <span class="brand-item-name">YSL</span>
+      </a>
+      <div class="brand-item-sep"></div>
+      <a href="#" class="brand-item">
+        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Lanc%C3%B4me_logo.svg/512px-Lanc%C3%B4me_logo.svg.png" alt="Lancôme"></div>
+        <span class="brand-item-name">Lancôme</span>
+      </a>
+      <div class="brand-item-sep"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── STORY / CINEMATIC ─── -->
+<section class="story-section" id="storySection">
+  <div class="story-inner">
+
+    <!-- TEXT PANEL -->
+    <div class="story-text-panel">
+
+      <div class="story-eyebrow">
+        <span class="story-eyebrow-line"></span>
+        <span>Triết lý của chúng tôi</span>
+      </div>
+
+      <h2 class="story-headline">
+        Mỗi mùi hương<br>
+        <em>là một câu chuyện</em>
+      </h2>
+
+      <p class="story-body">
+        Nước hoa không chỉ là thứ bạn xịt lên người mỗi sáng. Đó là ngôn ngữ không lời — thứ ngôn ngữ gợi lên ký ức của một chiều hè năm cũ, hình bóng ai đó bạn chưa kịp nhớ tên, hay cảm giác tự tin bước vào một căn phòng lạ mà không cần nói một lời.
+      </p>
+
+      <div class="story-quote-block">
+        <p class="story-quote">"Hương thơm là thứ duy nhất kích thích trực tiếp vùng não bộ cảm xúc — nơi lưu giữ mọi ký ức sâu thẳm nhất của bạn."</p>
+        <p class="story-quote-author">— Khoa học về mùi hương</p>
+      </div>
+
+      <p class="story-body-2">
+        Tại Ami Perfumery, chúng tôi không bán nước hoa. Chúng tôi giúp bạn tìm thấy mùi hương của <em style="font-family:'Cormorant Garamond',serif;font-style:italic;color:var(--olive)">chính mình</em> — một dấu ấn riêng không thể nhầm lẫn, một phiên bản tinh tế nhất mà bạn muốn thế giới ghi nhớ.
+      </p>
+
+      <div class="story-cta-decor">
+        <span class="story-cta-decor-line"></span>
+        <span class="story-cta-decor-dot"></span>
+        <span class="story-cta-decor-line"></span>
+      </div>
+
+      <div class="story-cta-group">
+        <a href="#" class="btn-story-primary">Tìm mùi hương của bạn</a>
+        <a href="#" class="btn-story-secondary">Khám phá câu chuyện →</a>
+      </div>
+
+      <div class="story-stats">
+        <div class="story-stat">
+          <div class="story-stat-num">500<span style="font-size:24px">+</span></div>
+          <div class="story-stat-label">Mùi hương chính hãng</div>
         </div>
-        <div class="floating-icons">
-            <div class="bubble messenger">⌁</div>
-            <div class="bubble chat">💬</div>
+        <div class="story-stat">
+          <div class="story-stat-num">30<span style="font-size:24px">+</span></div>
+          <div class="story-stat-label">Thương hiệu danh tiếng</div>
         </div>
-    </section>
+        <div class="story-stat">
+          <div class="story-stat-num">5K<span style="font-size:24px">+</span></div>
+          <div class="story-stat-label">Khách hàng tin tưởng</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- VISUAL PANEL -->
+    <div class="story-visual-panel">
+      <div class="story-visual-glow"></div>
+      <img
+        class="story-visual-img"
+        src="https://images.unsplash.com/photo-1566977776052-6e61e6d6c6be?auto=format&fit=crop&w=1200&q=85"
+        alt="Nước hoa nghệ thuật"
+        loading="lazy"
+      >
+      <div class="story-visual-overlay"></div>
+      <div class="story-visual-label">
+        <p class="story-visual-label-text">Ánh sáng, hương thơm<br>và cảm xúc</p>
+        <div class="story-visual-label-line"></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ─── CATEGORIES ─── -->
+<!-- [EDITED] Xóa "Danh mục", căn giữa tiêu đề và mô tả -->
+<section class="categories-section">
+  <div class="container" style="text-align:center;">
+    <h2 class="section-title reveal reveal-delay-1" style="margin-left:auto;margin-right:auto;">Bộ sưu tập <em>nước hoa</em></h2>
+    <p class="section-desc reveal reveal-delay-2" style="margin-left:auto;margin-right:auto;max-width:520px;">Từ hương thơm nam tính đến nữ tính, từ mạnh mẽ đến tinh tế — luôn có một mùi hương dành riêng cho bạn.</p>
+  </div>
+  <div class="cat-list">
+
+    <!-- Row 1: Image left, Content right -->
+    <div class="cat-row" data-reveal-row>
+      <div class="cat-row-img">
+        <div class="cat-row-img-inner" style="background-image: url('https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?auto=format&fit=crop&w=1200&q=85')"></div>
+        <div class="cat-row-img-overlay"></div>
+      </div>
+      <div class="cat-row-body">
+        <div class="cat-row-index">01</div>
+        <p class="cat-row-tag">For Him</p>
+        <h3 class="cat-row-title">Nước hoa <em>Nam</em></h3>
+        <p class="cat-row-desc">Hương gỗ trầm, da thuộc, cam bergamot — những mùi hương mạnh mẽ và đẳng cấp dành riêng cho người đàn ông hiện đại.</p>
+        <a href="#" class="cat-row-btn">
+          Xem bộ sưu tập
+          <span class="cat-row-btn-arrow">→</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Row 2: Content left, Image right -->
+    <div class="cat-row reverse" data-reveal-row>
+      <div class="cat-row-img">
+        <div class="cat-row-img-inner" style="background-image: url('https://images.unsplash.com/photo-1541643600914-78b084683702?auto=format&fit=crop&w=1200&q=85')"></div>
+        <div class="cat-row-img-overlay"></div>
+      </div>
+      <div class="cat-row-body">
+        <div class="cat-row-index">02</div>
+        <p class="cat-row-tag">For Her</p>
+        <h3 class="cat-row-title">Nước hoa <em>Nữ</em></h3>
+        <p class="cat-row-desc">Hoa hồng, jasmine, vanilla ngọt ngào — những làn hương dịu dàng, quyến rũ và tinh tế dành cho người phụ nữ của mọi thời đại.</p>
+        <a href="#" class="cat-row-btn">
+          Xem bộ sưu tập
+          <span class="cat-row-btn-arrow">→</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Row 3: Image left, Content right -->
+    <div class="cat-row" data-reveal-row>
+      <div class="cat-row-img">
+        <div class="cat-row-img-inner" style="background-image: url('https://images.unsplash.com/photo-1586521995568-39abaa0c2311?auto=format&fit=crop&w=1200&q=85')"></div>
+        <div class="cat-row-img-overlay"></div>
+      </div>
+      <div class="cat-row-body">
+        <div class="cat-row-index">03</div>
+        <p class="cat-row-tag">For All</p>
+        <h3 class="cat-row-title">Nước hoa <em>Unisex</em></h3>
+        <p class="cat-row-desc">Vượt qua mọi ranh giới giới tính, những mùi hương unisex tôn vinh cá tính tự do và phong cách riêng không thể nhầm lẫn.</p>
+        <a href="#" class="cat-row-btn">
+          Xem bộ sưu tập
+          <span class="cat-row-btn-arrow">→</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Row 4: Content left, Image right -->
+    <div class="cat-row reverse" data-reveal-row>
+      <div class="cat-row-img">
+        <div class="cat-row-img-inner" style="background-image: url('https://images.unsplash.com/photo-1563170351-be82bc888aa4?auto=format&fit=crop&w=1200&q=85')"></div>
+        <div class="cat-row-img-overlay"></div>
+      </div>
+      <div class="cat-row-body">
+        <div class="cat-row-index">04</div>
+        <p class="cat-row-tag">On The Go</p>
+        <h3 class="cat-row-title">Mini &amp; <em>Travel Size</em></h3>
+        <p class="cat-row-desc">Nhỏ gọn, tiện lợi, không kém phần sang trọng. Mang theo mùi hương yêu thích của bạn trên mọi hành trình.</p>
+        <a href="#" class="cat-row-btn">
+          Xem bộ sưu tập
+          <span class="cat-row-btn-arrow">→</span>
+        </a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ─── ARTICLES ─── -->
+<!-- [EDITED] Xóa tiêu đề "Bài viết nổi bật", giữ label và mô tả -->
+<section class="articles-section">
+  <div class="container">
+    <p class="section-label reveal">Kiến thức & Cảm hứng</p>
+    <p class="section-desc reveal reveal-delay-1">Khám phá thế giới nước hoa qua những bài viết chuyên sâu, hướng dẫn chọn hương và câu chuyện thương hiệu.</p>
+    <div class="articles-grid">
+      <a href="#" class="article-card reveal reveal-delay-1">
+        <div class="article-img">
+          <div class="article-img-bg" style="background-image: url('https://images.unsplash.com/photo-1608528577891-eb055944f2e7?auto=format&fit=crop&w=800&q=80')"></div>
+        </div>
+        <div class="article-body">
+          <p class="article-cat">Hướng dẫn</p>
+          <h3 class="article-title">Cách chọn nước hoa phù hợp với cá tính của bạn</h3>
+          <p class="article-desc">Hương thơm không chỉ là mùi — đó là ngôn ngữ riêng của từng người. Khám phá cách tìm mùi hương đúng với bạn.</p>
+          <div class="article-meta">
+            <span>📅 12 tháng 7, 2025</span>
+            <span>⏱ 5 phút đọc</span>
+          </div>
+        </div>
+      </a>
+      <a href="#" class="article-card reveal reveal-delay-2">
+        <div class="article-img">
+          <div class="article-img-bg" style="background-image: url('https://images.unsplash.com/photo-1567016376408-0226e4d0c1ea?auto=format&fit=crop&w=800&q=80')"></div>
+        </div>
+        <div class="article-body">
+          <p class="article-cat">Thương hiệu</p>
+          <h3 class="article-title">Chanel No.5 — Huyền thoại nước hoa 100 năm tuổi</h3>
+          <p class="article-desc">Câu chuyện đằng sau chai nước hoa biểu tượng nhất lịch sử thời trang và những bí ẩn ít ai biết đến.</p>
+          <div class="article-meta">
+            <span>📅 5 tháng 7, 2025</span>
+            <span>⏱ 7 phút đọc</span>
+          </div>
+        </div>
+      </a>
+      <a href="#" class="article-card reveal reveal-delay-3">
+        <div class="article-img">
+          <div class="article-img-bg" style="background-image: url('https://images.unsplash.com/photo-1585386959984-a4155224a1ad?auto=format&fit=crop&w=800&q=80')"></div>
+        </div>
+        <div class="article-body">
+          <p class="article-cat">Mẹo hay</p>
+          <h3 class="article-title">5 cách xịt nước hoa để mùi hương lưu lại cả ngày</h3>
+          <p class="article-desc">Bạn đã xịt nước hoa đúng cách chưa? Những mẹo nhỏ này sẽ giúp hương thơm của bạn bền hơn đáng kể.</p>
+          <div class="article-meta">
+            <span>📅 28 tháng 6, 2025</span>
+            <span>⏱ 4 phút đọc</span>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ─── FOOTER ─── -->
+<footer>
+  <div class="footer-grid">
+    <div>
+      <div class="footer-brand">
+        <div class="footer-logo">ami <span>perfumery</span></div>
+        <div class="footer-tagline">Nước hoa chính hãng · Cần Thơ</div>
+      </div>
+      <p class="footer-desc">Ami Perfumery mang đến trải nghiệm mua sắm nước hoa cao cấp chính hãng với dịch vụ tư vấn chuyên nghiệp và tận tâm nhất tại Cần Thơ.</p>
+      <div class="social-links">
+        <a href="#" class="social-btn" title="Facebook">f</a>
+        <a href="#" class="social-btn" title="Instagram">📸</a>
+        <a href="#" class="social-btn" title="TikTok">♪</a>
+        <a href="#" class="social-btn" title="Zalo">Z</a>
+      </div>
+    </div>
+    <div>
+      <p class="footer-col-title">Sản phẩm</p>
+      <ul class="footer-links">
+        <li><a href="#">Nước hoa Nam</a></li>
+        <li><a href="#">Nước hoa Nữ</a></li>
+        <li><a href="#">Nước hoa Unisex</a></li>
+        <li><a href="#">Mini / Travel Size</a></li>
+        <li><a href="#">Set quà tặng</a></li>
+      </ul>
+    </div>
+    <div>
+      <p class="footer-col-title">Thông tin</p>
+      <ul class="footer-links">
+        <li><a href="#">Giới thiệu</a></li>
+        <li><a href="#">Bài viết</a></li>
+        <li><a href="#">Chính sách đổi trả</a></li>
+        <li><a href="#">Chính sách bảo mật</a></li>
+        <li><a href="#">Tra cứu đơn hàng</a></li>
+      </ul>
+    </div>
+    <div>
+      <p class="footer-col-title">Liên hệ</p>
+      <div class="footer-contact-item">
+        <span class="icon">📍</span>
+        <span>123 Đường 30/4, Phường Hưng Lợi, Quận Ninh Kiều, Cần Thơ</span>
+      </div>
+      <div class="footer-contact-item">
+        <span class="icon">📞</span>
+        <span>0901 234 567</span>
+      </div>
+      <div class="footer-contact-item">
+        <span class="icon">✉️</span>
+        <span>hello@amiperfumery.vn</span>
+      </div>
+      <div class="footer-contact-item">
+        <span class="icon">🕐</span>
+        <span>Thứ 2 – Chủ nhật: 8:00 – 21:00</span>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2025 Ami Perfumery. Tất cả quyền được bảo lưu.</span>
+    <span>Thiết kế với ❤️ tại Cần Thơ</span>
+  </div>
+</footer>
+
+<!-- ─── FLOATING CHAT ─── -->
+<div class="floating-chat">
+  <a href="#" class="chat-bubble" title="Nhắn tin Zalo">💬</a>
 </div>
+
+<!-- JavaScript -->
+<script src="{% static 'app/main.js' %}"></script>
 </body>
 </html>
