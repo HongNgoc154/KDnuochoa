@@ -1,0 +1,480 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dior Sauvage Elixir — Ami Perfumery</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'app/style.css' %}">
+  <link rel="stylesheet" href="{% static 'app/product.css' %}">
+</head>
+<body class="product-page">
+
+<!-- ─── HEADER ─── -->
+<header id="site-header" class="scrolled">
+  <div class="header-inner">
+    <a href="{% url 'home' %}" class="logo">ami <span>perfumery</span></a>
+    <div class="header-right">
+      <div class="search-wrap">
+        <input type="text" placeholder="Tìm kiếm nước hoa...">
+        <span class="search-icon">⌕</span>
+      </div>
+      <div class="header-icons">
+        <button class="icon-btn" title="Yêu thích">❤️</button>
+        <button class="icon-btn" title="Giỏ hàng" style="position:relative">🛒<span class="cart-badge">2</span></button>
+        <button class="icon-btn" title="Tài khoản">👤</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ─── BREADCRUMB ─── -->
+<nav class="pd-breadcrumb" aria-label="breadcrumb">
+  <div class="container">
+    <a href="{% url 'home' %}">Trang chủ</a>
+    <span>/</span>
+    <a href="{% url 'category-all' %}">Nước hoa</a>
+    <span>/</span>
+    <a href="{% url 'category-segment' 'nam' %}">Nam</a>
+    <span>/</span>
+    <strong>Dior Sauvage Elixir</strong>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PRODUCT DETAIL — 2-column layout
+     Left: Gallery | Right: Info (sticky)
+     ═══════════════════════════════════════════════════════════ -->
+<main class="pd-layout container">
+
+  <!-- ══ LEFT: GALLERY ══ -->
+  <section class="pd-gallery" id="pdGallery" aria-label="Hình ảnh sản phẩm">
+
+    <!-- Thumbnail strip (vertical, left side) -->
+    <div class="pd-thumbs" id="pdThumbs">
+      <button class="pd-thumb active" data-index="0" aria-label="Ảnh 1">
+        <img src="https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=200&q=80" alt="Sauvage Elixir 1" loading="lazy">
+      </button>
+      <button class="pd-thumb" data-index="1" aria-label="Ảnh 2">
+        <img src="https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&w=200&q=80" alt="Sauvage Elixir 2" loading="lazy">
+      </button>
+      <button class="pd-thumb" data-index="2" aria-label="Ảnh 3">
+        <img src="https://images.unsplash.com/photo-1590736704728-f4730bb30770?auto=format&fit=crop&w=200&q=80" alt="Sauvage Elixir 3" loading="lazy">
+      </button>
+      <button class="pd-thumb" data-index="3" aria-label="Ảnh 4">
+        <img src="https://images.unsplash.com/photo-1563170351-be82bc888aa4?auto=format&fit=crop&w=200&q=80" alt="Sauvage Elixir 4" loading="lazy">
+      </button>
+      <button class="pd-thumb" data-index="4" aria-label="Ảnh 5">
+        <img src="https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?auto=format&fit=crop&w=200&q=80" alt="Sauvage Elixir 5" loading="lazy">
+      </button>
+    </div>
+
+    <!-- Main image viewer + magnifier -->
+    <div class="pd-main-img-wrap" id="pdMainWrap">
+      <!--
+        Magnifier:
+        - #pdMainImg là ảnh hiển thị
+        - #pdLens là "kính lúp" overlay di chuyển theo cursor
+        - #pdZoomPane là panel zoom hiển thị phần ảnh phóng to
+        JS tính toán tọa độ cursor → di chuyển lens + offset background-position của zoom pane
+      -->
+      <div class="pd-main-img-inner" id="pdImgInner">
+        <img
+          id="pdMainImg"
+          src="https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=1200&q=90"
+          alt="Dior Sauvage Elixir"
+          draggable="false"
+        >
+        <!-- Lens overlay -->
+        <div class="pd-lens" id="pdLens" aria-hidden="true"></div>
+      </div>
+
+      <!-- Zoom pane (xuất hiện bên phải trên desktop) -->
+      <div class="pd-zoom-pane" id="pdZoomPane" aria-hidden="true"></div>
+
+      <!-- Mobile: dot indicators -->
+      <div class="pd-dots" id="pdDots" aria-hidden="true">
+        <span class="pd-dot active"></span>
+        <span class="pd-dot"></span>
+        <span class="pd-dot"></span>
+        <span class="pd-dot"></span>
+        <span class="pd-dot"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ RIGHT: PRODUCT INFO (sticky) ══ -->
+  <aside class="pd-info" id="pdInfo">
+
+    <!-- Brand + Name -->
+    <div class="pd-header reveal-up">
+      <p class="pd-brand">Dior</p>
+      <h1 class="pd-name">Sauvage<br><em>Elixir</em></h1>
+      <div class="pd-meta-row">
+        <div class="pd-rating" aria-label="4.9 trên 5 sao">
+          <span class="pd-stars">★★★★★</span>
+          <span class="pd-rating-score">4.9</span>
+          <span class="pd-rating-count">(128 đánh giá)</span>
+        </div>
+        <span class="pd-status in-stock">● Còn hàng</span>
+      </div>
+    </div>
+
+    <!-- Price -->
+    <div class="pd-price-block reveal-up delay-1">
+      <span class="pd-price">4.200.000₫</span>
+      <span class="pd-price-note">/ 60ml EDP</span>
+    </div>
+
+    <!-- Size selector -->
+    <div class="pd-option-group reveal-up delay-2">
+      <p class="pd-option-label">Dung tích</p>
+      <div class="pd-size-pills">
+        <button class="pd-size-pill" data-size="30ml">30ml</button>
+        <button class="pd-size-pill active" data-size="60ml">60ml</button>
+        <button class="pd-size-pill" data-size="100ml">100ml</button>
+      </div>
+    </div>
+
+    <!-- Quantity -->
+    <div class="pd-option-group reveal-up delay-3">
+      <p class="pd-option-label">Số lượng</p>
+      <div class="pd-qty">
+        <button class="pd-qty-btn" id="pdQtyMinus" aria-label="Giảm số lượng">−</button>
+        <span class="pd-qty-val" id="pdQtyVal">1</span>
+        <button class="pd-qty-btn" id="pdQtyPlus" aria-label="Tăng số lượng">+</button>
+      </div>
+    </div>
+
+    <!-- CTA buttons -->
+    <div class="pd-cta reveal-up delay-4">
+      <button class="pd-btn-cart" id="pdAddCart">
+        <span class="pd-btn-cart-icon" id="pdCartIcon">🛒</span>
+        <span>Thêm vào giỏ</span>
+      </button>
+      <button class="pd-btn-buy">Mua ngay</button>
+    </div>
+
+    <!-- Wishlist + Share -->
+    <div class="pd-social-actions reveal-up delay-5">
+      <!--
+        Wishlist button:
+        Click → toggle .is-liked → CSS heart animation
+        + JS particle burst (6 canvas dots radiate out)
+      -->
+      <button class="pd-wish-btn" id="pdWishBtn" aria-pressed="false" aria-label="Thêm vào yêu thích">
+        <span class="pd-wish-heart" id="pdWishHeart">♡</span>
+        <span class="pd-wish-label">Yêu thích</span>
+      </button>
+
+      <div class="pd-share-group">
+        <span class="pd-share-label">Chia sẻ:</span>
+        <a href="#" class="pd-share-btn" data-tip="Facebook" aria-label="Chia sẻ Facebook">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+        </a>
+        <a href="#" class="pd-share-btn" data-tip="Messenger" aria-label="Chia sẻ Messenger">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.145 2 11.243c0 2.908 1.437 5.504 3.685 7.21V22l3.37-1.85c.9.25 1.853.385 2.845.385 5.523 0 10-4.144 10-9.243C22 6.145 17.523 2 12 2zm1.003 12.444l-2.548-2.718-4.976 2.718 5.476-5.81 2.61 2.718 4.913-2.718-5.475 5.81z"/></svg>
+        </a>
+        <a href="#" class="pd-share-btn" data-tip="Sao chép link" aria-label="Sao chép link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- Fragrance notes -->
+    <div class="pd-notes reveal-up delay-6">
+      <p class="pd-notes-title">Tầng hương</p>
+      <div class="pd-notes-tiers">
+
+        <div class="pd-notes-tier">
+          <span class="pd-tier-label">Top</span>
+          <div class="pd-notes-chips">
+            <span class="pd-note-chip citrus">🍋 Bergamot</span>
+            <span class="pd-note-chip citrus">🌿 Pepper</span>
+          </div>
+        </div>
+
+        <div class="pd-notes-tier">
+          <span class="pd-tier-label">Heart</span>
+          <div class="pd-notes-chips">
+            <span class="pd-note-chip woody">🪵 Lavender</span>
+            <span class="pd-note-chip woody">🌾 Geranium</span>
+          </div>
+        </div>
+
+        <div class="pd-notes-tier">
+          <span class="pd-tier-label">Base</span>
+          <div class="pd-notes-chips">
+            <span class="pd-note-chip amber">🌑 Ambroxan</span>
+            <span class="pd-note-chip amber">🪨 Vetiver</span>
+            <span class="pd-note-chip woody">🌲 Sandalwood</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Longevity + sillage bars -->
+    <div class="pd-longevity reveal-up delay-7">
+      <div class="pd-longevity-row">
+        <span class="pd-lon-label">Độ lưu hương</span>
+        <div class="pd-lon-bar-wrap"><div class="pd-lon-bar" data-fill="85"></div></div>
+        <span class="pd-lon-val">8–10h</span>
+      </div>
+      <div class="pd-longevity-row">
+        <span class="pd-lon-label">Độ tỏa hương</span>
+        <div class="pd-lon-bar-wrap"><div class="pd-lon-bar" data-fill="70"></div></div>
+        <span class="pd-lon-val">Vừa phải</span>
+      </div>
+    </div>
+
+    <!-- Trust badges -->
+    <div class="pd-badges reveal-up delay-8">
+      <div class="pd-badge"><span>✓</span> Hàng chính hãng 100%</div>
+      <div class="pd-badge"><span>✓</span> Giao hàng toàn quốc</div>
+      <div class="pd-badge"><span>✓</span> Đổi trả trong 7 ngày</div>
+    </div>
+
+  </aside>
+</main>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TABS SECTION
+     ═══════════════════════════════════════════════════════════ -->
+<section class="pd-tabs-section container reveal-section">
+  <div class="pd-tabs-nav" role="tablist">
+    <button class="pd-tab-btn active" role="tab" aria-selected="true" data-tab="detail">Chi tiết</button>
+    <button class="pd-tab-btn" role="tab" aria-selected="false" data-tab="qa">Hỏi & Đáp</button>
+    <button class="pd-tab-btn" role="tab" aria-selected="false" data-tab="reviews">Đánh giá</button>
+    <span class="pd-tab-ink" id="pdTabInk"></span>
+  </div>
+
+  <!-- Tab panels -->
+  <div class="pd-tab-panels">
+
+    <!-- TAB 1: Detail -->
+    <div class="pd-tab-panel active" id="tab-detail" role="tabpanel">
+      <div class="pd-detail-grid">
+        <div>
+          <h3 class="pd-tab-heading">Mô tả sản phẩm</h3>
+          <p class="pd-tab-body">Sauvage Elixir là đỉnh cao của dòng Sauvage — một Elixir đặc biệt với hàm lượng tinh dầu cực cao. Mùi hương bắt đầu bằng sự bùng nổ của grapefruit và bergamot Calabrian, trước khi lắng xuống thành tầng heart mạnh mẽ với lavender và geranium Grasse. Tầng base là sự kết hợp hoàn hảo giữa sandalwood, vetiver và ambroxan huyền thoại.</p>
+          <p class="pd-tab-body">Được thiết kế bởi François Demachy, Sauvage Elixir là sự tôn vinh nam tính thuần túy — không ồn ào mà sâu lắng, không phô trương mà đầy quyền lực.</p>
+          <h3 class="pd-tab-heading" style="margin-top:32px">Thành phần chính</h3>
+          <ul class="pd-ingredients">
+            <li>Bergamot Calabrian (Italy)</li>
+            <li>Lavender từ Haute-Provence</li>
+            <li>Geranium Grasse</li>
+            <li>Ambroxan &amp; Vetiver</li>
+            <li>Sandalwood từ New Caledonia</li>
+          </ul>
+        </div>
+        <div class="pd-spec-table">
+          <div class="pd-spec-row"><span>Thương hiệu</span><strong>Dior</strong></div>
+          <div class="pd-spec-row"><span>Dòng</span><strong>Sauvage Collection</strong></div>
+          <div class="pd-spec-row"><span>Nồng độ</span><strong>Elixir (Extra-Parfum)</strong></div>
+          <div class="pd-spec-row"><span>Dung tích</span><strong>60ml</strong></div>
+          <div class="pd-spec-row"><span>Giới tính</span><strong>Nam</strong></div>
+          <div class="pd-spec-row"><span>Xuất xứ</span><strong>Pháp</strong></div>
+          <div class="pd-spec-row"><span>Năm ra mắt</span><strong>2021</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: Q&A -->
+    <div class="pd-tab-panel" id="tab-qa" role="tabpanel" hidden>
+      <div class="pd-qa-list" id="pdQaList">
+        <div class="pd-qa-item">
+          <div class="pd-qa-q"><span class="pd-qa-icon">Q</span><p>Sauvage Elixir có phù hợp để đi làm không?</p></div>
+          <div class="pd-qa-a"><span class="pd-qa-icon ans">A</span><p>Sauvage Elixir có projection khá mạnh, phù hợp hơn cho buổi tối hoặc sự kiện. Nếu đi làm môi trường văn phòng kín, bạn nên xịt 1 nhát và giữ khoảng cách vừa phải.</p></div>
+        </div>
+        <div class="pd-qa-item">
+          <div class="pd-qa-q"><span class="pd-qa-icon">Q</span><p>Sản phẩm có seal chính hãng không?</p></div>
+          <div class="pd-qa-a"><span class="pd-qa-icon ans">A</span><p>100% có seal nguyên vẹn từ nhà máy Dior, kèm certificate of authenticity từ Ami Perfumery. Bạn có thể quét QR code trên hộp để xác thực.</p></div>
+        </div>
+      </div>
+      <form class="pd-qa-form" id="pdQaForm">
+        <h3 class="pd-tab-heading">Đặt câu hỏi</h3>
+        <textarea class="pd-qa-textarea" id="pdQaInput" placeholder="Nhập câu hỏi của bạn về sản phẩm..." rows="4"></textarea>
+        <button type="submit" class="pd-qa-submit">Gửi câu hỏi</button>
+      </form>
+    </div>
+
+    <!-- TAB 3: Reviews -->
+    <div class="pd-tab-panel" id="tab-reviews" role="tabpanel" hidden>
+      <div class="pd-review-summary">
+        <div class="pd-review-score">
+          <span class="pd-big-score">4.9</span>
+          <span class="pd-big-stars">★★★★★</span>
+          <span class="pd-review-total">128 đánh giá</span>
+        </div>
+        <div class="pd-review-bars">
+          <div class="pd-bar-row"><span>5★</span><div class="pd-rv-bar-wrap"><div class="pd-rv-bar" data-fill="82"></div></div><span>82%</span></div>
+          <div class="pd-bar-row"><span>4★</span><div class="pd-rv-bar-wrap"><div class="pd-rv-bar" data-fill="13"></div></div><span>13%</span></div>
+          <div class="pd-bar-row"><span>3★</span><div class="pd-rv-bar-wrap"><div class="pd-rv-bar" data-fill="3"></div></div><span>3%</span></div>
+          <div class="pd-bar-row"><span>2★</span><div class="pd-rv-bar-wrap"><div class="pd-rv-bar" data-fill="1"></div></div><span>1%</span></div>
+          <div class="pd-bar-row"><span>1★</span><div class="pd-rv-bar-wrap"><div class="pd-rv-bar" data-fill="1"></div></div><span>1%</span></div>
+        </div>
+      </div>
+      <div class="pd-review-list">
+        <article class="pd-review-card">
+          <div class="pd-rv-head">
+            <div class="pd-rv-avatar">MK</div>
+            <div>
+              <strong class="pd-rv-name">Minh Khang</strong>
+              <span class="pd-rv-stars">★★★★★</span>
+            </div>
+            <time class="pd-rv-date">12/03/2025</time>
+          </div>
+          <p class="pd-rv-text">Mùi này thực sự đẳng cấp, lưu hương suốt 10 giờ mà vẫn dịu. Đi event tối được khen cả đêm. Mua từ Ami rất yên tâm về nguồn gốc.</p>
+        </article>
+        <article class="pd-review-card">
+          <div class="pd-rv-head">
+            <div class="pd-rv-avatar">QD</div>
+            <div>
+              <strong class="pd-rv-name">Quốc Đạt</strong>
+              <span class="pd-rv-stars">★★★★★</span>
+            </div>
+            <time class="pd-rv-date">05/03/2025</time>
+          </div>
+          <p class="pd-rv-text">Sauvage Elixir khác hoàn toàn với EDT. Depth và sillage của Elixir ở đẳng cấp khác. Woody, dark và cực masculine. Worth every dong.</p>
+        </article>
+        <article class="pd-review-card">
+          <div class="pd-rv-head">
+            <div class="pd-rv-avatar">HN</div>
+            <div>
+              <strong class="pd-rv-name">Hoài Nam</strong>
+              <span class="pd-rv-stars">★★★★☆</span>
+            </div>
+            <time class="pd-rv-date">28/02/2025</time>
+          </div>
+          <p class="pd-rv-text">Mùi rất ổn nhưng mình thấy hơi mạnh cho văn phòng. Để đi chơi tối hoặc date thì 10/10. Packaging rất sang.</p>
+        </article>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     RELATED PRODUCTS
+     ═══════════════════════════════════════════════════════════ -->
+<section class="pd-related reveal-section" style="background:var(--beige);">
+  <div class="container">
+    <p class="section-label">Bạn có thể thích</p>
+  </div>
+  <div class="pd-related-carousel-wrap" id="relatedWrap">
+    <button class="carr-arrow carr-arrow--left" id="relatedLeft" aria-label="Xem thêm bên trái">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M11 3L5 9L11 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="carr-arrow carr-arrow--right" id="relatedRight" aria-label="Xem thêm bên phải">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M7 3L13 9L7 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="pd-related-track-outer">
+      <div class="pd-related-track" id="relatedTrack">
+
+        <a href="#" class="pd-rel-card">
+          <div class="pd-rel-media"><img src="https://images.unsplash.com/photo-1619994403073-2cec5a97dd6d?auto=format&fit=crop&w=600&q=80" alt="Bleu de Chanel" loading="lazy"></div>
+          <div class="pd-rel-body"><p class="pd-rel-brand">Chanel</p><h3 class="pd-rel-name">Bleu de Chanel EDP</h3><p class="pd-rel-price">3.800.000₫</p></div>
+        </a>
+        <a href="#" class="pd-rel-card">
+          <div class="pd-rel-media"><img src="https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&w=600&q=80" alt="Tom Ford Oud" loading="lazy"></div>
+          <div class="pd-rel-body"><p class="pd-rel-brand">Tom Ford</p><h3 class="pd-rel-name">Oud Wood Parfum</h3><p class="pd-rel-price">6.900.000₫</p></div>
+        </a>
+        <a href="#" class="pd-rel-card">
+          <div class="pd-rel-media"><img src="https://images.unsplash.com/photo-1588405748880-12d1d2a59a75?auto=format&fit=crop&w=600&q=80" alt="YSL Y" loading="lazy"></div>
+          <div class="pd-rel-body"><p class="pd-rel-brand">YSL</p><h3 class="pd-rel-name">Y Eau de Parfum</h3><p class="pd-rel-price">3.400.000₫</p></div>
+        </a>
+        <a href="#" class="pd-rel-card">
+          <div class="pd-rel-media"><img src="https://images.unsplash.com/photo-1587017539504-67cfbddac569?auto=format&fit=crop&w=600&q=80" alt="Versace Dylan" loading="lazy"></div>
+          <div class="pd-rel-body"><p class="pd-rel-brand">Versace</p><h3 class="pd-rel-name">Dylan Blue EDT</h3><p class="pd-rel-price">2.600.000₫</p></div>
+        </a>
+        <a href="#" class="pd-rel-card">
+          <div class="pd-rel-media"><img src="https://images.unsplash.com/photo-1563170351-be82bc888aa4?auto=format&fit=crop&w=600&q=80" alt="Dior Homme" loading="lazy"></div>
+          <div class="pd-rel-body"><p class="pd-rel-brand">Dior</p><h3 class="pd-rel-name">Dior Homme Parfum</h3><p class="pd-rel-price">4.700.000₫</p></div>
+        </a>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── BRAND SECTION ─── -->
+<section class="pd-brand-more reveal-section" style="background:var(--cream);">
+  <div class="container">
+    <p class="section-label">Khám phá thêm từ Dior</p>
+  </div>
+  <div class="pd-related-carousel-wrap" id="brandMoreWrap">
+    <button class="carr-arrow carr-arrow--left" id="brandMoreLeft" aria-label="Xem thêm bên trái">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M11 3L5 9L11 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="carr-arrow carr-arrow--right" id="brandMoreRight" aria-label="Xem thêm bên phải">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M7 3L13 9L7 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="pd-related-track-outer">
+      <div class="pd-related-track" id="brandMoreTrack">
+        <a href="#" class="pd-rel-card">
+          <div class="pd-rel-media"><img src="https://images.unsplash.com/photo-1541643600914-78b084683702?auto=format&fit=crop&w=600&q=80" alt="Dior Miss Dior" loading="lazy"></div>
+          <div class="pd-rel-body"><p class="pd-rel-brand">Dior</p><h3 class="pd-rel-name">Miss Dior EDP</h3><p class="pd-rel-price">3.600.000₫</p></div>
+        </a>
+        <a href="#" class="pd-rel-card">
+          <div class="pd-rel-media"><img src="https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?auto=format&fit=crop&w=600&q=80" alt="Dior Fahrenheit" loading="lazy"></div>
+          <div class="pd-rel-body"><p class="pd-rel-brand">Dior</p><h3 class="pd-rel-name">Fahrenheit EDT</h3><p class="pd-rel-price">3.100.000₫</p></div>
+        </a>
+        <a href="#" class="pd-rel-card">
+          <div class="pd-rel-media"><img src="https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&w=600&q=80" alt="Dior Gris" loading="lazy"></div>
+          <div class="pd-rel-body"><p class="pd-rel-brand">Dior</p><h3 class="pd-rel-name">Gris Dior EDP</h3><p class="pd-rel-price">5.200.000₫</p></div>
+        </a>
+        <a href="#" class="pd-rel-card">
+          <div class="pd-rel-media"><img src="https://images.unsplash.com/photo-1590736969955-71cc94901144?auto=format&fit=crop&w=600&q=80" alt="Dior Homme Intense" loading="lazy"></div>
+          <div class="pd-rel-body"><p class="pd-rel-brand">Dior</p><h3 class="pd-rel-name">Homme Intense EDP</h3><p class="pd-rel-price">3.900.000₫</p></div>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── FOOTER ─── -->
+<footer>
+  <div class="footer-grid">
+    <div>
+      <div class="footer-brand">
+        <div class="footer-logo">ami <span>perfumery</span></div>
+        <div class="footer-tagline">Nước hoa chính hãng · Cần Thơ</div>
+      </div>
+      <p class="footer-desc">Ami Perfumery mang đến trải nghiệm mua sắm nước hoa cao cấp chính hãng với dịch vụ tư vấn chuyên nghiệp.</p>
+      <div class="social-links">
+        <a href="#" class="social-btn" title="Facebook">f</a>
+        <a href="#" class="social-btn" title="Instagram">📸</a>
+        <a href="#" class="social-btn" title="TikTok">♪</a>
+        <a href="#" class="social-btn" title="Zalo">Z</a>
+      </div>
+    </div>
+    <div>
+      <p class="footer-col-title">Sản phẩm</p>
+      <ul class="footer-links">
+        <li><a href="{% url 'category-segment' 'nam' %}">Nước hoa Nam</a></li>
+        <li><a href="{% url 'category-segment' 'nu' %}">Nước hoa Nữ</a></li>
+        <li><a href="{% url 'category-segment' 'unisex' %}">Nước hoa Unisex</a></li>
+        <li><a href="#">Mini / Travel Size</a></li>
+      </ul>
+    </div>
+    <div>
+      <p class="footer-col-title">Liên hệ</p>
+      <div class="footer-contact-item"><span class="icon">📍</span><span>123 Đường 30/4, Cần Thơ</span></div>
+      <div class="footer-contact-item"><span class="icon">📞</span><span>0901 234 567</span></div>
+      <div class="footer-contact-item"><span class="icon">✉️</span><span>hello@amiperfumery.vn</span></div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2026 Ami Perfumery. Tất cả quyền được bảo lưu.</span>
+    <span>Thiết kế với ❤️ tại Cần Thơ</span>
+  </div>
+</footer>
+
+<script src="{% static 'app/main.js' %}"></script>
+<script src="{% static 'app/product.js' %}"></script>
+</body>
+</html>

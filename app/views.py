@@ -42,3 +42,7 @@ def category(request, segment='tat-ca'):
     }
     context = category_map.get(segment, category_map['tat-ca'])
     return render(request, 'app/category.html', context)
+
+
+def product_detail(request, id):
+    return render(request, 'app/product.html')
