@@ -1,0 +1,104 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ami Perfumery – Giỏ hàng</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'app/css/style.css' %}">
+  <link rel="stylesheet" href="{% static 'app/css/cart.css' %}">
+</head>
+<body class="cart-page">
+<header id="site-header">
+  <div class="header-inner">
+    <a href="{% url 'home' %}" class="logo">ami <span>perfumery</span></a>
+  </div>
+</header>
+<nav id="navbar">
+  <ul class="nav-list">
+    <li><a href="{% url 'home' %}">Trang chủ</a></li>
+    <li><a href="{% url 'category-all' %}">Nước hoa</a></li>
+    <li><a href="{% url 'brand-list' %}">Thương hiệu</a></li>
+    <li><a href="{% url 'blog-list' %}">Bài viết</a></li>
+    <li><a href="{% url 'contact-page' %}">Liên hệ</a></li>
+    <li><a href="{% url 'cart-page' %}">Giỏ hàng</a></li>
+  </ul>
+</nav>
+
+<main class="section-space">
+  <div class="container cart-layout" data-cart-app>
+    <section>
+      <h1>Giỏ hàng của bạn</h1>
+      <div class="cart-items" data-cart-items>
+        {% for item in cart_items %}
+        <article class="cart-item" data-price="{{ item.price }}" data-qty="{{ item.quantity }}">
+          <img src="{{ item.image }}" alt="{{ item.name }}" loading="lazy">
+          <div class="cart-item-meta">
+            <h3>{{ item.name }}</h3>
+            <p class="unit-price">{{ item.price }}₫</p>
+            <div class="qty-control">
+              <button type="button" class="qty-btn" data-action="minus">−</button>
+              <input type="number" min="1" value="{{ item.quantity }}">
+              <button type="button" class="qty-btn" data-action="plus">+</button>
+            </div>
+          </div>
+          <div class="line-total" data-line-total></div>
+          <button class="remove-btn" type="button" data-remove>🗑</button>
+        </article>
+        {% endfor %}
+      </div>
+
+      <div class="empty-state" data-empty-state hidden>
+        <h2>Giỏ hàng của bạn đang trống</h2>
+        <p>Hãy khám phá bộ sưu tập nước hoa cao cấp của Ami.</p>
+        <a href="{% url 'category-all' %}" class="btn-primary">Khám phá sản phẩm</a>
+      </div>
+
+      <section class="cart-suggestions">
+        <div class="suggestions-head">
+          <h2>Có thể bạn cũng thích</h2>
+          <div>
+            <button type="button" data-suggest-prev>←</button>
+            <button type="button" data-suggest-next>→</button>
+          </div>
+        </div>
+        <div class="suggestions-track" data-suggest-track>
+          {% for item in suggestions %}
+          <article class="suggestion-card">
+            <img src="{{ item.image }}" alt="{{ item.name }}" loading="lazy">
+            <h4>{{ item.name }}</h4>
+            <p>{{ item.price }}</p>
+            <button type="button" class="quick-add">Quick add</button>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+    </section>
+
+    <aside class="summary-card" data-summary>
+      <h3>Tổng kết đơn hàng</h3>
+      <p><span>Tạm tính</span><strong data-subtotal>0₫</strong></p>
+      <p><span>Giảm giá</span><strong data-discount>0₫</strong></p>
+      <p><span>Phí vận chuyển</span><strong data-shipping>0₫</strong></p>
+      <hr>
+      <p class="total"><span>Tổng tiền</span><strong data-total>0₫</strong></p>
+
+      <div class="voucher-box">
+        <input type="text" placeholder="Mã giảm giá" data-voucher-input>
+        <button type="button" data-apply-voucher>Áp dụng</button>
+      </div>
+      <p class="voucher-message" data-voucher-message></p>
+
+      <div class="hold-timer">Giữ hàng trong: <strong data-countdown>14:59</strong></div>
+      <button class="checkout-btn" type="button" data-checkout>Thanh toán</button>
+    </aside>
+  </div>
+</main>
+
+<script src="{% static 'app/js/main.js' %}"></script>
+<script src="{% static 'app/js/cart.js' %}"></script>
+</body>
+</html>

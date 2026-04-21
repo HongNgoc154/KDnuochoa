@@ -1,0 +1,105 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ami Perfumery – Kiến thức & Cảm hứng</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'app/css/style.css' %}">
+  <link rel="stylesheet" href="{% static 'app/css/blog.css' %}">
+</head>
+<body class="blog-page">
+<header id="site-header">
+  <div class="header-inner">
+    <a href="{% url 'home' %}" class="logo">ami <span>perfumery</span></a>
+  </div>
+</header>
+
+<nav id="navbar">
+  <ul class="nav-list">
+    <li><a href="{% url 'home' %}">Trang chủ</a></li>
+    <li><a href="{% url 'category-all' %}">Nước hoa</a></li>
+    <li><a href="{% url 'brand-list' %}">Thương hiệu</a></li>
+    <li><a href="{% url 'blog-list' %}">Bài viết</a></li>
+  </ul>
+</nav>
+
+<main>
+  <section class="blog-hero reveal">
+    <p class="section-label">Ami Journal</p>
+    <h1>Kiến thức & Cảm hứng</h1>
+    <p>Chúng tôi chia sẻ kiến thức mùi hương, gợi ý chọn nước hoa phù hợp và những câu chuyện thương hiệu giàu cảm xúc.</p>
+  </section>
+
+  <section class="blog-featured section-space reveal">
+    <div class="container featured-grid">
+      {% for article in featured_articles %}
+      <a href="{% url 'article-detail' article.slug %}" class="feature-card">
+        <img src="{{ article.cover }}" alt="{{ article.title }}" loading="lazy">
+        <div class="feature-content">
+          <span>{{ article.category }}</span>
+          <h2>{{ article.title }}</h2>
+          <p>{{ article.excerpt }}</p>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="blog-main section-space reveal">
+    <div class="container">
+      <div class="blog-tabs" data-blog-tabs>
+        <button class="blog-tab is-active" type="button" data-filter="all">Tất cả</button>
+        <button class="blog-tab" type="button" data-filter="Guide">Guide</button>
+        <button class="blog-tab" type="button" data-filter="Brand Story">Brand Story</button>
+        <button class="blog-tab" type="button" data-filter="For Him">For Him</button>
+      </div>
+
+      <div class="blog-layout">
+        <div>
+          <div class="bento-grid" data-bento-grid>
+            {% for article in bento_articles %}
+            <a href="{% url 'article-detail' article.slug %}" class="bento-card" data-category="{{ article.category }}" data-bento-item>
+              <img src="{{ article.cover }}" alt="{{ article.title }}" loading="lazy">
+              <div class="bento-overlay"></div>
+              <div class="bento-content">
+                <span>{{ article.category }}</span>
+                <h3>{{ article.title }}</h3>
+              </div>
+            </a>
+            {% endfor %}
+          </div>
+          <div class="pagination" data-pagination></div>
+        </div>
+
+        <aside class="blog-sidebar">
+          <h3>Bài viết nổi bật</h3>
+          {% for item in popular_articles %}
+          <a href="{% url 'article-detail' item.slug %}" class="sidebar-post">
+            <img src="{{ item.cover }}" alt="{{ item.title }}" loading="lazy">
+            <div>
+              <span>{{ item.category }}</span>
+              <p>{{ item.title }}</p>
+            </div>
+          </a>
+          {% endfor %}
+        </aside>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="footer-bottom">
+    <span>© 2026 Ami Perfumery. Tất cả quyền được bảo lưu.</span>
+    <span>Thiết kế với ❤️ tại Cần Thơ</span>
+  </div>
+</footer>
+
+<script src="{% static 'app/js/main.js' %}"></script>
+<script src="{% static 'app/js/blog.js' %}"></script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+body.cart-page { background: linear-gradient(180deg,#f8f4eb,#f1eadf); color: #2c3324; }
+.cart-layout { display: grid; grid-template-columns: 1.5fr .8fr; gap: 28px; align-items: start; }
+.cart-items { display: grid; gap: 14px; }
+.cart-item { display: grid; grid-template-columns: 120px 1fr auto auto; gap: 14px; align-items: center; background: #fff; border-radius: 16px; padding: 14px; border: 1px solid rgba(91,103,75,.15); transition: .3s ease; }
+.cart-item img { width: 120px; height: 120px; border-radius: 12px; object-fit: cover; transition: transform .45s ease; }
+.cart-item:hover img { transform: scale(1.05); }
+.cart-item.pulse { transform: scale(1.01); box-shadow: 0 12px 22px rgba(35,39,29,.1); }
+.qty-control { display: inline-flex; border: 1px solid rgba(95,111,82,.3); border-radius: 999px; overflow: hidden; }
+.qty-btn { width: 36px; height: 36px; }
+.qty-control input { width: 48px; text-align: center; border: none; }
+.line-total { font-weight: 600; color: #5f6f52; }
+.remove-btn { font-size: 20px; opacity: .6; }
+.cart-item.removing { transform: translateX(50px); opacity: 0; transition: .35s ease; }
+
+.summary-card { position: sticky; top: 96px; background: #fff; border-radius: 18px; padding: 18px; border: 1px solid rgba(91,103,75,.18); }
+.summary-card p { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.summary-card .total { font-size: 24px; font-family: 'Cormorant Garamond', serif; }
+.voucher-box { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 12px; }
+.voucher-box input { border: 1px solid rgba(95,111,82,.25); border-radius: 12px; padding: 10px; }
+.voucher-box button { border-radius: 12px; padding: 10px 14px; background: #5f6f52; color: #fff; }
+.voucher-message { color: #5f6f52; min-height: 20px; }
+.checkout-btn { width: 100%; margin-top: 12px; padding: 14px; border-radius: 14px; background: linear-gradient(120deg,#5f6f52,#7b8c67); color: #fff; }
+
+.cart-suggestions { margin-top: 22px; }
+.suggestions-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.suggestions-track { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(200px, 24vw); gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; }
+.suggestion-card { scroll-snap-align: start; background: #fff; border-radius: 14px; border: 1px solid rgba(90,101,74,.14); overflow: hidden; padding-bottom: 10px; }
+.suggestion-card img { width: 100%; height: 170px; object-fit: cover; }
+.suggestion-card h4, .suggestion-card p { padding: 0 10px; }
+.quick-add { margin: 8px 10px 0; border-radius: 10px; border: 1px solid rgba(95,111,82,.3); padding: 8px; }
+
+.empty-state { text-align: center; background: #fff; border-radius: 18px; padding: 30px; }
+
+@media (max-width: 980px) {
+  .cart-layout { grid-template-columns: 1fr; }
+  .cart-item { grid-template-columns: 90px 1fr; }
+  .line-total, .remove-btn { justify-self: start; }
+  .suggestions-track { grid-auto-columns: 70vw; }
+}

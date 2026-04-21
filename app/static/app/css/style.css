@@ -1175,11 +1175,16 @@ body.filter-open .filter-sidebar { transform: translateX(0); }
   border-radius: 14px;
   overflow: hidden;
   transition: transform .45s ease, box-shadow .45s ease;
+  /* cursor: pointer; */
 }
 .product-card:hover {
   transform: translateY(-6px);
   box-shadow: var(--shadow-md);
 }
+/* .product-card:focus-visible {
+  outline: 2px solid var(--olive);
+  outline-offset: 3px;
+} */
 .product-media {
   position: relative;
   aspect-ratio: 4/5;

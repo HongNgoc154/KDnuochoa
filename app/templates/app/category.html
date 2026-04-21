@@ -8,7 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'app/style.css' %}">
+  <link rel="stylesheet" href="{% static 'app/css/style.css' %}">
+  {% comment %} <link rel="stylesheet" href="{% static 'app/product.css' %}"> {% endcomment %}
 </head>
 <body class="category-page" data-segment="{{ segment|default:'men' }}">
 
@@ -41,8 +42,8 @@
         <li><a href="{% url 'category-segment' 'unisex' %}">Nước hoa Unisex</a></li>
       </ul>
     </li>
-    <li><a href="#">Thương hiệu</a></li>
-    <li><a href="#">Bài viết</a></li>
+    <li><a href="{% url 'brand-list' %}">Thương hiệu</a></li>
+    <li><a href="{% url 'blog-list' %}">Bài viết</a></li>
     <li><a href="#">Liên hệ</a></li>
   </ul>
 </nav>
@@ -152,8 +153,8 @@
       </div>
       <p class="fav-counter reveal">Wishlist: <strong id="favoriteCount">0</strong> sản phẩm</p>
 
-      <div class="product-grid">
-        <article class="product-card reveal" data-brand="dior" data-scent="woody" data-price="4200000" data-concentration="edp">
+       <div class="product-grid" data-product-detail-url="{% url 'product-detail' %}">
+        <article class="product-card reveal" data-brand="dior" data-scent="woody" data-price="4200000" data-concentration="edp" tabindex="0" role="link" aria-label="Xem chi tiết Dior Sauvage Elixir">
           <div class="product-media">
             <span class="product-badge">NEW</span>
             <img class="img-primary" src="https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=700&q=80" alt="Dior Sauvage Elixir">
@@ -170,7 +171,7 @@
           </div>
         </article>
 
-        <article class="product-card reveal" data-brand="chanel" data-scent="citrus" data-price="3800000" data-concentration="edp">
+        <article class="product-card reveal" data-brand="chanel" data-scent="citrus" data-price="3800000" data-concentration="edp" tabindex="0" role="link" aria-label="Xem chi tiết Bleu de Chanel EDP">
           <div class="product-media">
             <img class="img-primary" src="https://images.unsplash.com/photo-1619994403073-2cec5a97dd6d?auto=format&fit=crop&w=700&q=80" alt="Bleu de Chanel">
             <img class="img-hover" src="https://images.unsplash.com/photo-1618331835717-801e976710b2?auto=format&fit=crop&w=700&q=80" alt="Bleu de Chanel close-up">
@@ -186,7 +187,7 @@
           </div>
         </article>
 
-        <article class="product-card sold-out reveal" data-brand="tom-ford" data-scent="amber" data-price="6900000" data-concentration="parfum">
+        <article class="product-card sold-out reveal" data-brand="tom-ford" data-scent="amber" data-price="6900000" data-concentration="parfum" tabindex="0" role="link" aria-label="Xem chi tiết Oud Wood Parfum">
           <div class="product-media">
             <span class="product-sold">SOLD OUT</span>
             <img class="img-primary" src="https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&w=700&q=80" alt="Tom Ford Oud Wood">
@@ -203,7 +204,7 @@
           </div>
         </article>
 
-        <article class="product-card reveal" data-brand="ysl" data-scent="woody" data-price="3400000" data-concentration="edp">
+        <article class="product-card reveal" data-brand="ysl" data-scent="woody" data-price="3400000" data-concentration="edp" tabindex="0" role="link" aria-label="Xem chi tiết Y Eau de Parfum">
           <div class="product-media">
             <span class="product-badge">NEW</span>
             <img class="img-primary" src="https://images.unsplash.com/photo-1588405748880-12d1d2a59a75?auto=format&fit=crop&w=700&q=80" alt="YSL Y EDP">
@@ -220,7 +221,7 @@
           </div>
         </article>
 
-        <article class="product-card reveal" data-brand="gucci" data-scent="floral" data-price="3200000" data-concentration="edt">
+        <article class="product-card reveal" data-brand="gucci" data-scent="floral" data-price="3200000" data-concentration="edt" tabindex="0" role="link" aria-label="Xem chi tiết Gucci Guilty EDT">
           <div class="product-media">
             <img class="img-primary" src="https://images.unsplash.com/photo-1608528577891-eb055944f2e7?auto=format&fit=crop&w=700&q=80" alt="Gucci Guilty Pour Homme">
             <img class="img-hover" src="https://images.unsplash.com/photo-1547887538-e3a2f32cb1cc?auto=format&fit=crop&w=700&q=80" alt="Gucci Guilty detail">
@@ -236,7 +237,7 @@
           </div>
         </article>
 
-        <article class="product-card reveal" data-brand="versace" data-scent="citrus" data-price="2600000" data-concentration="edt">
+        <article class="product-card reveal" data-brand="versace" data-scent="citrus" data-price="2600000" data-concentration="edt" tabindex="0" role="link" aria-label="Xem chi tiết Dylan Blue EDT">
           <div class="product-media">
             <img class="img-primary" src="https://images.unsplash.com/photo-1587017539504-67cfbddac569?auto=format&fit=crop&w=700&q=80" alt="Versace Dylan Blue">
             <img class="img-hover" src="https://images.unsplash.com/photo-1595425964071-9e6b82f3f986?auto=format&fit=crop&w=700&q=80" alt="Versace Dylan Blue detail">
@@ -252,7 +253,7 @@
           </div>
         </article>
 
-        <article class="product-card reveal" data-brand="dior" data-scent="amber" data-price="4700000" data-concentration="parfum">
+        <article class="product-card reveal" data-brand="dior" data-scent="amber" data-price="4700000" data-concentration="parfum" tabindex="0" role="link" aria-label="Xem chi tiết Dior Homme Parfum">
           <div class="product-media">
             <img class="img-primary" src="https://images.unsplash.com/photo-1563170351-be82bc888aa4?auto=format&fit=crop&w=700&q=80" alt="Dior Homme Parfum">
             <img class="img-hover" src="https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&w=700&q=80" alt="Dior Homme Parfum detail">
@@ -268,7 +269,7 @@
           </div>
         </article>
 
-        <article class="product-card reveal" data-brand="chanel" data-scent="woody" data-price="5100000" data-concentration="parfum">
+        <article class="product-card reveal" data-brand="chanel" data-scent="woody" data-price="5100000" data-concentration="parfum" tabindex="0" role="link" aria-label="Xem chi tiết Égoïste Platinum">
           <div class="product-media">
             <img class="img-primary" src="https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?auto=format&fit=crop&w=700&q=80" alt="Chanel Egoiste">
             <img class="img-hover" src="https://images.unsplash.com/photo-1610461888750-10bfc601b874?auto=format&fit=crop&w=700&q=80" alt="Chanel Egoiste detail">
@@ -368,6 +369,6 @@
   </div>
 </footer>
 
-<script src="{% static 'app/main.js' %}"></script>
+<script src="{% static 'app/js/main.js' %}"></script>
 </body>
 </html>

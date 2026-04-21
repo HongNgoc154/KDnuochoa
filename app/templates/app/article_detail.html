@@ -1,0 +1,131 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ami Perfumery – {{ article.title }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'app/css/style.css' %}">
+  <link rel="stylesheet" href="{% static 'app/css/blog.css' %}">
+</head>
+<body class="article-page">
+<header id="site-header">
+  <div class="header-inner">
+    <a href="{% url 'home' %}" class="logo">ami <span>perfumery</span></a>
+  </div>
+</header>
+
+<nav id="navbar">
+  <ul class="nav-list">
+    <li><a href="{% url 'home' %}">Trang chủ</a></li>
+    <li><a href="{% url 'category-all' %}">Nước hoa</a></li>
+    <li><a href="{% url 'brand-list' %}">Thương hiệu</a></li>
+    <li><a href="{% url 'blog-list' %}">Bài viết</a></li>
+  </ul>
+</nav>
+
+<main>
+  <section class="article-hero" data-article-parallax>
+    <img src="{{ article.cover }}" alt="{{ article.title }}" loading="lazy">
+    <div class="article-overlay"></div>
+    <div class="article-hero-content reveal">
+      <span>{{ article.category }}</span>
+      <h1>{{ article.title }}</h1>
+      <p>{{ article.author }} · {{ article.published_at }}</p>
+    </div>
+  </section>
+
+  <article class="article-body container section-space">
+    {% for block in article.body %}
+      {% if block.type == 'h3' %}
+      <h3 class="reveal">{{ block.text }}</h3>
+      {% elif block.type == 'quote' %}
+      <blockquote class="reveal">{{ block.text }}</blockquote>
+      {% else %}
+      <p class="reveal">{{ block.text }}</p>
+      {% endif %}
+    {% endfor %}
+
+    <div class="article-share reveal">
+      <p>Chia sẻ bài viết:</p>
+      <a href="#" class="share-btn">Facebook</a>
+      <a href="#" class="share-btn">Messenger</a>
+    </div>
+  </article>
+
+  <section class="related-articles section-space reveal">
+    <div class="container">
+      <p class="section-label">Bài viết liên quan</p>
+      <div class="mini-carousel" data-mini-carousel>
+        <button type="button" class="edge-arrow edge-arrow-left" data-mini-prev aria-label="Scroll trái">←</button>
+        <button type="button" class="edge-arrow edge-arrow-right" data-mini-next aria-label="Scroll phải">→</button>
+        <div class="mini-track" data-mini-track>
+          {% for item in related_articles %}
+          <a href="{% url 'article-detail' item.slug %}" class="mini-card">
+            <img src="{{ item.cover }}" alt="{{ item.title }}" loading="lazy">
+            <div>
+              <span>{{ item.category }}</span>
+              <h4>{{ item.title }}</h4>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="related-products section-space reveal">
+    <div class="container">
+      <p class="section-label">Sản phẩm liên quan</p>
+      <div class="mini-carousel" data-mini-carousel>
+        <button type="button" class="edge-arrow edge-arrow-left" data-mini-prev aria-label="Scroll trái">←</button>
+        <button type="button" class="edge-arrow edge-arrow-right" data-mini-next aria-label="Scroll phải">→</button>
+        <div class="mini-track" data-mini-track>
+          {% for product in suggested_products %}
+          <article class="mini-product-card">
+            <img src="{{ product.image }}" alt="{{ product.name }}" loading="lazy">
+            <div>
+              <h4>{{ product.name }}</h4>
+              <p>{{ product.price }}</p>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="article-survey section-space reveal">
+    <div class="container survey-box">
+      <h3>Bạn thấy bài viết này có hữu ích không?</h3>
+      <div class="survey-actions" data-survey>
+        <button type="button" class="survey-btn" data-feedback="helpful">👍 Hữu ích</button>
+        <a href="https://zalo.me" class="survey-btn" data-feedback="interest" target="_blank" rel="noopener">💬 Quan tâm</a>
+      </div>
+      <p class="survey-message" data-survey-message></p>
+    </div>
+  </section>
+
+  <section class="article-cta section-space reveal">
+    <div class="container">
+      <h3>Tìm mùi hương phù hợp với bạn</h3>
+      <p>Đội ngũ Ami sẽ gợi ý mùi hương theo cá tính, hoàn cảnh sử dụng và ngân sách của bạn.</p>
+      <a href="{% url 'category-all' %}" class="btn-primary">Khám phá bộ sưu tập</a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="footer-bottom">
+    <span>© 2026 Ami Perfumery. Tất cả quyền được bảo lưu.</span>
+    <span>Thiết kế với ❤️ tại Cần Thơ</span>
+  </div>
+</footer>
+
+<script src="{% static 'app/js/main.js' %}"></script>
+<script src="{% static 'app/js/blog.js' %}"></script>
+</body>
+</html>

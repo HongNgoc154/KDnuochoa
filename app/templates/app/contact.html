@@ -1,0 +1,116 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ami Perfumery – Liên hệ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'app/css/style.css' %}">
+  <link rel="stylesheet" href="{% static 'app/css/contact.css' %}">
+</head>
+<body class="contact-page light" data-theme="light">
+<header id="site-header">
+  <div class="header-inner">
+    <a href="{% url 'home' %}" class="logo">ami <span>perfumery</span></a>
+    <button class="theme-toggle" type="button" data-theme-toggle>🌙</button>
+  </div>
+</header>
+
+<nav id="navbar">
+  <ul class="nav-list">
+    <li><a href="{% url 'home' %}">Trang chủ</a></li>
+    <li><a href="{% url 'category-all' %}">Nước hoa</a></li>
+    <li><a href="{% url 'brand-list' %}">Thương hiệu</a></li>
+    <li><a href="{% url 'blog-list' %}">Bài viết</a></li>
+    <li><a href="{% url 'contact-page' %}">Liên hệ</a></li>
+    <li><a href="{% url 'cart-page' %}">Giỏ hàng</a></li>
+  </ul>
+</nav>
+
+<main>
+  <section class="contact-hero" data-contact-parallax>
+    <video autoplay muted loop playsinline poster="https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&w=1800&q=80">
+      <source src="https://cdn.coverr.co/videos/coverr-applying-perfume-1576750999709?download=1080p" type="video/mp4">
+    </video>
+    <div class="contact-overlay"></div>
+    <div class="contact-hero-content reveal">
+      <h1>Liên hệ với chúng tôi</h1>
+      <p>Chúng tôi luôn sẵn sàng lắng nghe và phục vụ bạn.</p>
+    </div>
+  </section>
+
+  <section class="section-space contact-main reveal">
+    <div class="container contact-grid">
+      <div class="contact-form-wrap">
+        <h2>Gửi tin nhắn</h2>
+        <form data-contact-form>
+          <input type="text" name="name" placeholder="Họ tên" required>
+          <input type="email" name="email" placeholder="Email" required>
+          <input type="tel" name="phone" placeholder="Số điện thoại" required>
+          <input type="text" name="subject" placeholder="Chủ đề" required>
+          <textarea name="message" placeholder="Nội dung" rows="4" required></textarea>
+          <button class="btn-send" type="submit">Gửi tin nhắn</button>
+        </form>
+        <div class="toast" data-contact-toast>Đã gửi thành công. Ami sẽ phản hồi sớm nhất ✨</div>
+        <canvas data-confetti></canvas>
+
+        <div class="faq-list">
+          <h3>FAQ nhanh</h3>
+          {% for faq in faq_items %}
+          <article class="faq-item" data-faq>
+            <button type="button" class="faq-q">{{ faq.question }}</button>
+            <div class="faq-a">{{ faq.answer }}</div>
+          </article>
+          {% endfor %}
+        </div>
+      </div>
+
+      <aside>
+        <article class="info-card">
+          <h3>Ami Perfumery Boutique</h3>
+          <p>📍 123 Đường 30/4, Cần Thơ</p>
+          <p>📞 0901 234 567</p>
+          <p>✉️ hello@amiperfumery.vn</p>
+          <p>🕒 10:00 – 21:30 (T2 – CN)</p>
+        </article>
+
+        <article class="info-card map-card">
+          <iframe title="Ami Map" loading="lazy" src="https://www.google.com/maps?q=Can+Tho&output=embed"></iframe>
+          <a class="direction-btn" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=Can+Tho">Chỉ đường</a>
+        </article>
+
+        <article class="info-card review-card" data-review-carousel>
+          <h3>Khách hàng nói gì</h3>
+          <div class="review-track">
+            {% for review in reviews %}
+            <blockquote class="review-item{% if forloop.first %} is-active{% endif %}">
+              <p>“{{ review.comment }}”</p>
+              <cite>— {{ review.name }}</cite>
+            </blockquote>
+            {% endfor %}
+          </div>
+        </article>
+
+        <article class="info-card appointment-card">
+          <h3>Book Appointment</h3>
+          <p>Đặt lịch tư vấn mùi hương riêng cùng chuyên gia của Ami.</p>
+          <a href="https://zalo.me" target="_blank" rel="noopener">Đặt lịch ngay</a>
+        </article>
+      </aside>
+    </div>
+  </section>
+
+  <div class="floating-social">
+    <a href="#" title="Facebook">f</a>
+    <a href="#" title="Messenger">✉</a>
+    <a href="https://zalo.me" title="Zalo" target="_blank" rel="noopener">Z</a>
+  </div>
+</main>
+
+<script src="{% static 'app/js/main.js' %}"></script>
+<script src="{% static 'app/js/contact.js' %}"></script>
+</body>
+</html>

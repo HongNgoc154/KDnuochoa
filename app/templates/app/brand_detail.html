@@ -1,0 +1,104 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ami Perfumery – {{ brand.name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'app/css/style.css' %}">
+  <link rel="stylesheet" href="{% static 'app/css/brand.css' %}">
+</head>
+<body class="brand-detail-page" style="--brand-accent: {{ brand.palette }};">
+<header id="site-header">
+  <div class="header-inner">
+    <a href="{% url 'home' %}" class="logo">ami <span>perfumery</span></a>
+  </div>
+</header>
+
+<nav id="navbar">
+  <ul class="nav-list">
+    <li><a href="{% url 'home' %}">Trang chủ</a></li>
+    <li><a href="{% url 'category-all' %}">Nước hoa</a></li>
+    <li><a href="{% url 'brand-list' %}">Thương hiệu</a></li>
+  </ul>
+</nav>
+
+<main>
+  <section class="brand-hero" data-parallax>
+    <img src="{{ brand.hero_image }}" alt="{{ brand.name }} banner" loading="lazy">
+    <div class="brand-hero-overlay"></div>
+    <div class="brand-hero-content reveal">
+      <p>{{ brand.tagline }}</p>
+      <h1>{{ brand.name }}</h1>
+    </div>
+  </section>
+
+  <section class="brand-story section-space reveal zig-left">
+    <div class="container brand-split">
+      <div>
+        <p class="section-label">Story</p>
+        <h2>Di sản & triết lý</h2>
+        <p>{{ brand.story }}</p>
+        <p>{{ brand.philosophy }}</p>
+        <ul>
+          {% for note in brand.signature_notes %}
+          <li>{{ note }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      <figure>
+        <img src="{{ brand.about_image }}" alt="{{ brand.name }} signature" loading="lazy">
+      </figure>
+    </div>
+  </section>
+
+  <section class="brand-spotlight section-space reveal zig-right">
+    <div class="container">
+      <p class="section-label">Pinned products</p>
+      <div class="spotlight-grid">
+        {% for item in pinned_products %}
+        <article class="spotlight-card">
+          <img src="{{ item.image }}" alt="{{ item.name }}" loading="lazy">
+          <div>
+            <h3>{{ item.name }}</h3>
+            <p>{{ item.price }}</p>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="brand-products section-space reveal zig-left">
+    <div class="container">
+      <p class="section-label">Collection</p>
+      <h2>Bộ sưu tập {{ brand.name }}</h2>
+      <div class="brand-products-grid">
+        {% for item in products %}
+        <article class="brand-product-card">
+          <img src="{{ item.image }}" alt="{{ item.name }}" loading="lazy">
+          <div class="product-meta">
+            <h3>{{ item.name }}</h3>
+            <p>{{ item.price }}</p>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="footer-bottom">
+    <span>© 2026 Ami Perfumery. Tất cả quyền được bảo lưu.</span>
+    <span>Thiết kế với ❤️ tại Cần Thơ</span>
+  </div>
+</footer>
+
+<script src="{% static 'app/js/main.js' %}"></script>
+<script src="{% static 'app/js/brand.js' %}"></script>
+</body>
+</html>

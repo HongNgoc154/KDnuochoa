@@ -1,0 +1,70 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ami Perfumery – Thương hiệu</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'app/css/style.css' %}">
+  <link rel="stylesheet" href="{% static 'app/css/brand.css' %}">
+</head>
+<body class="brand-page">
+<header id="site-header">
+  <div class="header-inner">
+    <a href="{% url 'home' %}" class="logo">ami <span>perfumery</span></a>
+  </div>
+</header>
+
+<nav id="navbar">
+  <ul class="nav-list">
+    <li><a href="{% url 'home' %}">Trang chủ</a></li>
+    <li><a href="{% url 'category-all' %}">Nước hoa</a></li>
+    <li><a href="{% url 'brand-list' %}">Thương hiệu</a></li>
+  </ul>
+</nav>
+
+<main>
+  <section class="brand-list-hero reveal">
+    <p class="section-label">Maison Universe</p>
+    <h1>Mỗi thương hiệu là một <em>thế giới hương thơm</em></h1>
+    <p>Khám phá cinematic slider với chuyển động mượt, chiều sâu thị giác và chất editorial luxury.</p>
+  </section>
+
+  <section class="brand-slider-wrap reveal" data-brand-slider>
+    <button class="edge-arrow edge-arrow-left" type="button" aria-label="Scroll trái" data-brand-prev>←</button>
+    <button class="edge-arrow edge-arrow-right" type="button" aria-label="Scroll phải" data-brand-next>→</button>
+
+    <div class="brand-slider" data-brand-track>
+      {% for brand in brands %}
+      <article class="brand-poster" style="--brand-accent: {{ brand.palette }};" data-brand-card>
+        <a href="{% url 'brand-detail' brand.slug %}" class="brand-poster-link">
+          <div class="brand-poster-media">
+            <img src="{{ brand.poster_image }}" alt="{{ brand.name }}" loading="lazy">
+            <div class="poster-overlay"></div>
+          </div>
+          <div class="brand-poster-content">
+            <p class="brand-kicker">{{ brand.tagline }}</p>
+            <h2>{{ brand.name }}</h2>
+            <span>Explore world →</span>
+          </div>
+        </a>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="footer-bottom">
+    <span>© 2026 Ami Perfumery. Tất cả quyền được bảo lưu.</span>
+    <span>Thiết kế với ❤️ tại Cần Thơ</span>
+  </div>
+</footer>
+
+<script src="{% static 'app/js/main.js' %}"></script>
+<script src="{% static 'app/js/brand.js' %}"></script>
+</body>
+</html>
