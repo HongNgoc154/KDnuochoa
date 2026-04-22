@@ -455,3 +455,11 @@ function showSuccess(title, sub) {
     window.location.href = '/';
   }, 2600);
 }
+/* ─── 10. AUTH TAB FROM URL QUERY (?tab=login|register) ─── */
+(function initAuthTabFromQuery() {
+  const tab = new URLSearchParams(window.location.search).get('tab');
+  if (!tab || !window.authSwitchTo) return;
+  if (tab === 'register' || tab === 'login') {
+    window.authSwitchTo(tab);
+  }
+})();

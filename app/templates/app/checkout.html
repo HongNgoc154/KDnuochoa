@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ami Perfumery — Thanh toán</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* =============================================================
+   Ami Perfumery — checkout.css (inlined)
+   ============================================================= */
+:root {
+  --olive:       #576238;
+  --olive-dark:  #3d4527;
+  --olive-light: #7a8a50;
+  --olive-a:     #9aad62;
+  --beige:       #F0EADC;
+  --beige-dark:  #e4dac8;
+  --cream:       #faf8f4;
+  --text:        #1e2014;
+  --text-light:  #6b6b5e;
+  --text-muted:  #9e9e8e;
+  --white:       #ffffff;
+  --error:       #c0392b;
+  --success:     #4a7c4e;
+  --border:      rgba(87,98,56,.12);
+  --radius:      16px;
+  --ease:        cubic-bezier(0.4,0,0.2,1);
+  --dur:         0.3s;
+  --shadow-sm:   0 2px 12px rgba(87,98,56,.08);
+  --shadow-md:   0 8px 32px rgba(87,98,56,.12);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: 'Jost', sans-serif; background: #f2ede4; color: var(--text); min-height: 100vh; }
+
+/* HEADER */
+.co-header {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  padding: 0 48px;
+  height: 64px;
+  display: flex; align-items: center; justify-content: space-between;
+  box-shadow: var(--shadow-sm);
+  position: sticky; top: 0; z-index: 100;
+}
+.co-logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px; font-weight: 600;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: var(--olive); text-decoration: none;
+}
+.co-logo span { font-style: italic; font-weight: 300; }
+
+/* PROGRESS STEPS */
+.co-progress {
+  display: flex; align-items: center; gap: 0;
+  font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--text-muted);
+}
+.co-step { display: flex; align-items: center; gap: 8px; }
+.co-step-dot {
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 1.5px solid var(--border);
+  display: grid; place-items: center;
+  font-size: 10px; font-weight: 700;
+}
+.co-step.active .co-step-dot { background: var(--olive); border-color: var(--olive); color: #fff; }
+.co-step.done .co-step-dot { background: var(--olive-a); border-color: var(--olive-a); color: #fff; }
+.co-step.active { color: var(--olive); font-weight: 600; }
+.co-step-sep { width: 28px; height: 1px; background: var(--beige-dark); margin: 0 8px; }
+
+/* LAYOUT */
+.co-layout {
+  max-width: 1280px; margin: 0 auto;
+  padding: 40px 48px;
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 32px;
+  align-items: start;
+}
+
+/* SECTION BLOCKS */
+.co-section {
+  background: var(--white);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  padding: 32px;
+  margin-bottom: 24px;
+  animation: fadeUp .4s var(--ease) both;
+}
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(14px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.co-section:nth-child(2) { animation-delay:.08s; }
+.co-section:nth-child(3) { animation-delay:.16s; }
+.co-section-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px; font-weight: 400; margin-bottom: 24px;
+  padding-bottom: 14px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.co-section-icon { font-size: 18px; }
+
+/* FORM FIELDS */
+.co-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.co-form-grid .co-field:last-child { grid-column: 1/-1; }
+.co-field { display: flex; flex-direction: column; gap: 6px; }
+.co-label {
+  font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--text-light);
+}
+.co-input, .co-select, .co-textarea {
+  padding: 13px 16px;
+  background: #faf8f4;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-family: 'Jost', sans-serif;
+  font-size: 14px; color: var(--text);
+  outline: none;
+  transition: border-color var(--dur), box-shadow var(--dur);
+  caret-color: var(--olive);
+  width: 100%;
+}
+.co-input:focus, .co-select:focus { border-color: rgba(87,98,56,.5); box-shadow: 0 0 0 3px rgba(87,98,56,.09); }
+.co-field.error .co-input, .co-field.error .co-select { border-color: rgba(192,57,43,.45); box-shadow: 0 0 0 3px rgba(192,57,43,.07); animation: coShake .35s var(--ease); }
+.co-error { font-size: 11px; color: var(--error); min-height: 15px; letter-spacing: .3px; }
+@keyframes coShake {
+  0%,100%{transform:translateX(0)} 20%{transform:translateX(-4px)} 40%{transform:translateX(4px)} 60%{transform:translateX(-3px)} 80%{transform:translateX(3px)}
+}
+
+/* PAYMENT CARDS */
+.pay-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pay-card {
+  position: relative;
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  cursor: pointer;
+  transition: border-color var(--dur), background var(--dur), box-shadow var(--dur), transform .2s;
+  display: flex; align-items: center; gap: 14px;
+  background: var(--white);
+}
+.pay-card input { position: absolute; opacity: 0; pointer-events: none; }
+.pay-card:hover { border-color: rgba(87,98,56,.3); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.pay-card.selected { border-color: var(--olive); background: rgba(87,98,56,.04); box-shadow: 0 0 0 3px rgba(87,98,56,.1); }
+.pay-icon {
+  width: 42px; height: 42px; border-radius: 10px;
+  background: var(--beige); display: grid; place-items: center;
+  font-size: 22px; flex-shrink: 0;
+}
+.pay-name { font-size: 14px; font-weight: 500; }
+.pay-desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.pay-check {
+  margin-left: auto;
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 1.5px solid var(--border);
+  display: grid; place-items: center;
+  transition: background var(--dur), border-color var(--dur);
+  flex-shrink: 0;
+}
+.pay-card.selected .pay-check { background: var(--olive); border-color: var(--olive); color: #fff; font-size: 10px; }
+
+/* ORDER SUMMARY (right column) */
+.co-summary {
+  position: sticky;
+  top: 88px;
+  background: var(--white);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  animation: fadeUp .4s var(--ease) .12s both;
+}
+.co-summary-head {
+  padding: 24px 28px 20px;
+  border-bottom: 1px solid var(--border);
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px; font-weight: 400;
+}
+.co-items { padding: 0 28px; max-height: 320px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--beige-dark) transparent; }
+.co-item {
+  display: flex; gap: 14px; align-items: center;
+  padding: 16px 0; border-bottom: 1px solid var(--border);
+}
+.co-item:last-child { border-bottom: none; }
+.co-item-img-wrap { position: relative; }
+.co-item-img {
+  width: 56px; height: 56px; border-radius: 10px;
+  object-fit: cover; border: 1px solid var(--border);
+  display: block;
+}
+.co-item-qty {
+  position: absolute; top: -6px; right: -6px;
+  background: var(--olive); color: #fff;
+  font-size: 9px; font-weight: 700;
+  width: 18px; height: 18px; border-radius: 50%;
+  display: grid; place-items: center;
+}
+.co-item-name { font-family: 'Cormorant Garamond', serif; font-size: 15px; font-weight: 400; flex: 1; }
+.co-item-brand { font-size: 10px; color: var(--olive); letter-spacing: 1.5px; text-transform: uppercase; }
+.co-item-price { font-size: 14px; font-weight: 500; white-space: nowrap; }
+
+/* Voucher input */
+.co-voucher { padding: 16px 28px; border-top: 1px solid var(--border); }
+.co-voucher-row { display: flex; gap: 8px; }
+.co-voucher-input { flex: 1; padding: 11px 14px; border: 1px solid var(--border); border-radius: 10px; font-family: 'Jost', sans-serif; font-size: 13px; background: #faf8f4; outline: none; transition: border-color var(--dur); text-transform: uppercase; letter-spacing: 1.5px; }
+.co-voucher-input:focus { border-color: rgba(87,98,56,.45); }
+.btn-apply { padding: 11px 18px; border-radius: 10px; border: none; background: var(--olive); color: #fff; font-family: 'Jost', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; transition: background var(--dur); white-space: nowrap; }
+.btn-apply:hover { background: var(--olive-dark); }
+.co-voucher-tag { display: none; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--success); font-weight: 500; }
+.co-voucher-tag.show { display: flex; }
+.co-voucher-tag button { background: none; border: none; cursor: pointer; font-size: 16px; color: var(--text-muted); line-height: 1; }
+
+/* Totals */
+.co-totals { padding: 16px 28px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+.co-total-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-light); }
+.co-total-row.discount { color: var(--success); }
+.co-total-row.grand { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 400; color: var(--text); padding-top: 12px; border-top: 1px solid var(--border); margin-top: 4px; }
+
+/* Place order button */
+.co-cta { padding: 20px 28px 24px; }
+.btn-place-order {
+  width: 100%;
+  padding: 17px;
+  border: none; border-radius: 40px;
+  background: linear-gradient(135deg, var(--olive-dark) 0%, var(--olive) 50%, var(--olive-light) 100%);
+  background-size: 200% 100%;
+  color: #fff;
+  font-family: 'Jost', sans-serif;
+  font-size: 12px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  position: relative; overflow: hidden;
+  transition: background-position .45s var(--ease), transform .25s, box-shadow .25s;
+}
+.btn-place-order:hover { background-position: right center; transform: translateY(-2px); box-shadow: 0 10px 30px rgba(87,98,56,.35); }
+.btn-place-order:active { transform: scale(.98); }
+.btn-place-order.loading .bpo-text { opacity: .6; }
+.btn-place-order.loading .bpo-spin { display: block; }
+.bpo-spin { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; display: none; animation: spin .7s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.btn-place-order::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent); transform: translateX(-100%); transition: transform .55s ease; }
+.btn-place-order:hover::after { transform: translateX(100%); }
+
+.co-secure { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 12px; font-size: 11px; color: var(--text-muted); }
+
+/* Delivery estimate */
+.co-delivery { display: flex; align-items: center; gap: 10px; padding: 14px 28px; background: rgba(87,98,56,.04); border-top: 1px solid var(--border); font-size: 12px; color: var(--text-light); }
+.co-delivery-icon { font-size: 18px; }
+
+/* SUCCESS OVERLAY */
+.success-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(20,24,12,.6);
+  backdrop-filter: blur(10px);
+  display: none; place-items: center;
+}
+.success-overlay.show { display: grid; }
+.success-card {
+  background: var(--white);
+  border-radius: 28px; padding: 56px 64px;
+  text-align: center;
+  box-shadow: 0 40px 100px rgba(0,0,0,.2);
+  border: 1px solid var(--border);
+  animation: successIn .5s cubic-bezier(.34,1.56,.64,1) both;
+  max-width: 480px; width: 90%;
+}
+@keyframes successIn { from{opacity:0;transform:scale(.9) translateY(20px)} to{opacity:1;transform:scale(1) translateY(0)} }
+.success-anim { width: 80px; height: 80px; margin: 0 auto 24px; border-radius: 50%; background: rgba(87,98,56,.08); border: 1.5px solid rgba(87,98,56,.2); display: grid; place-items: center; }
+.success-check { stroke-dasharray: 40; stroke-dashoffset: 40; }
+.success-overlay.show .success-check { animation: drawCheck .6s ease .3s both; }
+@keyframes drawCheck { to { stroke-dashoffset: 0; } }
+.success-title { font-family: 'Cormorant Garamond', serif; font-size: 32px; font-weight: 300; color: var(--text); margin-bottom: 10px; }
+.success-sub { font-size: 14px; color: var(--text-light); line-height: 1.6; margin-bottom: 28px; }
+.success-order-id { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-muted); background: var(--beige); padding: 6px 16px; border-radius: 40px; display: inline-block; margin-bottom: 28px; }
+.btn-home { padding: 13px 36px; border-radius: 40px; border: none; background: var(--olive); color: #fff; font-family: 'Jost', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: background var(--dur), transform .2s; }
+.btn-home:hover { background: var(--olive-dark); transform: translateY(-2px); }
+
+/* SKELETON LOADING */
+.skeleton { background: linear-gradient(90deg, var(--beige), var(--beige-dark), var(--beige)); background-size: 200% 100%; animation: skeleton .9s ease infinite; border-radius: 8px; }
+@keyframes skeleton { 0%{background-position:0%} 100%{background-position:200%} }
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .co-layout { grid-template-columns: 1fr; padding: 20px; }
+  .co-summary { position: static; order: -1; }
+  .co-form-grid { grid-template-columns: 1fr; }
+  .co-form-grid .co-field:last-child { grid-column: 1; }
+  .pay-cards { grid-template-columns: 1fr; }
+  .co-header { padding: 0 20px; }
+  .co-progress { display: none; }
+}
+@media (max-width: 480px) {
+  .co-section { padding: 20px 18px; }
+  .co-summary-head, .co-items, .co-voucher, .co-totals, .co-cta, .co-delivery { padding-left: 18px; padding-right: 18px; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="co-header">
+  <a href="/" class="co-logo">ami <span>perfumery</span></a>
+  <div class="co-progress">
+    <div class="co-step done"><div class="co-step-dot">✓</div><span>Giỏ hàng</span></div>
+    <div class="co-step-sep"></div>
+    <div class="co-step active"><div class="co-step-dot">2</div><span>Thanh toán</span></div>
+    <div class="co-step-sep"></div>
+    <div class="co-step"><div class="co-step-dot">3</div><span>Xác nhận</span></div>
+  </div>
+  <div style="width:160px"></div><!-- spacer -->
+</header>
+
+<!-- LAYOUT -->
+<div class="co-layout">
+
+  <!-- ── LEFT: FORMS ── -->
+  <div class="co-left">
+
+    <!-- Customer info -->
+    <div class="co-section">
+      <h2 class="co-section-title"><span class="co-section-icon">👤</span> Thông tin giao hàng</h2>
+      <form id="coForm" novalidate>
+        <div class="co-form-grid">
+          <div class="co-field" id="coNameField">
+            <label class="co-label" for="coName">Họ và tên</label>
+            <input class="co-input" type="text" id="coName" placeholder="Nguyễn Văn A" value="Nguyễn Minh Khang" autocomplete="name" required>
+            <span class="co-error" id="coNameErr"></span>
+          </div>
+          <div class="co-field" id="coPhoneField">
+            <label class="co-label" for="coPhone">Số điện thoại</label>
+            <input class="co-input" type="tel" id="coPhone" placeholder="09xx xxx xxx" value="0901 234 567" autocomplete="tel" required>
+            <span class="co-error" id="coPhoneErr"></span>
+          </div>
+          <div class="co-field" id="coEmailField">
+            <label class="co-label" for="coEmail">Email</label>
+            <input class="co-input" type="email" id="coEmail" placeholder="email@example.com" value="minhkhang@email.com" autocomplete="email" required>
+            <span class="co-error" id="coEmailErr"></span>
+          </div>
+          <div class="co-field" id="coCountryField">
+            <label class="co-label" for="coCountry">Quốc gia</label>
+            <select class="co-select" id="coCountry" required>
+              <option value="">Chọn quốc gia…</option>
+              <option value="vn" selected>🇻🇳 Việt Nam</option>
+              <option value="us">🇺🇸 United States</option>
+              <option value="jp">🇯🇵 Japan</option>
+              <option value="kr">🇰🇷 South Korea</option>
+              <option value="sg">🇸🇬 Singapore</option>
+              <option value="fr">🇫🇷 France</option>
+            </select>
+            <span class="co-error" id="coCountryErr"></span>
+          </div>
+          <div class="co-field" id="coAddrField" style="grid-column:1/-1;">
+            <label class="co-label" for="coAddr">Địa chỉ giao hàng</label>
+            <input class="co-input" type="text" id="coAddr" placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành" value="123 Đường 30/4, P.Hưng Lợi, Q.Ninh Kiều, Cần Thơ" autocomplete="street-address" required>
+            <span class="co-error" id="coAddrErr"></span>
+          </div>
+          <div class="co-field" style="grid-column:1/-1;">
+            <label class="co-label" for="coNote">Ghi chú (tùy chọn)</label>
+            <input class="co-input" type="text" id="coNote" placeholder="Ví dụ: Giao giờ hành chính, gọi trước khi giao…">
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Payment method -->
+    <div class="co-section">
+      <h2 class="co-section-title"><span class="co-section-icon">💳</span> Phương thức thanh toán</h2>
+      <div class="pay-cards" id="payCards">
+        <label class="pay-card selected" data-pay="cod">
+          <input type="radio" name="payment" value="cod" checked>
+          <div class="pay-icon">💵</div>
+          <div>
+            <p class="pay-name">Thanh toán khi nhận</p>
+            <p class="pay-desc">COD — Trả tiền mặt</p>
+          </div>
+          <div class="pay-check">✓</div>
+        </label>
+        <label class="pay-card" data-pay="vnpay">
+          <input type="radio" name="payment" value="vnpay">
+          <div class="pay-icon">🏦</div>
+          <div>
+            <p class="pay-name">VNPAY</p>
+            <p class="pay-desc">Chuyển khoản / ATM</p>
+          </div>
+          <div class="pay-check"></div>
+        </label>
+        <label class="pay-card" data-pay="momo">
+          <input type="radio" name="payment" value="momo">
+          <div class="pay-icon">🟣</div>
+          <div>
+            <p class="pay-name">MoMo</p>
+            <p class="pay-desc">Ví điện tử MoMo</p>
+          </div>
+          <div class="pay-check"></div>
+        </label>
+        <label class="pay-card" data-pay="paypal">
+          <input type="radio" name="payment" value="paypal">
+          <div class="pay-icon">🅿️</div>
+          <div>
+            <p class="pay-name">PayPal</p>
+            <p class="pay-desc">Thanh toán quốc tế</p>
+          </div>
+          <div class="pay-check"></div>
+        </label>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── RIGHT: ORDER SUMMARY ── -->
+  <aside class="co-summary">
+    <div class="co-summary-head">Tóm tắt đơn hàng</div>
+
+    <div class="co-items" id="coItems">
+      <!-- rendered by JS -->
+    </div>
+
+    <!-- Voucher -->
+    <div class="co-voucher">
+      <div class="co-voucher-row">
+        <input class="co-voucher-input" type="text" id="voucherInput" placeholder="MÃ GIẢM GIÁ">
+        <button class="btn-apply" id="applyVoucher">Áp dụng</button>
+      </div>
+      <div class="co-voucher-tag" id="voucherTag">
+        <span>✓</span>
+        <span id="voucherTagText">WELCOME20 — Giảm 20%</span>
+        <button id="removeVoucher" title="Xóa mã">×</button>
+      </div>
+    </div>
+
+    <!-- Totals -->
+    <div class="co-totals" id="coTotals"><!-- rendered by JS --></div>
+
+    <!-- Delivery estimate -->
+    <div class="co-delivery">
+      <span class="co-delivery-icon">🚚</span>
+      <span>Dự kiến giao: <strong>2 – 4 ngày làm việc</strong></span>
+    </div>
+
+    <!-- Place order CTA -->
+    <div class="co-cta">
+      <button class="btn-place-order" id="placeOrderBtn">
+        <span class="bpo-text">Đặt hàng ngay</span>
+        <span class="bpo-spin"></span>
+      </button>
+      <p class="co-secure">🔒 Thanh toán bảo mật SSL — Mã hóa 256-bit</p>
+    </div>
+  </aside>
+
+</div>
+
+<!-- SUCCESS OVERLAY -->
+<div class="success-overlay" id="successOverlay">
+  <div class="success-card">
+    <div class="success-anim">
+      <svg width="40" height="40" viewBox="0 0 48 48" fill="none">
+        <circle cx="24" cy="24" r="20" stroke="var(--olive)" stroke-width="2" opacity=".3"/>
+        <path class="success-check" d="M14 24l8 8 12-14" stroke="var(--olive)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <h2 class="success-title">Đặt hàng thành công!</h2>
+    <p class="success-sub">Cảm ơn bạn đã tin tưởng Ami Perfumery.<br>Chúng tôi sẽ xử lý đơn hàng trong thời gian sớm nhất.</p>
+    <div class="success-order-id" id="successOrderId">AMI-2025-000</div>
+    <button class="btn-home" onclick="window.location.href='/'">Tiếp tục mua sắm</button>
+  </div>
+</div>
+
+<script>
+/* =============================================================
+   checkout.js (inlined)
+   ============================================================= */
+const CART_ITEMS = [
+  { name: 'Dior Sauvage Elixir', brand: 'Dior', img: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=200&q=80', qty: 1, price: 4200000 },
+  { name: 'Bleu de Chanel EDP', brand: 'Chanel', img: 'https://images.unsplash.com/photo-1619994403073-2cec5a97dd6d?auto=format&fit=crop&w=200&q=80', qty: 2, price: 3800000 },
+];
+
+const VOUCHERS = {
+  'WELCOME20': { label: 'WELCOME20 — Giảm 20%', discount: 0.2, type: 'pct' },
+  'VIP50K':    { label: 'VIP50K — Giảm 50.000₫',  discount: 50000, type: 'flat' },
+  'FREESHIP':  { label: 'FREESHIP — Miễn phí ship', discount: 30000, type: 'ship' },
+};
+
+let appliedVoucher = null;
+const SHIP_FEE = 30000;
+
+const fmt = n => n.toLocaleString('vi-VN') + '₫';
+
+/* Render cart items */
+const coItems = document.getElementById('coItems');
+CART_ITEMS.forEach(item => {
+  const el = document.createElement('div');
+  el.className = 'co-item';
+  el.innerHTML = `
+    <div class="co-item-img-wrap">
+      <img class="co-item-img" src="${item.img}" alt="${item.name}" loading="lazy">
+      <span class="co-item-qty">${item.qty}</span>
+    </div>
+    <div style="flex:1">
+      <p class="co-item-brand">${item.brand}</p>
+      <p class="co-item-name">${item.name}</p>
+    </div>
+    <span class="co-item-price">${fmt(item.price * item.qty)}</span>
+  `;
+  coItems.appendChild(el);
+});
+
+/* Compute + render totals */
+function renderTotals() {
+  const subtotal = CART_ITEMS.reduce((s, i) => s + i.price * i.qty, 0);
+  let discount   = 0;
+  let ship       = SHIP_FEE;
+  let discLabel  = null;
+
+  if (appliedVoucher) {
+    const v = VOUCHERS[appliedVoucher];
+    if (v.type === 'pct')  { discount = subtotal * v.discount; discLabel = `-${v.discount*100}%`; }
+    if (v.type === 'flat') { discount = v.discount; discLabel = `-${fmt(v.discount)}`; }
+    if (v.type === 'ship') { ship = 0; discLabel = 'Miễn phí'; }
+  }
+
+  const total = subtotal - discount + ship;
+  const totals = document.getElementById('coTotals');
+  totals.innerHTML = `
+    <div class="co-total-row"><span>Tạm tính</span><span>${fmt(subtotal)}</span></div>
+    ${discount ? `<div class="co-total-row discount"><span>Giảm giá (${appliedVoucher})</span><span>−${fmt(discount)}</span></div>` : ''}
+    <div class="co-total-row"><span>Phí vận chuyển</span><span>${ship === 0 ? 'Miễn phí' : fmt(ship)}</span></div>
+    <div class="co-total-row grand"><span>Tổng cộng</span><span>${fmt(total)}</span></div>
+  `;
+}
+renderTotals();
+
+/* Voucher apply */
+document.getElementById('applyVoucher')?.addEventListener('click', () => {
+  const code = document.getElementById('voucherInput').value.trim().toUpperCase();
+  if (!code) return;
+  if (VOUCHERS[code]) {
+    appliedVoucher = code;
+    const tag = document.getElementById('voucherTag');
+    document.getElementById('voucherTagText').textContent = VOUCHERS[code].label;
+    tag.classList.add('show');
+    renderTotals();
+  } else {
+    document.getElementById('voucherInput').style.borderColor = 'rgba(192,57,43,.5)';
+    setTimeout(() => document.getElementById('voucherInput').style.borderColor = '', 1500);
+  }
+});
+document.getElementById('removeVoucher')?.addEventListener('click', () => {
+  appliedVoucher = null;
+  document.getElementById('voucherTag').classList.remove('show');
+  document.getElementById('voucherInput').value = '';
+  renderTotals();
+});
+
+/* Payment selection */
+document.getElementById('payCards')?.addEventListener('click', e => {
+  const card = e.target.closest('.pay-card');
+  if (!card) return;
+  document.querySelectorAll('.pay-card').forEach(c => {
+    c.classList.remove('selected');
+    c.querySelector('.pay-check').textContent = '';
+  });
+  card.classList.add('selected');
+  card.querySelector('.pay-check').textContent = '✓';
+  card.querySelector('input').checked = true;
+});
+
+/* Validation */
+const validators = {
+  name:    v => v.trim().length >= 2 ? '' : 'Vui lòng nhập họ tên đầy đủ.',
+  phone:   v => /^(0|\+84)[0-9]{8,10}$/.test(v.replace(/\s/g,'')) ? '' : 'Số điện thoại không hợp lệ.',
+  email:   v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) ? '' : 'Email không hợp lệ.',
+  country: v => v ? '' : 'Vui lòng chọn quốc gia.',
+  addr:    v => v.trim().length >= 10 ? '' : 'Vui lòng nhập địa chỉ đầy đủ.',
+};
+
+const fields = [
+  { input: 'coName',    error: 'coNameErr',    group: 'coNameField',    rule: 'name' },
+  { input: 'coPhone',   error: 'coPhoneErr',   group: 'coPhoneField',   rule: 'phone' },
+  { input: 'coEmail',   error: 'coEmailErr',   group: 'coEmailField',   rule: 'email' },
+  { input: 'coCountry', error: 'coCountryErr', group: 'coCountryField', rule: 'country' },
+  { input: 'coAddr',    error: 'coAddrErr',    group: 'coAddrField',    rule: 'addr' },
+];
+
+fields.forEach(({ input, error, group, rule }) => {
+  const el = document.getElementById(input);
+  const errEl = document.getElementById(error);
+  const grp   = document.getElementById(group);
+  if (!el) return;
+  const check = () => {
+    const msg = validators[rule](el.value);
+    errEl.textContent = msg;
+    grp.classList.toggle('error', !!msg);
+    return !msg;
+  };
+  el.addEventListener('blur', check);
+  el.addEventListener('input', () => { if (grp.classList.contains('error')) check(); });
+});
+
+/* Place order */
+document.getElementById('placeOrderBtn')?.addEventListener('click', async () => {
+  let valid = true;
+  fields.forEach(({ input, error, group, rule }) => {
+    const el  = document.getElementById(input);
+    const err = document.getElementById(error);
+    const grp = document.getElementById(group);
+    if (!el) return;
+    const msg = validators[rule](el.value);
+    err.textContent = msg;
+    grp.classList.toggle('error', !!msg);
+    if (msg) valid = false;
+  });
+  if (!valid) { document.getElementById('coNameField')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+
+  const btn = document.getElementById('placeOrderBtn');
+  btn.classList.add('loading'); btn.disabled = true;
+  await new Promise(r => setTimeout(r, 1800));
+  btn.classList.remove('loading');
+
+  const orderId = 'AMI-2025-' + String(Math.floor(Math.random()*900)+100);
+  document.getElementById('successOrderId').textContent = orderId;
+  document.getElementById('successOverlay').classList.add('show');
+});
+</script>
+</body>
+</html>

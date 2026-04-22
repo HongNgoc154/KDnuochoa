@@ -343,3 +343,40 @@ if (isCategoryPage) {
   }, { passive: true });
 })();
 }
+
+/* ─── ACCOUNT MENU: Toggle đăng nhập/đăng ký dropdown ─── */
+(function initAccountMenu() {
+  const menus = document.querySelectorAll('[data-account-menu]');
+  if (!menus.length) return;
+
+  const closeAll = () => {
+    menus.forEach((menu) => {
+      menu.classList.remove('is-open');
+      menu.querySelector('[data-account-trigger]')?.setAttribute('aria-expanded', 'false');
+    });
+  };
+
+  menus.forEach((menu) => {
+    const trigger = menu.querySelector('[data-account-trigger]');
+    if (!trigger) return;
+
+    trigger.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const isOpen = menu.classList.contains('is-open');
+      closeAll();
+      if (!isOpen) {
+        menu.classList.add('is-open');
+        trigger.setAttribute('aria-expanded', 'true');
+      }
+    });
+  });
+
+  document.addEventListener('click', (event) => {
+    if (event.target.closest('[data-account-menu]')) return;
+    closeAll();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeAll();
+  });
+})();

@@ -31,7 +31,13 @@
           🛒
           <span class="cart-badge">3</span>
         </button>
-        <button class="icon-btn" title="Tài khoản">👤</button>
+        <div class="account-menu" data-account-menu>
+          <button class="icon-btn" title="Tài khoản" type="button" data-account-trigger aria-expanded="false" aria-haspopup="true" aria-label="Tài khoản">👤</button>
+          <div class="account-dropdown" data-account-dropdown>
+            <a href="{% url 'auth-page' %}?tab=login">Đăng nhập</a>
+            <a href="{% url 'auth-page' %}?tab=register">Đăng ký</a>
+          </div>
+        </div>
       </div>
     </div>
   </div>

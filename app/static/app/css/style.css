@@ -127,6 +127,48 @@ body {
 }
 #site-header.scrolled .icon-btn { color: var(--text); }
 .icon-btn:hover { background: rgba(87,98,56,0.12); transform: scale(1.1); }
+
+.account-menu {
+  position: relative;
+}
+
+.account-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 140px;
+  background: rgba(255,255,255,0.98);
+  border: 1px solid rgba(87,98,56,0.2);
+  border-radius: 10px;
+  box-shadow: var(--shadow-md);
+  padding: 6px;
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity var(--transition), transform var(--transition);
+  z-index: 1001;
+}
+
+.account-dropdown a {
+  display: block;
+  text-decoration: none;
+  color: var(--text);
+  font-size: 13px;
+  border-radius: 8px;
+  padding: 9px 10px;
+}
+
+.account-dropdown a:hover {
+  background: var(--beige);
+  color: var(--olive);
+}
+
+.account-menu.is-open .account-dropdown {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
 .cart-badge {
   position: absolute; top: 4px; right: 4px;
   background: var(--olive);

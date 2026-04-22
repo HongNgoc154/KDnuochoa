@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ami Perfumery — Tài khoản của tôi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="profile.css">
+</head>
+<body>
+
+<!-- ░░ SITE HEADER ░░ -->
+<header class="site-header">
+  <a href="/" class="site-logo">ami <span>perfumery</span></a>
+  <nav class="site-nav">
+    <a href="/">Trang chủ</a>
+    <a href="/products">Nước hoa</a>
+    <a href="/profile" class="active">Tài khoản</a>
+  </nav>
+  <div class="site-header-right">
+    <button class="icon-btn" title="Giỏ hàng">🛒 <span class="badge">3</span></button>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════
+     DASHBOARD LAYOUT
+     ═══════════════════════════════════════════ -->
+<div class="dashboard">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar" id="sidebar">
+
+    <!-- Profile Card -->
+    <div class="profile-card">
+      <div class="avatar-wrap" id="avatarWrap">
+        <img src="https://i.pravatar.cc/150?img=68" alt="Avatar" class="avatar" id="avatarImg">
+        <div class="avatar-overlay" title="Đổi ảnh đại diện">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <span>Đổi ảnh</span>
+        </div>
+        <input type="file" id="avatarInput" accept="image/*" aria-label="Chọn ảnh đại diện">
+      </div>
+      <div class="profile-info">
+        <h2 class="profile-name">Nguyễn Minh Khang</h2>
+        <p class="profile-username">@minhkhang</p>
+        <div class="profile-badges">
+          <span class="badge-vip">⭐ VIP Member</span>
+          <span class="badge-pts">2.840 điểm</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Menu -->
+    <nav class="sidebar-nav" id="sidebarNav">
+      <button class="nav-item active" data-tab="info">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+        <span>Thông tin cá nhân</span>
+        <span class="nav-arrow">›</span>
+      </button>
+      <button class="nav-item" data-tab="orders">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
+        <span>Đơn hàng</span>
+        <span class="nav-badge">4</span>
+        <span class="nav-arrow">›</span>
+      </button>
+      <button class="nav-item" data-tab="wishlist">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span>
+        <span>Yêu thích</span>
+        <span class="nav-badge">6</span>
+        <span class="nav-arrow">›</span>
+      </button>
+      <button class="nav-item" data-tab="vouchers">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 12v10H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></span>
+        <span>Khuyến mãi</span>
+        <span class="nav-arrow">›</span>
+      </button>
+      <button class="nav-item" data-tab="reviews">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+        <span>Đánh giá</span>
+        <span class="nav-arrow">›</span>
+      </button>
+      <button class="nav-item" data-tab="settings">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+        <span>Cài đặt</span>
+        <span class="nav-arrow">›</span>
+      </button>
+      <div class="nav-divider"></div>
+      <button class="nav-item nav-logout">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>
+        <span>Đăng xuất</span>
+      </button>
+    </nav>
+  </aside>
+
+  <!-- ── MAIN CONTENT ── -->
+  <main class="content" id="contentArea">
+
+    <!-- ════ TAB: THÔNG TIN CÁ NHÂN ════ -->
+    <section class="tab-panel active" id="tab-info">
+      <div class="panel-header">
+        <h1 class="panel-title">Thông tin <em>cá nhân</em></h1>
+        <p class="panel-sub">Cập nhật thông tin tài khoản và mật khẩu của bạn.</p>
+      </div>
+
+      <div class="form-card">
+        <h3 class="card-title">Hồ sơ cơ bản</h3>
+        <form id="profileForm" class="info-form" novalidate>
+          <div class="form-grid">
+            <div class="field-group">
+              <label class="field-label" for="pName">Họ và tên</label>
+              <input class="field-input" type="text" id="pName" value="Nguyễn Minh Khang" placeholder="Họ và tên">
+              <span class="field-error"></span>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="pGender">Giới tính</label>
+              <select class="field-input" id="pGender">
+                <option value="male" selected>Nam</option>
+                <option value="female">Nữ</option>
+                <option value="other">Khác</option>
+              </select>
+              <span class="field-error"></span>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="pEmail">Email</label>
+              <input class="field-input" type="email" id="pEmail" value="minhkhang@email.com" placeholder="Email">
+              <span class="field-error"></span>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="pPhone">Số điện thoại</label>
+              <input class="field-input" type="tel" id="pPhone" value="0901 234 567" placeholder="SĐT">
+              <span class="field-error"></span>
+            </div>
+            <div class="field-group full-width">
+              <label class="field-label" for="pUsername">Tên đăng nhập</label>
+              <input class="field-input" type="text" id="pUsername" value="minhkhang" placeholder="Username">
+              <span class="field-error"></span>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn-save" id="profileSaveBtn">
+              <span class="btn-text">Lưu thay đổi</span>
+              <span class="btn-spinner"></span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="form-card">
+        <h3 class="card-title">Đổi mật khẩu</h3>
+        <form id="passwordForm" class="info-form" novalidate>
+          <div class="form-grid">
+            <div class="field-group pw-group">
+              <label class="field-label" for="pOldPass">Mật khẩu hiện tại</label>
+              <div class="field-wrap">
+                <input class="field-input" type="password" id="pOldPass" placeholder="••••••••">
+                <button type="button" class="eye-btn" data-target="pOldPass">👁</button>
+              </div>
+              <span class="field-error"></span>
+            </div>
+            <div class="field-group pw-group">
+              <label class="field-label" for="pNewPass">Mật khẩu mới</label>
+              <div class="field-wrap">
+                <input class="field-input" type="password" id="pNewPass" placeholder="••••••••">
+                <button type="button" class="eye-btn" data-target="pNewPass">👁</button>
+              </div>
+              <div class="strength-wrap">
+                <div class="strength-bar-bg"><div class="strength-bar" id="pwStrengthBar"></div></div>
+                <span class="strength-label" id="pwStrengthLabel"></span>
+              </div>
+              <span class="field-error"></span>
+            </div>
+            <div class="field-group pw-group">
+              <label class="field-label" for="pConfirmPass">Nhập lại mật khẩu</label>
+              <div class="field-wrap">
+                <input class="field-input" type="password" id="pConfirmPass" placeholder="••••••••">
+                <button type="button" class="eye-btn" data-target="pConfirmPass">👁</button>
+              </div>
+              <span class="field-error"></span>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn-save" id="passwordSaveBtn">
+              <span class="btn-text">Cập nhật mật khẩu</span>
+              <span class="btn-spinner"></span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ════ TAB: ĐƠN HÀNG ════ -->
+    <section class="tab-panel" id="tab-orders" hidden>
+      <div class="panel-header">
+        <h1 class="panel-title">Đơn hàng <em>của tôi</em></h1>
+        <p class="panel-sub">Theo dõi và quản lý tất cả đơn hàng của bạn.</p>
+      </div>
+      <div class="orders-list" id="ordersList"></div>
+    </section>
+
+    <!-- ════ TAB: WISHLIST ════ -->
+    <section class="tab-panel" id="tab-wishlist" hidden>
+      <div class="panel-header">
+        <h1 class="panel-title">Sản phẩm <em>yêu thích</em></h1>
+        <p class="panel-sub">Những mùi hương bạn đã lưu lại.</p>
+      </div>
+      <div class="wishlist-grid" id="wishlistGrid"></div>
+    </section>
+
+    <!-- ════ TAB: VOUCHERS ════ -->
+    <section class="tab-panel" id="tab-vouchers" hidden>
+      <div class="panel-header">
+        <h1 class="panel-title">Mã <em>khuyến mãi</em></h1>
+        <p class="panel-sub">Các voucher hiện có trong tài khoản của bạn.</p>
+      </div>
+      <div class="vouchers-list" id="vouchersList"></div>
+    </section>
+
+    <!-- ════ TAB: REVIEWS ════ -->
+    <section class="tab-panel" id="tab-reviews" hidden>
+      <div class="panel-header">
+        <h1 class="panel-title">Đánh giá <em>của tôi</em></h1>
+        <p class="panel-sub">Những nhận xét bạn đã chia sẻ về sản phẩm.</p>
+      </div>
+      <div class="reviews-list" id="reviewsList"></div>
+    </section>
+
+    <!-- ════ TAB: CÀI ĐẶT ════ -->
+    <section class="tab-panel" id="tab-settings" hidden>
+      <div class="panel-header">
+        <h1 class="panel-title">Cài đặt <em>hệ thống</em></h1>
+        <p class="panel-sub">Tuỳ chỉnh ngôn ngữ, giao diện và thông báo.</p>
+      </div>
+
+      <div class="settings-grid">
+        <!-- Language -->
+        <div class="form-card">
+          <h3 class="card-title">🌐 Ngôn ngữ</h3>
+          <div class="lang-options" id="langOptions">
+            <label class="lang-opt active" data-lang="vi">
+              <input type="radio" name="lang" value="vi" checked>
+              <span class="flag">🇻🇳</span>
+              <span class="lang-name">Tiếng Việt</span>
+              <span class="lang-check">✓</span>
+            </label>
+            <label class="lang-opt" data-lang="en">
+              <input type="radio" name="lang" value="en">
+              <span class="flag">🇬🇧</span>
+              <span class="lang-name">English</span>
+              <span class="lang-check">✓</span>
+            </label>
+            <label class="lang-opt" data-lang="ja">
+              <input type="radio" name="lang" value="ja">
+              <span class="flag">🇯🇵</span>
+              <span class="lang-name">日本語</span>
+              <span class="lang-check">✓</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Appearance -->
+        <div class="form-card">
+          <h3 class="card-title">🌙 Giao diện</h3>
+          <div class="appearance-options">
+            <label class="theme-opt" data-theme-opt="light">
+              <input type="radio" name="theme" value="light" checked>
+              <div class="theme-preview theme-preview--light">
+                <div class="tp-header"></div>
+                <div class="tp-body"><div class="tp-bar"></div><div class="tp-bar short"></div></div>
+              </div>
+              <span>Sáng</span>
+            </label>
+            <label class="theme-opt" data-theme-opt="dark">
+              <input type="radio" name="theme" value="dark">
+              <div class="theme-preview theme-preview--dark">
+                <div class="tp-header"></div>
+                <div class="tp-body"><div class="tp-bar"></div><div class="tp-bar short"></div></div>
+              </div>
+              <span>Tối</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="form-card">
+          <h3 class="card-title">🔔 Thông báo</h3>
+          <div class="toggle-list">
+            <div class="toggle-row">
+              <div>
+                <p class="toggle-title" data-i18n="notif_order">Thông báo đơn hàng</p>
+                <p class="toggle-desc">Cập nhật trạng thái đơn hàng qua Email</p>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" checked id="notifOrder">
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <p class="toggle-title" data-i18n="notif_promo">Tin tức & Khuyến mãi</p>
+                <p class="toggle-desc">Email về sản phẩm mới và ưu đãi đặc biệt</p>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" checked id="notifPromo">
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <p class="toggle-title" data-i18n="notif_sms">Nhắn tin SMS</p>
+                <p class="toggle-desc">Nhận tin nhắn về đơn hàng qua SĐT</p>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="notifSms">
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <p class="toggle-title" data-i18n="notif_wishlist">Wishlist có sale</p>
+                <p class="toggle-desc">Thông báo khi sản phẩm yêu thích giảm giá</p>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" checked id="notifWish">
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Privacy -->
+        <div class="form-card">
+          <h3 class="card-title">🔒 Quyền riêng tư</h3>
+          <div class="toggle-list">
+            <div class="toggle-row">
+              <div>
+                <p class="toggle-title">Hiển thị hồ sơ công khai</p>
+                <p class="toggle-desc">Người dùng khác có thể thấy hồ sơ của bạn</p>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="privPublic">
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <p class="toggle-title">Lịch sử xem sản phẩm</p>
+                <p class="toggle-desc">Lưu lịch sử để gợi ý cá nhân hóa</p>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" checked id="privHistory">
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+            </div>
+          </div>
+          <button class="btn-danger">Xóa dữ liệu cá nhân</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ── ORDER DETAIL MODAL ── -->
+<div class="modal-overlay" id="orderModal" hidden>
+  <div class="modal-card" id="orderModalCard">
+    <button class="modal-close" id="orderModalClose">✕</button>
+    <div id="orderModalContent"></div>
+  </div>
+</div>
+
+<!-- ── CANCEL ORDER DIALOG ── -->
+<div class="modal-overlay" id="cancelModal" hidden>
+  <div class="modal-card modal-sm" id="cancelModalCard">
+    <h3 class="modal-title">Hủy đơn hàng</h3>
+    <p class="modal-sub">Vui lòng cho chúng tôi biết lý do để cải thiện dịch vụ.</p>
+    <textarea class="field-input" id="cancelReason" rows="4" placeholder="Nhập lý do hủy…"></textarea>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="cancelModalClose">Hủy bỏ</button>
+      <button class="btn-danger-outline" id="confirmCancel">Xác nhận hủy</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── REVIEW EDIT MODAL ── -->
+<div class="modal-overlay" id="reviewModal" hidden>
+  <div class="modal-card modal-sm" id="reviewModalCard">
+    <button class="modal-close" id="reviewModalClose">✕</button>
+    <h3 class="modal-title">Chỉnh sửa đánh giá</h3>
+    <div class="star-editor" id="starEditor"></div>
+    <textarea class="field-input" id="reviewEditText" rows="4" placeholder="Nội dung đánh giá…"></textarea>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="reviewModalClose2">Hủy</button>
+      <button class="btn-save" id="saveReview"><span class="btn-text">Lưu</span><span class="btn-spinner"></span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ── SUCCESS TOAST ── -->
+<div class="toast" id="toast"></div>
+
+<script src="profile.js"></script>
+</body>
+</html>

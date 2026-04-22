@@ -277,3 +277,6 @@ def cart_page(request):
         {'name': 'Oud Wood Parfum', 'price': '6.900.000₫', 'image': 'https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&w=700&q=80'},
     ]
     return render(request, 'app/cart.html', {'cart_items': cart_items, 'suggestions': suggestions})
+
+def auth_page(request):
+    return render(request, 'app/auth.html')

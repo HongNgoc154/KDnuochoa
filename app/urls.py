@@ -13,4 +13,5 @@ urlpatterns = [
     path('bai-viet/<slug:slug>/', views.article_detail, name='article-detail'),
     path('lien-he/', views.contact_page, name='contact-page'),
     path('gio-hang/', views.cart_page, name='cart-page'),
+    path('auth/', views.auth_page, name='auth-page'),
 ]
