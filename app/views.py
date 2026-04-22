@@ -280,3 +280,10 @@ def cart_page(request):
 
 def auth_page(request):
     return render(request, 'app/auth.html')
+
+def profile_page(request):
+    return render(request, 'app/profile.html')
+
+
+def checkout_page(request):
+    return render(request, 'app/checkout.html')

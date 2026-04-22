@@ -14,4 +14,6 @@ urlpatterns = [
     path('lien-he/', views.contact_page, name='contact-page'),
     path('gio-hang/', views.cart_page, name='cart-page'),
     path('auth/', views.auth_page, name='auth-page'),
+    path('tai-khoan/', views.profile_page, name='profile-page'),
+    path('thanh-toan/', views.checkout_page, name='checkout-page'),
 ]

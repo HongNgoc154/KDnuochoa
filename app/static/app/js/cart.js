@@ -98,10 +98,17 @@
     next?.addEventListener('click', () => track.scrollBy({ left: step(), behavior: 'smooth' }));
   });
 
-  document.querySelector('[data-checkout]')?.addEventListener('click', () => {
+  document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.querySelector('[data-checkout]');
+  if (!btn) return;
+
+  btn.addEventListener('click', (event) => {
+    window.location.href = btn.dataset.checkoutUrl;
+  });
+
     document.body.classList.add('checking-out');
     setTimeout(() => {
-      window.location.href = '#checkout';
+      window.location.href = event.currentTarget.dataset.checkoutUrl || '/checkout/';
     }, 260);
   });
 

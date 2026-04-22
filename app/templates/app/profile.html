@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="vi" data-theme="light">
 <head>
@@ -7,17 +8,16 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="profile.css">
+<link rel="stylesheet" href="{% static 'app/css/profile.css' %}">
 </head>
 <body>
 
 <!-- ░░ SITE HEADER ░░ -->
 <header class="site-header">
-  <a href="/" class="site-logo">ami <span>perfumery</span></a>
-  <nav class="site-nav">
-    <a href="/">Trang chủ</a>
-    <a href="/products">Nước hoa</a>
-    <a href="/profile" class="active">Tài khoản</a>
+  <a href="{% url 'home' %}" class="site-logo">ami <span>perfumery</span></a>
+    <a href="{% url 'home' %}">Trang chủ</a>
+    <a href="{% url 'category-all' %}">Nước hoa</a>
+    <a href="{% url 'profile-page' %}" class="active">Tài khoản</a>
   </nav>
   <div class="site-header-right">
     <button class="icon-btn" title="Giỏ hàng">🛒 <span class="badge">3</span></button>
@@ -400,6 +400,6 @@
 <!-- ── SUCCESS TOAST ── -->
 <div class="toast" id="toast"></div>
 
-<script src="profile.js"></script>
+<script src="{% static 'app/js/profile.js' %}"></script>
 </body>
 </html>
