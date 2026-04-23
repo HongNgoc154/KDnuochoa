@@ -1,79 +1,30 @@
 /* =============================================================
-   Ami Perfumery — main.js
-   Tất cả logic JavaScript của trang web
+   Ami Perfumery — main.js (updated)
    ============================================================= */
 
-/* ─── 1. HEADER & NAVBAR: Đổi style khi scroll ─── */
-const header = document.getElementById('site-header');
-const navbar = document.getElementById('navbar');
+/* ─── 1. HEADER & NAVBAR scroll ─── */
+(function initHeaderScroll() {
+  const header = document.getElementById('site-header');
+  const navbar = document.getElementById('navbar');
+  if (!header || !navbar) return;
+  window.addEventListener('scroll', () => {
+    const scrolled = window.scrollY > 60;
+    header.classList.toggle('scrolled', scrolled);
+    navbar.classList.toggle('scrolled', scrolled);
+  }, { passive: true });
+})();
 
-window.addEventListener('scroll', () => {
-  const scrolled = window.scrollY > 60;
-  header.classList.toggle('scrolled', scrolled);
-  navbar.classList.toggle('scrolled', scrolled);
-});
-
-/* ─── 2. HERO: Animation load khi trang khởi động ─── */
+/* ─── 2. HERO animation ─── */
 window.addEventListener('load', () => {
   const hero = document.getElementById('hero');
   if (hero) setTimeout(() => hero.classList.add('loaded'), 100);
 });
 
-/* ─── 3. SCROLL REVEAL: Các phần tử có class .reveal ─── */
-const reveals = document.querySelectorAll('.reveal');
-const revealObserver = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      entry.target.classList.add('visible');
-      revealObserver.unobserve(entry.target);
-    }
-  });
-}, {
-  threshold: 0.12,
-  rootMargin: '0px 0px -40px 0px'
-});
-reveals.forEach(el => revealObserver.observe(el));
-
-/* ─── 4. CATEGORIES: Scroll reveal từng row (slide in) ─── */
-const catRows = document.querySelectorAll('[data-reveal-row]');
-const rowObserver = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      entry.target.classList.add('visible');
-      rowObserver.unobserve(entry.target);
-    }
-  });
-}, { threshold: 0.15 });
-catRows.forEach(el => rowObserver.observe(el));
-
-/* ─── 5. STORY SECTION: Kích hoạt animation stagger khi vào viewport ─── */
-const storySection = document.getElementById('storySection');
-if (storySection) {
-  const storyObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('in-view');
-        storyObserver.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.12 });
-  storyObserver.observe(storySection);
-}
-
-/* ─── 6. PARALLAX: Ảnh nền Hero di chuyển chậm hơn scroll ─── */
-const heroBg = document.querySelector('.hero-bg');
-if (heroBg) {
-  window.addEventListener('scroll', () => {
-    const y = window.scrollY;
-    if (y < window.innerHeight) {
-      heroBg.style.transform = `scale(1) translateY(${y * 0.25}px)`;
-    }
-  }, { passive: true });
-}
-
+/* ─── 3. SCROLL REVEAL ─── */
 (function initReveal() {
   const items = document.querySelectorAll('.reveal');
-  const obs   = new IntersectionObserver(entries => {
+  if (!items.length) return;
+  const obs = new IntersectionObserver(entries => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         entry.target.classList.add('visible');
@@ -84,9 +35,137 @@ if (heroBg) {
   items.forEach(el => obs.observe(el));
 })();
 
-/* ─── 7. CATEGORY PAGE: advanced carousel + premium micro interactions ─── */
+/* ─── 4. CATEGORY ROWS reveal ─── */
+(function initCatRows() {
+  const catRows = document.querySelectorAll('[data-reveal-row]');
+  if (!catRows.length) return;
+  const rowObserver = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        rowObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15 });
+  catRows.forEach(el => rowObserver.observe(el));
+})();
+
+/* ─── 5. STORY SECTION in-view ─── */
+(function initStory() {
+  const storySection = document.getElementById('storySection');
+  if (!storySection) return;
+  const storyObserver = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('in-view');
+        storyObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.12 });
+  storyObserver.observe(storySection);
+})();
+
+/* ─── 6. HERO PARALLAX ─── */
+(function initHeroParallax() {
+  const heroBg = document.querySelector('.hero-bg');
+  if (!heroBg) return;
+  window.addEventListener('scroll', () => {
+    const y = window.scrollY;
+    if (y < window.innerHeight) {
+      heroBg.style.transform = `scale(1) translateY(${y * 0.25}px)`;
+    }
+  }, { passive: true });
+})();
+
+/* ─── 7. ACCOUNT MENU DROPDOWN ─── */
+(function initAccountMenu() {
+  const menus = document.querySelectorAll('[data-account-menu]');
+  if (!menus.length) return;
+
+  const closeAll = () => {
+    menus.forEach(menu => {
+      menu.classList.remove('is-open');
+      menu.querySelector('[data-account-trigger]')?.setAttribute('aria-expanded', 'false');
+    });
+  };
+
+  menus.forEach(menu => {
+    const trigger = menu.querySelector('[data-account-trigger]');
+    if (!trigger) return;
+    trigger.addEventListener('click', e => {
+      e.stopPropagation();
+      const isOpen = menu.classList.contains('is-open');
+      closeAll();
+      if (!isOpen) {
+        menu.classList.add('is-open');
+        trigger.setAttribute('aria-expanded', 'true');
+      }
+    });
+  });
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('[data-account-menu]')) closeAll();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeAll();
+  });
+})();
+
+/* ─── 8. ARTICLES "XEM THÊM" ─── */
+(function initArticlesSeeMore() {
+  const btnSeeMore = document.getElementById('btnSeeMoreArticles');
+  const teaserBlock = document.getElementById('articlesTeaserBlock');
+  if (!btnSeeMore) return;
+
+  // Đếm số bài viết trong grid
+  const grid = document.getElementById('articlesGrid');
+  const allCards = grid ? grid.querySelectorAll('.article-card') : [];
+  const extraCards = grid ? grid.querySelectorAll('.article-extra') : [];
+
+  // Chỉ hiện teaser block nếu có bài viết ẩn (tức là có > 3 bài hiển thị ban đầu)
+  if (extraCards.length === 0) {
+    if (teaserBlock) teaserBlock.style.display = 'none';
+    return;
+  }
+
+  let expanded = false;
+
+  btnSeeMore.addEventListener('click', () => {
+    expanded = !expanded;
+    extraCards.forEach(card => {
+      card.style.display = expanded ? '' : 'none';
+      if (expanded) {
+        // Kích hoạt reveal animation cho các bài mới hiện
+        requestAnimationFrame(() => {
+          card.classList.add('visible');
+        });
+      } else {
+        card.classList.remove('visible');
+      }
+    });
+
+    // Cập nhật nút
+    const btnSpan = btnSeeMore.querySelector('span');
+    if (btnSpan) {
+      btnSpan.textContent = expanded ? 'Thu gọn bài viết' : 'Xem thêm bài viết';
+    }
+    btnSeeMore.classList.toggle('expanded', expanded);
+
+    // Nếu thu gọn, cuộn về đầu section
+    if (!expanded) {
+      const articlesSection = document.querySelector('.articles-section');
+      if (articlesSection) {
+        articlesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  });
+})();
+
+/* ─── 9. CATEGORY PAGE ─── */
 const isCategoryPage = document.body.classList.contains('category-page');
 if (isCategoryPage) {
+
+  /* Filter sidebar */
   const openFilterBtn = document.getElementById('openFilter');
   const closeFilterBtn = document.getElementById('closeFilter');
   const filterOverlay = document.getElementById('filterOverlay');
@@ -112,18 +191,16 @@ if (isCategoryPage) {
   closeFilterBtn?.addEventListener('click', closeFilter);
   filterOverlay?.addEventListener('click', closeFilter);
 
-  const formatVnd = (value) => `${Number(value).toLocaleString('vi-VN')}₫`;
+  const formatVnd = value => `${Number(value).toLocaleString('vi-VN')}₫`;
   if (priceRange && priceValue) {
-    const updatePrice = () => {
-      priceValue.textContent = formatVnd(priceRange.value);
-    };
+    const updatePrice = () => { priceValue.textContent = formatVnd(priceRange.value); };
     updatePrice();
     priceRange.addEventListener('input', updatePrice);
   }
 
   brandSearch?.addEventListener('input', () => {
     const keyword = brandSearch.value.trim().toLowerCase();
-    [...brandOptions.querySelectorAll('label')].forEach((label) => {
+    [...brandOptions.querySelectorAll('label')].forEach(label => {
       label.hidden = !label.textContent.toLowerCase().includes(keyword);
     });
   });
@@ -134,25 +211,21 @@ if (isCategoryPage) {
     const selectedBrands = formData.getAll('brand');
     const selectedConcentrations = formData.getAll('concentration');
     const maxPrice = Number(priceRange?.value || 8000000);
-
     let visibleCount = 0;
-    cards.forEach((card) => {
-      const matchedScent = !selectedScents.length || selectedScents.includes(card.dataset.scent);
-      const matchedBrand = !selectedBrands.length || selectedBrands.includes(card.dataset.brand);
-      const matchedConcentration = !selectedConcentrations.length || selectedConcentrations.includes(card.dataset.concentration);
-      const matchedPrice = Number(card.dataset.price) <= maxPrice;
-      const visible = matchedScent && matchedBrand && matchedConcentration && matchedPrice;
+    cards.forEach(card => {
+      const visible =
+        (!selectedScents.length || selectedScents.includes(card.dataset.scent)) &&
+        (!selectedBrands.length || selectedBrands.includes(card.dataset.brand)) &&
+        (!selectedConcentrations.length || selectedConcentrations.includes(card.dataset.concentration)) &&
+        Number(card.dataset.price) <= maxPrice;
       card.hidden = !visible;
-      if (visible) visibleCount += 1;
+      if (visible) visibleCount++;
     });
-
-    if (productResult) {
-      productResult.textContent = `Hiển thị ${visibleCount} sản phẩm cao cấp.`;
-    }
+    if (productResult) productResult.textContent = `Hiển thị ${visibleCount} sản phẩm cao cấp.`;
   };
 
-  filterForm?.addEventListener('submit', (event) => {
-    event.preventDefault();
+  filterForm?.addEventListener('submit', e => {
+    e.preventDefault();
     applyFilters();
     closeFilter();
   });
@@ -165,33 +238,28 @@ if (isCategoryPage) {
     applyFilters();
   });
 
-  // Fireworks effect note:
-  // We toggle .bursting and .bounce classes briefly so CSS pseudo-element can render
-  // six radial particles around the heart icon without additional DOM/canvas.
+  /* Favorite buttons */
   const updateFavoriteCount = () => {
     const count = document.querySelectorAll('.favorite-btn.is-liked').length;
     if (favoriteCount) favoriteCount.textContent = String(count);
   };
 
-  document.querySelectorAll('.favorite-btn').forEach((btn) => {
+  document.querySelectorAll('.favorite-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const isLiked = btn.classList.toggle('is-liked');
       btn.setAttribute('aria-pressed', String(isLiked));
       const heartCore = btn.querySelector('.heart-core');
       if (heartCore) heartCore.textContent = isLiked ? '♥' : '♡';
-
       btn.classList.remove('bursting', 'bounce');
       void btn.offsetWidth;
       btn.classList.add('bursting', 'bounce');
       setTimeout(() => btn.classList.remove('bursting', 'bounce'), 520);
-
       updateFavoriteCount();
     });
   });
 
-  // Shake animation note:
-  // Card and cart button each receive temporary classes to create a short tactile feedback.
-  document.querySelectorAll('.add-cart-btn').forEach((btn) => {
+  /* Add to cart */
+  document.querySelectorAll('.add-cart-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       if (btn.disabled) return;
       const card = btn.closest('.product-card');
@@ -207,48 +275,40 @@ if (isCategoryPage) {
     });
   });
 
+  /* Product card click → detail page */
   const productGrid = document.querySelector('.product-grid');
   const productDetailUrl = productGrid?.dataset.productDetailUrl;
-  const shouldIgnoreCardRedirect = (eventTarget) => (
-    eventTarget.closest('.product-actions') || eventTarget.closest('button') || eventTarget.closest('a')
-  );
+  const shouldIgnore = target =>
+    target.closest('.product-actions') || target.closest('button') || target.closest('a');
 
   if (productGrid && productDetailUrl) {
-    productGrid.addEventListener('click', (event) => {
-      const card = event.target.closest('.product-card');
-      if (!card || shouldIgnoreCardRedirect(event.target)) return;
+    productGrid.addEventListener('click', e => {
+      const card = e.target.closest('.product-card');
+      if (!card || shouldIgnore(e.target)) return;
       window.location.href = productDetailUrl;
     });
-
-    productGrid.addEventListener('keydown', (event) => {
-      if (event.key !== 'Enter' && event.key !== ' ') return;
-      const card = event.target.closest('.product-card');
-      if (!card || shouldIgnoreCardRedirect(event.target)) return;
-      event.preventDefault();
+    productGrid.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const card = e.target.closest('.product-card');
+      if (!card || shouldIgnore(e.target)) return;
+      e.preventDefault();
       window.location.href = productDetailUrl;
     });
   }
 
-  const categoryHero = document.querySelector('.category-hero-video');
-  if (categoryHero) {
+  /* Category hero parallax */
+  const categoryHeroVideo = document.querySelector('.category-hero-video');
+  if (categoryHeroVideo) {
     window.addEventListener('scroll', () => {
       const y = window.scrollY;
       if (y < window.innerHeight) {
-        categoryHero.style.transform = `scale(1.02) translateY(${y * 0.08}px)`;
+        categoryHeroVideo.style.transform = `scale(1.02) translateY(${y * 0.08}px)`;
       }
     }, { passive: true });
   }
 
-  const segment = document.body.dataset.segment || 'all';
-  document.querySelectorAll('.review-card').forEach((review) => {
-    const segments = (review.dataset.segment || '').split(' ');
-    review.hidden = !(segments.includes(segment) || segments.includes('all'));
-  });
-
-  // Arrow hover detection note:
-  // We observe mouse position near the left/right edge of each carousel container
-  // and only reveal the corresponding arrow for a cleaner luxury UI.
-  const initEdgeCarousel = (carousel) => {
+  /* Edge carousels */
+  const initEdgeCarousel = carousel => {
     const track = carousel.querySelector('[data-carousel-track]');
     const leftArrow = carousel.querySelector('.edge-arrow-left');
     const rightArrow = carousel.querySelector('.edge-arrow-right');
@@ -263,9 +323,9 @@ if (isCategoryPage) {
       rightArrow.disabled = track.scrollLeft >= maxScroll;
     };
 
-    carousel.addEventListener('mousemove', (event) => {
+    carousel.addEventListener('mousemove', e => {
       const rect = carousel.getBoundingClientRect();
-      const x = event.clientX - rect.left;
+      const x = e.clientX - rect.left;
       const edgeZone = Math.min(90, rect.width * 0.18);
       carousel.classList.toggle('show-left', x < edgeZone && !leftArrow.disabled);
       carousel.classList.toggle('show-right', x > rect.width - edgeZone && !rightArrow.disabled);
@@ -273,42 +333,30 @@ if (isCategoryPage) {
     carousel.addEventListener('mouseleave', () => {
       carousel.classList.remove('show-left', 'show-right');
     });
-
-    leftArrow.addEventListener('click', () => {
-      track.scrollBy({ left: -scrollStep(), behavior: 'smooth' });
-    });
-    rightArrow.addEventListener('click', () => {
-      track.scrollBy({ left: scrollStep(), behavior: 'smooth' });
-    });
-
+    leftArrow.addEventListener('click', () => track.scrollBy({ left: -scrollStep(), behavior: 'smooth' }));
+    rightArrow.addEventListener('click', () => track.scrollBy({ left: scrollStep(), behavior: 'smooth' }));
     track.addEventListener('scroll', updateArrowState, { passive: true });
     updateArrowState();
   };
-
   document.querySelectorAll('[data-carousel]').forEach(initEdgeCarousel);
 
+  /* Review auto-scroll */
   const reviewTrack = document.getElementById('reviewsGrid');
   if (reviewTrack) {
-    const reviewCards = [...reviewTrack.querySelectorAll('.review-card')].filter((el) => !el.hidden);
+    const reviewCards = [...reviewTrack.querySelectorAll('.review-card')].filter(el => !el.hidden);
     let autoScrollTimer;
-
     const refreshFocus = () => {
       const centerPoint = reviewTrack.getBoundingClientRect().left + reviewTrack.clientWidth / 2;
       let closest = null;
       let minDistance = Infinity;
-      reviewCards.forEach((card) => {
+      reviewCards.forEach(card => {
         const rect = card.getBoundingClientRect();
-        const cardCenter = rect.left + rect.width / 2;
-        const distance = Math.abs(centerPoint - cardCenter);
-        if (distance < minDistance) {
-          minDistance = distance;
-          closest = card;
-        }
+        const dist = Math.abs(rect.left + rect.width / 2 - centerPoint);
+        if (dist < minDistance) { minDistance = dist; closest = card; }
         card.classList.remove('in-focus');
       });
       if (closest) closest.classList.add('in-focus');
     };
-
     const startAutoScroll = () => {
       stopAutoScroll();
       autoScrollTimer = setInterval(() => {
@@ -319,64 +367,14 @@ if (isCategoryPage) {
         refreshFocus();
       }, 30);
     };
-
     const stopAutoScroll = () => clearInterval(autoScrollTimer);
-
     reviewTrack.addEventListener('mouseenter', stopAutoScroll);
     reviewTrack.addEventListener('mouseleave', startAutoScroll);
     reviewTrack.addEventListener('scroll', refreshFocus, { passive: true });
-
     refreshFocus();
     startAutoScroll();
   }
 
   applyFilters();
   updateFavoriteCount();
-
-  (function initHeader() {
-  const header = document.getElementById('site-header');
-  const navbar = document.getElementById('navbar');
-  window.addEventListener('scroll', () => {
-    const scrolled = window.scrollY > 60;
-    header?.classList.toggle('scrolled', scrolled);
-    navbar?.classList.toggle('scrolled', scrolled);
-  }, { passive: true });
-})();
 }
-
-/* ─── ACCOUNT MENU: Toggle đăng nhập/đăng ký dropdown ─── */
-(function initAccountMenu() {
-  const menus = document.querySelectorAll('[data-account-menu]');
-  if (!menus.length) return;
-
-  const closeAll = () => {
-    menus.forEach((menu) => {
-      menu.classList.remove('is-open');
-      menu.querySelector('[data-account-trigger]')?.setAttribute('aria-expanded', 'false');
-    });
-  };
-
-  menus.forEach((menu) => {
-    const trigger = menu.querySelector('[data-account-trigger]');
-    if (!trigger) return;
-
-    trigger.addEventListener('click', (event) => {
-      event.stopPropagation();
-      const isOpen = menu.classList.contains('is-open');
-      closeAll();
-      if (!isOpen) {
-        menu.classList.add('is-open');
-        trigger.setAttribute('aria-expanded', 'true');
-      }
-    });
-  });
-
-  document.addEventListener('click', (event) => {
-    if (event.target.closest('[data-account-menu]')) return;
-    closeAll();
-  });
-
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') closeAll();
-  });
-})();

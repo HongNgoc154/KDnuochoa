@@ -5,38 +5,44 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ami Perfumery – Nước Hoa Chính Hãng</title>
-
-  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
-
-  <!-- Stylesheet -->
   <link rel="stylesheet" href="{% static 'app/css/style.css' %}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 </head>
 <body>
 
 <!-- ─── HEADER ─── -->
 <header id="site-header">
   <div class="header-inner">
-    <a href="#" class="logo">ami <span>perfumery</span></a>
+    <a href="{% url 'home' %}" class="logo">ami <span>perfumery</span></a>
     <div class="header-right">
       <div class="search-wrap">
         <input type="text" placeholder="Tìm kiếm nước hoa...">
-        <span class="search-icon">⌕</span>
+        <span class="search-icon"><i class="bi bi-search"></i></span>
       </div>
       <div class="header-icons">
-        <button class="icon-btn" title="Yêu thích">❤️</button>
-        <button class="icon-btn" title="Giỏ hàng" style="position:relative">
-          🛒
-          <span class="cart-badge">3</span>
-        </button>
+        <!-- GIỎ HÀNG -->
+        <a href="{% url 'cart-page' %}" class="icon-btn" title="Giỏ hàng">
+          <i class="bi bi-bag"></i>
+          {% if cart_count %}
+          <span class="cart-badge">{{ cart_count }}</span>
+          {% endif %}
+        </a>
+        <!-- ACCOUNT -->
         <div class="account-menu" data-account-menu>
-          <button class="icon-btn" title="Tài khoản" type="button" data-account-trigger aria-expanded="false" aria-haspopup="true" aria-label="Tài khoản">👤</button>
-          <div class="account-dropdown" data-account-dropdown>
-            <a href="{% url 'auth-page' %}?tab=login">Đăng nhập</a>
-            <a href="{% url 'auth-page' %}?tab=register">Đăng ký</a>
-            <a href="{% url 'profile-page' %}">Tài khoản của tôi</a>
+          <button class="icon-btn" data-account-trigger title="Tài khoản" aria-expanded="false">
+            <i class="bi bi-person-circle"></i>
+          </button>
+          <div class="account-dropdown">
+            {% if user.is_authenticated %}
+              <a href="{% url 'profile-page' %}"><i class="bi bi-person me-2"></i>Tài khoản của bạn</a>
+              <a href="{% url 'logout' %}"><i class="bi bi-box-arrow-right me-2"></i>Đăng xuất</a>
+            {% else %}
+              <a href="{% url 'auth-page' %}?tab=login"><i class="bi bi-box-arrow-in-right me-2"></i>Đăng nhập</a>
+              <a href="{% url 'auth-page' %}?tab=register"><i class="bi bi-person-plus me-2"></i>Đăng ký</a>
+            {% endif %}
           </div>
         </div>
       </div>
@@ -48,16 +54,77 @@
 <nav id="navbar">
   <ul class="nav-list">
     <li><a href="{% url 'home' %}">Trang chủ</a></li>
-    <li class="has-dropdown">
-      <a href="{% url 'category-all' %}">Nước hoa</a>
-      <ul class="dropdown-menu">
-        <li><a href="{% url 'category-all' %}">Tất cả</a></li>
-        <li><a href="{% url 'category-segment' 'nam' %}">Nước hoa Nam</a></li>
-        <li><a href="{% url 'category-segment' 'nu' %}">Nước hoa Nữ</a></li>
-        <li><a href="{% url 'category-segment' 'unisex' %}">Nước hoa Unisex</a></li>
-      </ul>
+
+    <!-- NƯỚC HOA — MEGA MENU -->
+    <li class="has-dropdown mega-menu">
+      <a href="{% url 'category-all' %}">Nước hoa <i class="bi bi-chevron-down" style="font-size:9px;margin-left:4px;"></i></a>
+
+      <div class="mega-dropdown">
+
+        <!-- CỘT 1: Danh mục theo giới tính -->
+        <div class="mega-col mega-categories">
+          <p class="mega-col-title">Danh mục</p>
+          <a href="{% url 'category-segment' 'nam' %}" class="mega-cat-item">
+            <div class="mega-cat-img" style="background-image:url('/static/img/nam.jpg')">
+              <div class="mega-cat-overlay"></div>
+            </div>
+            <span class="mega-cat-label">Nước hoa Nam</span>
+          </a>
+          <a href="{% url 'category-segment' 'nu' %}" class="mega-cat-item">
+            <div class="mega-cat-img" style="background-image:url('/static/img/nu.jpg')">
+              <div class="mega-cat-overlay"></div>
+            </div>
+            <span class="mega-cat-label">Nước hoa Nữ</span>
+          </a>
+          <a href="{% url 'category-segment' 'unisex' %}" class="mega-cat-item">
+            <div class="mega-cat-img" style="background-image:url('/static/img/unisex.jpg')">
+              <div class="mega-cat-overlay"></div>
+            </div>
+            <span class="mega-cat-label">Unisex</span>
+          </a>
+          <a href="{% url 'category-all' %}" class="mega-cat-item">
+            <div class="mega-cat-img" style="background-image:url('https://images.unsplash.com/photo-1563170351-be82bc888aa4?auto=format&fit=crop&w=400&q=70')">
+              <div class="mega-cat-overlay"></div>
+            </div>
+            <span class="mega-cat-label">Mini & Travel Size</span>
+          </a>
+        </div>
+
+        <!-- CỘT 2: Thương hiệu -->
+        <div class="mega-col mega-brands">
+          <p class="mega-col-title">Thương hiệu nổi bật</p>
+          <div class="mega-brands-grid">
+            <a href="{% url 'brand-detail' 'chanel' %}" class="mega-brand-link">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Chanel_logo_interlocking_cs.svg/512px-Chanel_logo_interlocking_cs.svg.png" alt="Chanel">
+              <span>Chanel</span>
+            </a>
+            <a href="{% url 'brand-detail' 'dior' %}" class="mega-brand-link">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Christian_Dior_SE_logo.svg/512px-Christian_Dior_SE_logo.svg.png" alt="Dior">
+              <span>Dior</span>
+            </a>
+            <a href="{% url 'brand-detail' 'gucci' %}" class="mega-brand-link">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/1960s_Gucci_Logo.svg/512px-1960s_Gucci_Logo.svg.png" alt="Gucci">
+              <span>Gucci</span>
+            </a>
+            <a href="{% url 'brand-detail' 'hermes' %}" class="mega-brand-link">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Hermes_logo.svg/512px-Hermes_logo.svg.png" alt="Hermès">
+              <span>Hermès</span>
+            </a>
+            <a href="{% url 'brand-detail' 'ysl' %}" class="mega-brand-link">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Yves_Saint_Laurent_%28brand%2C_2012%29_logo.svg/512px-Yves_Saint_Laurent_%28brand%2C_2012%29_logo.svg.png" alt="YSL">
+              <span>YSL</span>
+            </a>
+            <a href="{% url 'brand-detail' 'lancome' %}" class="mega-brand-link">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Lanc%C3%B4me_logo.svg/512px-Lanc%C3%B4me_logo.svg.png" alt="Lancôme">
+              <span>Lancôme</span>
+            </a>
+          </div>
+          <a href="{% url 'brand-list' %}" class="mega-all-brands">Xem tất cả thương hiệu →</a>
+        </div>
+
+      </div>
     </li>
-    <li><a href="{% url 'brand-list' %}">Thương hiệu</a></li>
+
     <li><a href="{% url 'blog-list' %}">Bài viết</a></li>
     <li><a href="{% url 'contact-page' %}">Liên hệ</a></li>
   </ul>
@@ -78,69 +145,67 @@
   </div>
 </section>
 
-<!-- ─── BRANDS ─── -->
-<!-- [EDITED] Xóa tiêu đề "Thương hiệu nổi bật", giữ ticker -->
+<!-- ─── BRANDS TICKER ─── -->
 <section class="brands-section">
   <div class="brands-ticker-wrap">
     <div class="brands-ticker" id="brandsTicker">
-      <!-- Set 1 -->
-      <a href="#" class="brand-item">
+      <a href="{% url 'brand-detail' 'chanel' %}" class="brand-item">
         <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Chanel_logo_interlocking_cs.svg/512px-Chanel_logo_interlocking_cs.svg.png" alt="Chanel"></div>
         <span class="brand-item-name">Chanel</span>
       </a>
       <div class="brand-item-sep"></div>
-      <a href="#" class="brand-item">
+      <a href="{% url 'brand-detail' 'dior' %}" class="brand-item">
         <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Christian_Dior_SE_logo.svg/512px-Christian_Dior_SE_logo.svg.png" alt="Dior"></div>
         <span class="brand-item-name">Dior</span>
       </a>
       <div class="brand-item-sep"></div>
-      <a href="#" class="brand-item">
+      <a href="{% url 'brand-detail' 'gucci' %}" class="brand-item">
         <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/1960s_Gucci_Logo.svg/512px-1960s_Gucci_Logo.svg.png" alt="Gucci"></div>
         <span class="brand-item-name">Gucci</span>
       </a>
       <div class="brand-item-sep"></div>
-      <a href="#" class="brand-item">
+      <a href="{% url 'brand-detail' 'hermes' %}" class="brand-item">
         <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Hermes_logo.svg/512px-Hermes_logo.svg.png" alt="Hermès"></div>
         <span class="brand-item-name">Hermès</span>
       </a>
       <div class="brand-item-sep"></div>
-      <a href="#" class="brand-item">
+      <a href="{% url 'brand-detail' 'ysl' %}" class="brand-item">
         <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Yves_Saint_Laurent_%28brand%2C_2012%29_logo.svg/512px-Yves_Saint_Laurent_%28brand%2C_2012%29_logo.svg.png" alt="YSL"></div>
         <span class="brand-item-name">YSL</span>
       </a>
       <div class="brand-item-sep"></div>
-      <a href="#" class="brand-item">
+      <a href="{% url 'brand-detail' 'lancome' %}" class="brand-item">
         <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Lanc%C3%B4me_logo.svg/512px-Lanc%C3%B4me_logo.svg.png" alt="Lancôme"></div>
         <span class="brand-item-name">Lancôme</span>
       </a>
       <div class="brand-item-sep"></div>
-      <!-- Set 2 (duplicate for seamless loop) -->
-      <a href="#" class="brand-item">
+      <!-- Duplicate set for seamless loop -->
+      <a href="{% url 'brand-detail' 'chanel' %}" class="brand-item">
         <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Chanel_logo_interlocking_cs.svg/512px-Chanel_logo_interlocking_cs.svg.png" alt="Chanel"></div>
         <span class="brand-item-name">Chanel</span>
       </a>
       <div class="brand-item-sep"></div>
-      <a href="#" class="brand-item">
+      <a href="{% url 'brand-detail' 'dior' %}" class="brand-item">
         <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Christian_Dior_SE_logo.svg/512px-Christian_Dior_SE_logo.svg.png" alt="Dior"></div>
         <span class="brand-item-name">Dior</span>
       </a>
       <div class="brand-item-sep"></div>
-      <a href="#" class="brand-item">
+      <a href="{% url 'brand-detail' 'gucci' %}" class="brand-item">
         <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/1960s_Gucci_Logo.svg/512px-1960s_Gucci_Logo.svg.png" alt="Gucci"></div>
         <span class="brand-item-name">Gucci</span>
       </a>
       <div class="brand-item-sep"></div>
-      <a href="#" class="brand-item">
+      <a href="{% url 'brand-detail' 'hermes' %}" class="brand-item">
         <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Hermes_logo.svg/512px-Hermes_logo.svg.png" alt="Hermès"></div>
         <span class="brand-item-name">Hermès</span>
       </a>
       <div class="brand-item-sep"></div>
-      <a href="#" class="brand-item">
+      <a href="{% url 'brand-detail' 'ysl' %}" class="brand-item">
         <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Yves_Saint_Laurent_%28brand%2C_2012%29_logo.svg/512px-Yves_Saint_Laurent_%28brand%2C_2012%29_logo.svg.png" alt="YSL"></div>
         <span class="brand-item-name">YSL</span>
       </a>
       <div class="brand-item-sep"></div>
-      <a href="#" class="brand-item">
+      <a href="{% url 'brand-detail' 'lancome' %}" class="brand-item">
         <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Lanc%C3%B4me_logo.svg/512px-Lanc%C3%B4me_logo.svg.png" alt="Lancôme"></div>
         <span class="brand-item-name">Lancôme</span>
       </a>
@@ -149,47 +214,30 @@
   </div>
 </section>
 
-<!-- ─── STORY / CINEMATIC ─── -->
+<!-- ─── STORY ─── -->
 <section class="story-section" id="storySection">
   <div class="story-inner">
-
-    <!-- TEXT PANEL -->
     <div class="story-text-panel">
-
       <div class="story-eyebrow">
         <span class="story-eyebrow-line"></span>
         <span>Triết lý của chúng tôi</span>
       </div>
-
-      <h2 class="story-headline">
-        Mỗi mùi hương<br>
-        <em>là một câu chuyện</em>
-      </h2>
-
-      <p class="story-body">
-        Nước hoa không chỉ là thứ bạn xịt lên người mỗi sáng. Đó là ngôn ngữ không lời — thứ ngôn ngữ gợi lên ký ức của một chiều hè năm cũ, hình bóng ai đó bạn chưa kịp nhớ tên, hay cảm giác tự tin bước vào một căn phòng lạ mà không cần nói một lời.
-      </p>
-
+      <h2 class="story-headline">Mỗi mùi hương<br><em>là một câu chuyện</em></h2>
+      <p class="story-body">Nước hoa không chỉ là thứ bạn xịt lên người mỗi sáng. Đó là ngôn ngữ không lời — thứ ngôn ngữ gợi lên ký ức của một chiều hè năm cũ, hình bóng ai đó bạn chưa kịp nhớ tên, hay cảm giác tự tin bước vào một căn phòng lạ mà không cần nói một lời.</p>
       <div class="story-quote-block">
         <p class="story-quote">"Hương thơm là thứ duy nhất kích thích trực tiếp vùng não bộ cảm xúc — nơi lưu giữ mọi ký ức sâu thẳm nhất của bạn."</p>
         <p class="story-quote-author">— Khoa học về mùi hương</p>
       </div>
-
-      <p class="story-body-2">
-        Tại Ami Perfumery, chúng tôi không bán nước hoa. Chúng tôi giúp bạn tìm thấy mùi hương của <em style="font-family:'Cormorant Garamond',serif;font-style:italic;color:var(--olive)">chính mình</em> — một dấu ấn riêng không thể nhầm lẫn, một phiên bản tinh tế nhất mà bạn muốn thế giới ghi nhớ.
-      </p>
-
+      <p class="story-body-2">Tại Ami Perfumery, chúng tôi không bán nước hoa. Chúng tôi giúp bạn tìm thấy mùi hương của <em style="font-family:'Cormorant Garamond',serif;font-style:italic;color:var(--olive)">chính mình</em> — một dấu ấn riêng không thể nhầm lẫn, một phiên bản tinh tế nhất mà bạn muốn thế giới ghi nhớ.</p>
       <div class="story-cta-decor">
         <span class="story-cta-decor-line"></span>
         <span class="story-cta-decor-dot"></span>
         <span class="story-cta-decor-line"></span>
       </div>
-
       <div class="story-cta-group">
-        <a href="#" class="btn-story-primary">Tìm mùi hương của bạn</a>
-        <a href="#" class="btn-story-secondary">Khám phá câu chuyện →</a>
+        <a href="{% url 'category-all' %}" class="btn-story-primary">Tìm mùi hương của bạn</a>
+        <a href="{% url 'blog-list' %}" class="btn-story-secondary">Khám phá câu chuyện →</a>
       </div>
-
       <div class="story-stats">
         <div class="story-stat">
           <div class="story-stat-num">500<span style="font-size:24px">+</span></div>
@@ -204,38 +252,26 @@
           <div class="story-stat-label">Khách hàng tin tưởng</div>
         </div>
       </div>
-
     </div>
-
-    <!-- VISUAL PANEL -->
     <div class="story-visual-panel">
       <div class="story-visual-glow"></div>
-      <img
-        class="story-visual-img"
-        src="https://images.unsplash.com/photo-1566977776052-6e61e6d6c6be?auto=format&fit=crop&w=1200&q=85"
-        alt="Nước hoa nghệ thuật"
-        loading="lazy"
-      >
+      <img class="story-visual-img" src="https://images.unsplash.com/photo-1566977776052-6e61e6d6c6be?auto=format&fit=crop&w=1200&q=85" alt="Nước hoa nghệ thuật" loading="lazy">
       <div class="story-visual-overlay"></div>
       <div class="story-visual-label">
         <p class="story-visual-label-text">Ánh sáng, hương thơm<br>và cảm xúc</p>
         <div class="story-visual-label-line"></div>
       </div>
     </div>
-
   </div>
 </section>
 
 <!-- ─── CATEGORIES ─── -->
-<!-- [EDITED] Xóa "Danh mục", căn giữa tiêu đề và mô tả -->
 <section class="categories-section">
   <div class="container" style="text-align:center;">
     <h2 class="section-title reveal reveal-delay-1" style="margin-left:auto;margin-right:auto;">Bộ sưu tập <em>nước hoa</em></h2>
     <p class="section-desc reveal reveal-delay-2" style="margin-left:auto;margin-right:auto;max-width:520px;">Từ hương thơm nam tính đến nữ tính, từ mạnh mẽ đến tinh tế — luôn có một mùi hương dành riêng cho bạn.</p>
   </div>
   <div class="cat-list">
-
-    <!-- Row 1: Image left, Content right -->
     <div class="cat-row" data-reveal-row>
       <div class="cat-row-img">
         <div class="cat-row-img-inner" style="background-image: url('https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?auto=format&fit=crop&w=1200&q=85')"></div>
@@ -246,14 +282,9 @@
         <p class="cat-row-tag">For Him</p>
         <h3 class="cat-row-title">Nước hoa <em>Nam</em></h3>
         <p class="cat-row-desc">Hương gỗ trầm, da thuộc, cam bergamot — những mùi hương mạnh mẽ và đẳng cấp dành riêng cho người đàn ông hiện đại.</p>
-        <a href="{% url 'category-segment' 'nam' %}" class="cat-row-btn">
-          Xem bộ sưu tập
-          <span class="cat-row-btn-arrow">→</span>
-        </a>
+        <a href="{% url 'category-segment' 'nam' %}" class="cat-row-btn">Xem bộ sưu tập<span class="cat-row-btn-arrow">→</span></a>
       </div>
     </div>
-
-    <!-- Row 2: Content left, Image right -->
     <div class="cat-row reverse" data-reveal-row>
       <div class="cat-row-img">
         <div class="cat-row-img-inner" style="background-image: url('https://images.unsplash.com/photo-1541643600914-78b084683702?auto=format&fit=crop&w=1200&q=85')"></div>
@@ -264,14 +295,9 @@
         <p class="cat-row-tag">For Her</p>
         <h3 class="cat-row-title">Nước hoa <em>Nữ</em></h3>
         <p class="cat-row-desc">Hoa hồng, jasmine, vanilla ngọt ngào — những làn hương dịu dàng, quyến rũ và tinh tế dành cho người phụ nữ của mọi thời đại.</p>
-        <a href="{% url 'category-segment' 'nu' %}" class="cat-row-btn">
-          Xem bộ sưu tập
-          <span class="cat-row-btn-arrow">→</span>
-        </a>
+        <a href="{% url 'category-segment' 'nu' %}" class="cat-row-btn">Xem bộ sưu tập<span class="cat-row-btn-arrow">→</span></a>
       </div>
     </div>
-
-    <!-- Row 3: Image left, Content right -->
     <div class="cat-row" data-reveal-row>
       <div class="cat-row-img">
         <div class="cat-row-img-inner" style="background-image: url('https://images.unsplash.com/photo-1586521995568-39abaa0c2311?auto=format&fit=crop&w=1200&q=85')"></div>
@@ -282,14 +308,9 @@
         <p class="cat-row-tag">For All</p>
         <h3 class="cat-row-title">Nước hoa <em>Unisex</em></h3>
         <p class="cat-row-desc">Vượt qua mọi ranh giới giới tính, những mùi hương unisex tôn vinh cá tính tự do và phong cách riêng không thể nhầm lẫn.</p>
-        <a href="{% url 'category-segment' 'unisex' %}" class="cat-row-btn">
-          Xem bộ sưu tập
-          <span class="cat-row-btn-arrow">→</span>
-        </a>
+        <a href="{% url 'category-segment' 'unisex' %}" class="cat-row-btn">Xem bộ sưu tập<span class="cat-row-btn-arrow">→</span></a>
       </div>
     </div>
-
-    <!-- Row 4: Content left, Image right -->
     <div class="cat-row reverse" data-reveal-row>
       <div class="cat-row-img">
         <div class="cat-row-img-inner" style="background-image: url('https://images.unsplash.com/photo-1563170351-be82bc888aa4?auto=format&fit=crop&w=1200&q=85')"></div>
@@ -300,24 +321,25 @@
         <p class="cat-row-tag">On The Go</p>
         <h3 class="cat-row-title">Mini &amp; <em>Travel Size</em></h3>
         <p class="cat-row-desc">Nhỏ gọn, tiện lợi, không kém phần sang trọng. Mang theo mùi hương yêu thích của bạn trên mọi hành trình.</p>
-        <a href="{% url 'category-all' %}" class="cat-row-btn">
-          Xem bộ sưu tập
-          <span class="cat-row-btn-arrow">→</span>
-        </a>
+        <a href="{% url 'category-all' %}" class="cat-row-btn">Xem bộ sưu tập<span class="cat-row-btn-arrow">→</span></a>
       </div>
     </div>
-
   </div>
 </section>
 
 <!-- ─── ARTICLES ─── -->
-<!-- [EDITED] Xóa tiêu đề "Bài viết nổi bật", giữ label và mô tả -->
 <section class="articles-section">
+  <div class="container" style="text-align:center;">
+    <p class="section-label reveal" style="margin-left:auto;margin-right:auto;display:block;">Kiến thức &amp; Cảm hứng</p>
+    <h2 class="section-title reveal reveal-delay-1" style="margin-left:auto;margin-right:auto;">Bài viết <em>nổi bật</em></h2>
+    <p class="section-desc reveal reveal-delay-2" style="margin-left:auto;margin-right:auto;max-width:520px;">Khám phá thế giới nước hoa qua những bài viết chuyên sâu, hướng dẫn chọn hương và câu chuyện thương hiệu.</p>
+  </div>
+
   <div class="container">
-    <p class="section-label reveal">Kiến thức & Cảm hứng</p>
-    <p class="section-desc reveal reveal-delay-1">Khám phá thế giới nước hoa qua những bài viết chuyên sâu, hướng dẫn chọn hương và câu chuyện thương hiệu.</p>
-    <div class="articles-grid">
-      <a href="#" class="article-card reveal reveal-delay-1">
+    <div class="articles-grid" id="articlesGrid">
+
+      <!-- Bài 1 -->
+      <a href="{% url 'blog-list' %}" class="article-card reveal reveal-delay-1">
         <div class="article-img">
           <div class="article-img-bg" style="background-image: url('https://images.unsplash.com/photo-1608528577891-eb055944f2e7?auto=format&fit=crop&w=800&q=80')"></div>
         </div>
@@ -325,13 +347,12 @@
           <p class="article-cat">Hướng dẫn</p>
           <h3 class="article-title">Cách chọn nước hoa phù hợp với cá tính của bạn</h3>
           <p class="article-desc">Hương thơm không chỉ là mùi — đó là ngôn ngữ riêng của từng người. Khám phá cách tìm mùi hương đúng với bạn.</p>
-          <div class="article-meta">
-            <span>📅 12 tháng 7, 2025</span>
-            <span>⏱ 5 phút đọc</span>
-          </div>
+          <div class="article-meta"><span>📅 12 tháng 7, 2025</span><span>⏱ 5 phút đọc</span></div>
         </div>
       </a>
-      <a href="#" class="article-card reveal reveal-delay-2">
+
+      <!-- Bài 2 -->
+      <a href="{% url 'blog-list' %}" class="article-card reveal reveal-delay-2">
         <div class="article-img">
           <div class="article-img-bg" style="background-image: url('https://images.unsplash.com/photo-1567016376408-0226e4d0c1ea?auto=format&fit=crop&w=800&q=80')"></div>
         </div>
@@ -339,13 +360,12 @@
           <p class="article-cat">Thương hiệu</p>
           <h3 class="article-title">Chanel No.5 — Huyền thoại nước hoa 100 năm tuổi</h3>
           <p class="article-desc">Câu chuyện đằng sau chai nước hoa biểu tượng nhất lịch sử thời trang và những bí ẩn ít ai biết đến.</p>
-          <div class="article-meta">
-            <span>📅 5 tháng 7, 2025</span>
-            <span>⏱ 7 phút đọc</span>
-          </div>
+          <div class="article-meta"><span>📅 5 tháng 7, 2025</span><span>⏱ 7 phút đọc</span></div>
         </div>
       </a>
-      <a href="#" class="article-card reveal reveal-delay-3">
+
+      <!-- Bài 3 -->
+      <a href="{% url 'blog-list' %}" class="article-card reveal reveal-delay-3">
         <div class="article-img">
           <div class="article-img-bg" style="background-image: url('https://images.unsplash.com/photo-1585386959984-a4155224a1ad?auto=format&fit=crop&w=800&q=80')"></div>
         </div>
@@ -353,13 +373,68 @@
           <p class="article-cat">Mẹo hay</p>
           <h3 class="article-title">5 cách xịt nước hoa để mùi hương lưu lại cả ngày</h3>
           <p class="article-desc">Bạn đã xịt nước hoa đúng cách chưa? Những mẹo nhỏ này sẽ giúp hương thơm của bạn bền hơn đáng kể.</p>
-          <div class="article-meta">
-            <span>📅 28 tháng 6, 2025</span>
-            <span>⏱ 4 phút đọc</span>
-          </div>
+          <div class="article-meta"><span>📅 28 tháng 6, 2025</span><span>⏱ 4 phút đọc</span></div>
         </div>
       </a>
+
+      <!-- Bài 4 (ẩn mặc định nếu muốn demo nút xem thêm, hiện nếu <= 5 bài đầu) -->
+      <a href="{% url 'blog-list' %}" class="article-card reveal reveal-delay-1 article-extra" style="display:none;">
+        <div class="article-img">
+          <div class="article-img-bg" style="background-image: url('https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&w=800&q=80')"></div>
+        </div>
+        <div class="article-body">
+          <p class="article-cat">Phong cách</p>
+          <h3 class="article-title">Mùi hương nào phù hợp với mỗi mùa trong năm?</h3>
+          <p class="article-desc">Mùa hè cần tươi mát, mùa đông cần ấm áp — bí quyết chọn nước hoa theo từng mùa sẽ làm bạn bất ngờ.</p>
+          <div class="article-meta"><span>📅 20 tháng 6, 2025</span><span>⏱ 6 phút đọc</span></div>
+        </div>
+      </a>
+
+      <!-- Bài 5 -->
+      <a href="{% url 'blog-list' %}" class="article-card reveal reveal-delay-2 article-extra" style="display:none;">
+        <div class="article-img">
+          <div class="article-img-bg" style="background-image: url('https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=800&q=80')"></div>
+        </div>
+        <div class="article-body">
+          <p class="article-cat">Kiến thức</p>
+          <h3 class="article-title">Top note, Heart note, Base note — Bí ẩn 3 tầng hương</h3>
+          <p class="article-desc">Tại sao nước hoa lại thay đổi mùi theo thời gian? Giải mã cấu trúc 3 tầng hương mà mọi tín đồ nước hoa cần biết.</p>
+          <div class="article-meta"><span>📅 15 tháng 6, 2025</span><span>⏱ 8 phút đọc</span></div>
+        </div>
+      </a>
+
+      <!-- Bài 6 -->
+      <a href="{% url 'blog-list' %}" class="article-card reveal reveal-delay-3 article-extra" style="display:none;">
+        <div class="article-img">
+          <div class="article-img-bg" style="background-image: url('https://images.unsplash.com/photo-1590156562745-5f4d4b3b1e33?auto=format&fit=crop&w=800&q=80')"></div>
+        </div>
+        <div class="article-body">
+          <p class="article-cat">Xu hướng</p>
+          <h3 class="article-title">Nước hoa niche — Khi xa xỉ là sự khác biệt</h3>
+          <p class="article-desc">Niche perfume không phải để ai cũng hiểu, nhưng những người hiểu sẽ không thể quên. Khám phá thế giới nước hoa độc lập.</p>
+          <div class="article-meta"><span>📅 10 tháng 6, 2025</span><span>⏱ 5 phút đọc</span></div>
+        </div>
+      </a>
+
+    </div><!-- /.articles-grid -->
+
+    <!-- NÚT XEM THÊM (hiển thị khi có > 3 bài) -->
+    <div class="articles-teaser reveal" id="articlesTeaserBlock">
+      <div class="articles-teaser-inner">
+        <div class="articles-teaser-decor">
+          <span class="teaser-line"></span>
+          <i class="bi bi-flower1 teaser-icon"></i>
+          <span class="teaser-line"></span>
+        </div>
+        <p class="articles-teaser-hook">Bạn có biết rằng mùi hương có thể khiến bạn nhớ lại một kỷ niệm từ 20 năm trước chỉ trong 0,2 giây?</p>
+        <p class="articles-teaser-sub">Còn nhiều điều thú vị hơn đang chờ bạn trong kho tàng kiến thức nước hoa của chúng tôi.</p>
+        <button class="btn-see-more" id="btnSeeMoreArticles">
+          <span>Xem thêm bài viết</span>
+          <i class="bi bi-arrow-down-circle"></i>
+        </button>
+      </div>
     </div>
+
   </div>
 </section>
 
@@ -373,9 +448,9 @@
       </div>
       <p class="footer-desc">Ami Perfumery mang đến trải nghiệm mua sắm nước hoa cao cấp chính hãng với dịch vụ tư vấn chuyên nghiệp và tận tâm nhất tại Cần Thơ.</p>
       <div class="social-links">
-        <a href="#" class="social-btn" title="Facebook">f</a>
-        <a href="#" class="social-btn" title="Instagram">📸</a>
-        <a href="#" class="social-btn" title="TikTok">♪</a>
+        <a href="#" class="social-btn" title="Facebook"><i class="bi bi-facebook"></i></a>
+        <a href="#" class="social-btn" title="Instagram"><i class="bi bi-instagram"></i></a>
+        <a href="#" class="social-btn" title="TikTok"><i class="bi bi-tiktok"></i></a>
         <a href="#" class="social-btn" title="Zalo">Z</a>
       </div>
     </div>
@@ -385,8 +460,8 @@
         <li><a href="{% url 'category-segment' 'nam' %}">Nước hoa Nam</a></li>
         <li><a href="{% url 'category-segment' 'nu' %}">Nước hoa Nữ</a></li>
         <li><a href="{% url 'category-segment' 'unisex' %}">Nước hoa Unisex</a></li>
-        <li><a href="#">Mini / Travel Size</a></li>
-        <li><a href="#">Set quà tặng</a></li>
+        <li><a href="{% url 'category-all' %}">Mini / Travel Size</a></li>
+        <li><a href="{% url 'category-all' %}">Set quà tặng</a></li>
       </ul>
     </div>
     <div>
@@ -401,22 +476,10 @@
     </div>
     <div>
       <p class="footer-col-title">Liên hệ</p>
-      <div class="footer-contact-item">
-        <span class="icon">📍</span>
-        <span>123 Đường 30/4, Phường Hưng Lợi, Quận Ninh Kiều, Cần Thơ</span>
-      </div>
-      <div class="footer-contact-item">
-        <span class="icon">📞</span>
-        <span>0901 234 567</span>
-      </div>
-      <div class="footer-contact-item">
-        <span class="icon">✉️</span>
-        <span>hello@amiperfumery.vn</span>
-      </div>
-      <div class="footer-contact-item">
-        <span class="icon">🕐</span>
-        <span>Thứ 2 – Chủ nhật: 8:00 – 21:00</span>
-      </div>
+      <div class="footer-contact-item"><span class="icon">📍</span><span>123 Đường 30/4, Phường Hưng Lợi, Quận Ninh Kiều, Cần Thơ</span></div>
+      <div class="footer-contact-item"><span class="icon">📞</span><span>0901 234 567</span></div>
+      <div class="footer-contact-item"><span class="icon">✉️</span><span>hello@amiperfumery.vn</span></div>
+      <div class="footer-contact-item"><span class="icon">🕐</span><span>Thứ 2 – Chủ nhật: 8:00 – 21:00</span></div>
     </div>
   </div>
   <div class="footer-bottom">
@@ -427,10 +490,9 @@
 
 <!-- ─── FLOATING CHAT ─── -->
 <div class="floating-chat">
-  <a href="#" class="chat-bubble" title="Nhắn tin Zalo">💬</a>
+  <a href="#" class="chat-bubble" title="Nhắn tin Zalo"><i class="bi bi-chat-dots-fill"></i></a>
 </div>
 
-<!-- JavaScript -->
 <script src="{% static 'app/js/main.js' %}"></script>
 </body>
 </html>
