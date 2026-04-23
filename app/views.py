@@ -1,5 +1,7 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import HttpResponse
+from django.contrib.auth import logout
+from datetime import datetime
 
 # Create your views here.
 def home(request):
@@ -287,3 +289,19 @@ def profile_page(request):
 
 def checkout_page(request):
     return render(request, 'app/checkout.html')
+
+def logout_view(request):
+    logout(request)
+    return redirect('home')
+
+# ADMIN
+def admin_dashboard(request):
+    context = {
+        "total_orders": 120,
+        "total_users": 45,
+        "revenue": 25000000,
+    }
+    return render(request, "admin/dashboard.html", context)
+
+def admin_redirect(request):
+    return redirect('admin-dashboard')

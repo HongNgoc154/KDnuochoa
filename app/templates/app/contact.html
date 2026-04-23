@@ -1,34 +1,14 @@
+{% extends 'app/base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ami Perfumery – Liên hệ</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'app/css/style.css' %}">
-  <link rel="stylesheet" href="{% static 'app/css/contact.css' %}">
-</head>
-<body class="contact-page light" data-theme="light">
-<header id="site-header">
-  <div class="header-inner">
-    <a href="{% url 'home' %}" class="logo">ami <span>perfumery</span></a>
-    <button class="theme-toggle" type="button" data-theme-toggle>🌙</button>
-  </div>
-</header>
+{% block title %}Ami Perfumery – Liên hệ{% endblock %}
+{% block body_class %}contact-page light{% endblock %}
+{% block body_attrs %}data-theme="light"{% endblock %}
 
-<nav id="navbar">
-  <ul class="nav-list">
-    <li><a href="{% url 'home' %}">Trang chủ</a></li>
-    <li><a href="{% url 'category-all' %}">Nước hoa</a></li>
-    <li><a href="{% url 'brand-list' %}">Thương hiệu</a></li>
-    <li><a href="{% url 'blog-list' %}">Bài viết</a></li>
-    <li><a href="{% url 'contact-page' %}">Liên hệ</a></li>
-    <li><a href="{% url 'cart-page' %}">Giỏ hàng</a></li>
-  </ul>
-</nav>
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'app/css/contact.css' %}">
+{% endblock %}
+
+{% block content %}
 
 <main>
   <section class="contact-hero" data-contact-parallax>
@@ -109,8 +89,8 @@
     <a href="https://zalo.me" title="Zalo" target="_blank" rel="noopener">Z</a>
   </div>
 </main>
+{% endblock %}
 
-<script src="{% static 'app/js/main.js' %}"></script>
+{% block extra_js %}
 <script src="{% static 'app/js/contact.js' %}"></script>
-</body>
-</html>
+{% endblock %}

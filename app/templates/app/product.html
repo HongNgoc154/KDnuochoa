@@ -1,60 +1,18 @@
+{% extends 'app/base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dior Sauvage Elixir — Ami Perfumery</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'app/css/style.css' %}">
-  <link rel="stylesheet" href="{% static 'app/css/product.css' %}">
-</head>
-<body class="product-page">
+{% block title %}Dior Sauvage Elixir — Ami Perfumery{% endblock %}
+{% block body_class %}product-page{% endblock %}
 
-<!-- ─── HEADER ─── -->
-<header id="site-header" class="scrolled">
-  <div class="header-inner">
-    <a href="{% url 'home' %}" class="logo">ami <span>perfumery</span></a>
-    <div class="header-right">
-      <div class="search-wrap">
-        <input type="text" placeholder="Tìm kiếm nước hoa...">
-        <span class="search-icon">⌕</span>
-      </div>
-      <div class="header-icons">
-        <button class="icon-btn" title="Yêu thích">❤️</button>
-        <button class="icon-btn" title="Giỏ hàng" style="position:relative">🛒<span class="cart-badge">2</span></button>
-        <div class="account-menu" data-account-menu>
-          <button class="icon-btn" title="Tài khoản" type="button" data-account-trigger aria-expanded="false" aria-haspopup="true" aria-label="Tài khoản">👤</button>
-          <div class="account-dropdown" data-account-dropdown>
-            <a href="{% url 'auth-page' %}?tab=login">Đăng nhập</a>
-            <a href="{% url 'auth-page' %}?tab=register">Đăng ký</a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</header>
-
-<!-- ─── BREADCRUMB ─── -->
-<nav class="pd-breadcrumb" aria-label="breadcrumb">
-  <div class="container">
-    <a href="{% url 'home' %}">Trang chủ</a>
-    <span>/</span>
-    <a href="{% url 'category-all' %}">Nước hoa</a>
-    <span>/</span>
-    <a href="{% url 'category-segment' 'nam' %}">Nam</a>
-    <span>/</span>
-    <strong>Dior Sauvage Elixir</strong>
-  </div>
-</nav>
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'app/css/product.css' %}">
+{% endblock %}
 
 <!-- ═══════════════════════════════════════════════════════════
      PRODUCT DETAIL — 2-column layout
      Left: Gallery | Right: Info (sticky)
      ═══════════════════════════════════════════════════════════ -->
-<main class="pd-layout container">
+{% block content %}
+     <main class="pd-layout container">
 
   <!-- ══ LEFT: GALLERY ══ -->
   <section class="pd-gallery" id="pdGallery" aria-label="Hình ảnh sản phẩm">
@@ -246,6 +204,7 @@
 
   </aside>
 </main>
+
 
 <!-- ═══════════════════════════════════════════════════════════
      TABS SECTION
@@ -441,46 +400,8 @@
     </div>
   </div>
 </section>
+{% endblock %}
 
-<!-- ─── FOOTER ─── -->
-<footer>
-  <div class="footer-grid">
-    <div>
-      <div class="footer-brand">
-        <div class="footer-logo">ami <span>perfumery</span></div>
-        <div class="footer-tagline">Nước hoa chính hãng · Cần Thơ</div>
-      </div>
-      <p class="footer-desc">Ami Perfumery mang đến trải nghiệm mua sắm nước hoa cao cấp chính hãng với dịch vụ tư vấn chuyên nghiệp.</p>
-      <div class="social-links">
-        <a href="#" class="social-btn" title="Facebook">f</a>
-        <a href="#" class="social-btn" title="Instagram">📸</a>
-        <a href="#" class="social-btn" title="TikTok">♪</a>
-        <a href="#" class="social-btn" title="Zalo">Z</a>
-      </div>
-    </div>
-    <div>
-      <p class="footer-col-title">Sản phẩm</p>
-      <ul class="footer-links">
-        <li><a href="{% url 'category-segment' 'nam' %}">Nước hoa Nam</a></li>
-        <li><a href="{% url 'category-segment' 'nu' %}">Nước hoa Nữ</a></li>
-        <li><a href="{% url 'category-segment' 'unisex' %}">Nước hoa Unisex</a></li>
-        <li><a href="#">Mini / Travel Size</a></li>
-      </ul>
-    </div>
-    <div>
-      <p class="footer-col-title">Liên hệ</p>
-      <div class="footer-contact-item"><span class="icon">📍</span><span>123 Đường 30/4, Cần Thơ</span></div>
-      <div class="footer-contact-item"><span class="icon">📞</span><span>0901 234 567</span></div>
-      <div class="footer-contact-item"><span class="icon">✉️</span><span>hello@amiperfumery.vn</span></div>
-    </div>
-  </div>
-  <div class="footer-bottom">
-    <span>© 2026 Ami Perfumery. Tất cả quyền được bảo lưu.</span>
-    <span>Thiết kế với ❤️ tại Cần Thơ</span>
-  </div>
-</footer>
-
-<script src="{% static 'app/js/main.js' %}"></script>
+{% block extra_js %}
 <script src="{% static 'app/js/product.js' %}"></script>
-</body>
-</html>
+{% endblock %}

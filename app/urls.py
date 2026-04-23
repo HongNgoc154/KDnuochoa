@@ -16,4 +16,8 @@ urlpatterns = [
     path('auth/', views.auth_page, name='auth-page'),
     path('tai-khoan/', views.profile_page, name='profile-page'),
     path('thanh-toan/', views.checkout_page, name='checkout-page'),
+    path('logout/', views.logout_view, name='logout'),
+    path('admin-dashboard/', views.admin_dashboard, name='admin-dashboard'),
+    # path('admin/', views.admin_redirect),
+     
 ]

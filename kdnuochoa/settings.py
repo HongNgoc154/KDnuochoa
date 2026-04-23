@@ -31,6 +31,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -66,6 +67,13 @@ TEMPLATES = [
         },
     },
 ]
+
+
+JAZZMIN_SETTINGS = {
+    "topmenu_links": [
+        {"name": "Dashboard", "url": "admin-dashboard", "permissions": ["auth.view_user"]},
+    ],
+}
 
 WSGI_APPLICATION = 'kdnuochoa.wsgi.application'
 

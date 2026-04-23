@@ -1,30 +1,13 @@
+{% extends 'app/base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ami Perfumery – Thương hiệu</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'app/css/style.css' %}">
-  <link rel="stylesheet" href="{% static 'app/css/brand.css' %}">
-</head>
-<body class="brand-page">
-<header id="site-header">
-  <div class="header-inner">
-    <a href="{% url 'home' %}" class="logo">ami <span>perfumery</span></a>
-  </div>
-</header>
+{% block title %}Ami Perfumery – Thương hiệu{% endblock %}
+{% block body_class %}brand-page{% endblock %}
 
-<nav id="navbar">
-  <ul class="nav-list">
-    <li><a href="{% url 'home' %}">Trang chủ</a></li>
-    <li><a href="{% url 'category-all' %}">Nước hoa</a></li>
-    <li><a href="{% url 'brand-list' %}">Thương hiệu</a></li>
-  </ul>
-</nav>
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'app/css/brand.css' %}">
+{% endblock %}
+
+{% block content %}
 
 <main>
   <section class="brand-list-hero reveal">
@@ -56,15 +39,8 @@
     </div>
   </section>
 </main>
+{% endblock %}
 
-<footer>
-  <div class="footer-bottom">
-    <span>© 2026 Ami Perfumery. Tất cả quyền được bảo lưu.</span>
-    <span>Thiết kế với ❤️ tại Cần Thơ</span>
-  </div>
-</footer>
-
-<script src="{% static 'app/js/main.js' %}"></script>
+{% block extra_js %}
 <script src="{% static 'app/js/brand.js' %}"></script>
-</body>
-</html>
+{% endblock %}
