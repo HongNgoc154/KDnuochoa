@@ -1,0 +1,59 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+
+<h1>Dashboard quản trị</h1>
+
+<div class="dashboard-cards">
+  <div class="card">
+    <h3>Đơn hàng</h3>
+    <p>{{ total_orders }}</p>
+  </div>
+
+  <div class="card">
+    <h3>Người dùng</h3>
+    <p>{{ total_users }}</p>
+  </div>
+
+  <div class="card">
+    <h3>Doanh thu</h3>
+    <p>{{ revenue }}₫</p>
+  </div>
+</div>
+
+<canvas id="myChart"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const ctx = document.getElementById('myChart');
+
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: ['T2', 'T3', 'T4', 'T5', 'T6'],
+    datasets: [{
+      label: 'Doanh thu',
+      data: [12, 19, 3, 5, 8],
+    }]
+  }
+});
+</script>
+
+<style>
+.dashboard-cards {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  flex: 1;
+}
+</style>
+
+{% endblock %}

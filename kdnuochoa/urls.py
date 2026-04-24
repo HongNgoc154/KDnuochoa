@@ -16,10 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path,include
-from app import views
+from app.admin import admin_site
 
 urlpatterns = [
-    path('admin/', views.admin_redirect),  # 👈 dashboard
-    path('admin-panel/', admin.site.urls), # 👈 admin thật
+    # path('admin/', views.admin_redirect),  # 👈 dashboard
+    path('admin/', admin_site.urls), # 👈 admin thật
     path('', include('app.urls')),
 ]

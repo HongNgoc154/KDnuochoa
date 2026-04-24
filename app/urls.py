@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.urls import path
 from . import views
+from app.admin import admin_site
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -17,7 +18,8 @@ urlpatterns = [
     path('tai-khoan/', views.profile_page, name='profile-page'),
     path('thanh-toan/', views.checkout_page, name='checkout-page'),
     path('logout/', views.logout_view, name='logout'),
-    path('admin-dashboard/', views.admin_dashboard, name='admin-dashboard'),
+    # path('admin-dashboard/', views.admin_dashboard, name='admin-dashboard'),
     # path('admin/', views.admin_redirect),
+    path('admin/', admin_site.urls),
      
 ]
