@@ -70,9 +70,7 @@ TEMPLATES = [
 
 
 JAZZMIN_SETTINGS = {
-    "topmenu_links": [
-        {"name": "Dashboard", "url": "admin-dashboard", "permissions": ["auth.view_user"]},
-    ],
+    "changeform_format": "single",
 }
 
 WSGI_APPLICATION = 'kdnuochoa.wsgi.application'

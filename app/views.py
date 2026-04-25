@@ -295,13 +295,13 @@ def logout_view(request):
     return redirect('home')
 
 # ADMIN
-# def admin_dashboard(request):
-#     context = {
-#         "total_orders": 120,
-#         "total_users": 45,
-#         "revenue": 25000000,
-#     }
-#     return render(request, "admin/dashboard.html", context)
+def admin_dashboard(request):
+    context = {
+        "total_orders": 120,
+        "total_users": 45,
+        "revenue": 25000000,
+    }
+    return render(request, "admin/dashboard.html", context)
 
 # def admin_redirect(request):
 #     return redirect('admin-dashboard')

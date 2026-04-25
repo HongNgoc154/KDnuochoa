@@ -30,15 +30,33 @@ class SanPham(models.Model):
 
     def __str__(self):
         return self.TenSanPham
+    
+
+class DungTich(models.Model):
+    id_DungTich = models.AutoField(primary_key=True)
+    GiaTri = models.CharField(max_length=50)  # 30ml, 50ml
+
+    class Meta:
+        managed = False
+        db_table = 'DungTich'
+
+    def __str__(self):
+        return self.GiaTri
 
 
 class BienThe(models.Model):
     id_BienThe = models.AutoField(primary_key=True)
 
     id_SanPham = models.ForeignKey(
-        SanPham,
+    SanPham,
+    on_delete=models.DO_NOTHING,
+    db_column='id_SanPham'
+)
+
+    id_DungTich = models.ForeignKey(
+        DungTich,
         on_delete=models.DO_NOTHING,
-        db_column='id_SanPham'
+        db_column='id_DungTich'
     )
 
     GiaBan = models.DecimalField(max_digits=10, decimal_places=2)
@@ -47,6 +65,8 @@ class BienThe(models.Model):
     class Meta:
         managed = False
         db_table = 'BienThe'
+
+
 
 
 class LoaiSanPham(models.Model):
@@ -95,3 +115,52 @@ class NhomHuong(models.Model):
 
     def __str__(self):
         return self.TenNhomHuong
+    
+class ThuocTinh(models.Model):
+    id_ThuocTinh = models.AutoField(primary_key=True)
+    TenThuocTinh = models.CharField(max_length=255)
+
+    class Meta:
+        managed = False
+        db_table = 'ThuocTinh'
+
+    def __str__(self):
+        return self.TenThuocTinh
+    
+class GiaTriThuocTinh(models.Model):
+    id_GiaTriThuocTinh = models.AutoField(primary_key=True)
+
+    id_ThuocTinh = models.ForeignKey(
+        ThuocTinh,
+        on_delete=models.DO_NOTHING,
+        db_column='id_ThuocTinh'
+    )
+
+    GiaTri = models.CharField(max_length=255)
+
+    class Meta:
+        managed = False
+        db_table = 'GiaTriThuocTinh'
+
+    def __str__(self):
+        return self.GiaTri
+
+
+class BienTheThuocTinh(models.Model):
+    id_BienThe = models.ForeignKey(
+        BienThe,
+        on_delete=models.DO_NOTHING,
+        db_column='id_BienThe'
+    )
+
+    id_GiaTriThuocTinh = models.ForeignKey(
+        GiaTriThuocTinh,
+        on_delete=models.DO_NOTHING,
+        db_column='id_GiaTriThuocTinh'
+    )
+
+    class Meta:
+        managed = False
+        db_table = 'BienThe_ThuocTinh'
+        unique_together = (('id_BienThe', 'id_GiaTriThuocTinh'),)
+
