@@ -110,141 +110,39 @@
     <div class="container">
       <div class="products-head reveal">
         <h2 class="section-title">Bộ sưu tập <em>signature</em></h2>
-        <p id="productResult">Hiển thị 8 sản phẩm cao cấp.</p>
+        <p id="productResult">Hiển thị {{ product_count }} sản phẩm.</p>
       </div>
       <p class="fav-counter reveal">Wishlist: <strong id="favoriteCount">0</strong> sản phẩm</p>
 
        <div class="product-grid" data-product-detail-url="{% url 'product-detail' %}">
-        <article class="product-card reveal" data-brand="dior" data-scent="woody" data-price="4200000" data-concentration="edp" tabindex="0" role="link" aria-label="Xem chi tiết Dior Sauvage Elixir">
+        
+        {% for item in products %}
+        <article class="product-card reveal {% if item.stock <= 0 %}sold-out{% endif %}" data-brand="{{ item.brand_slug }}" data-scent="{{ item.group|slugify }}" data-price="{{ item.price_raw }}" data-concentration="edp" tabindex="0" role="link" aria-label="Xem chi tiết {{ item.name }}">
           <div class="product-media">
-            <span class="product-badge">NEW</span>
-            <img class="img-primary" src="https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=700&q=80" alt="Dior Sauvage Elixir">
-            <img class="img-hover" src="https://images.unsplash.com/photo-1541643600914-78b084683702?auto=format&fit=crop&w=700&q=80" alt="Dior Sauvage Elixir chi tiết">
-          </div>
-          <div class="product-meta">
-            <p class="product-brand">Dior</p>
-            <h3>Dior Sauvage Elixir</h3>
-            <p class="product-price">4.200.000₫</p>
-            <div class="product-actions">
-              <button class="action-icon favorite-btn" aria-pressed="false"><span class="heart-core">♡</span></button>
-              <button class="action-icon add-cart-btn">🛒</button>
-            </div>
-          </div>
-        </article>
+            {% if item.stock <= 0 %}
+              <span class="product-sold">SOLD OUT</span>
+              {% elif item.is_new %}
+              <span class="product-badge">NEW</span>
+            
+        
 
-        <article class="product-card reveal" data-brand="chanel" data-scent="citrus" data-price="3800000" data-concentration="edp" tabindex="0" role="link" aria-label="Xem chi tiết Bleu de Chanel EDP">
-          <div class="product-media">
-            <img class="img-primary" src="https://images.unsplash.com/photo-1619994403073-2cec5a97dd6d?auto=format&fit=crop&w=700&q=80" alt="Bleu de Chanel">
-            <img class="img-hover" src="https://images.unsplash.com/photo-1618331835717-801e976710b2?auto=format&fit=crop&w=700&q=80" alt="Bleu de Chanel close-up">
+            {% endif %}
+            <img class="img-primary" src="{{ item.image }}" alt="{{ item.name }}">
+            <img class="img-hover" src="{{ item.image }}" alt="{{ item.name }} chi tiết">
           </div>
           <div class="product-meta">
-            <p class="product-brand">Chanel</p>
-            <h3>Bleu de Chanel EDP</h3>
-            <p class="product-price">3.800.000₫</p>
+            <p class="product-brand">{{ item.brand }}</p>
+            <h3>{{ item.name }}</h3>
+            <p class="product-price">{{ item.price }}</p>
             <div class="product-actions">
               <button class="action-icon favorite-btn" aria-pressed="false"><span class="heart-core">♡</span></button>
-              <button class="action-icon add-cart-btn">🛒</button>
+              <button class="action-icon add-cart-btn" {% if item.stock <= 0 %}disabled{% endif %}>🛒</button>
             </div>
           </div>
         </article>
-
-        <article class="product-card sold-out reveal" data-brand="tom-ford" data-scent="amber" data-price="6900000" data-concentration="parfum" tabindex="0" role="link" aria-label="Xem chi tiết Oud Wood Parfum">
-          <div class="product-media">
-            <span class="product-sold">SOLD OUT</span>
-            <img class="img-primary" src="https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&w=700&q=80" alt="Tom Ford Oud Wood">
-            <img class="img-hover" src="https://images.unsplash.com/photo-1590736704728-f4730bb30770?auto=format&fit=crop&w=700&q=80" alt="Tom Ford Oud Wood detail">
-          </div>
-          <div class="product-meta">
-            <p class="product-brand">Tom Ford</p>
-            <h3>Oud Wood Parfum</h3>
-            <p class="product-price">6.900.000₫</p>
-            <div class="product-actions">
-              <button class="action-icon favorite-btn" aria-pressed="false"><span class="heart-core">♡</span></button>
-              <button class="action-icon add-cart-btn" disabled>🛒</button>
-            </div>
-          </div>
-        </article>
-
-        <article class="product-card reveal" data-brand="ysl" data-scent="woody" data-price="3400000" data-concentration="edp" tabindex="0" role="link" aria-label="Xem chi tiết Y Eau de Parfum">
-          <div class="product-media">
-            <span class="product-badge">NEW</span>
-            <img class="img-primary" src="https://images.unsplash.com/photo-1588405748880-12d1d2a59a75?auto=format&fit=crop&w=700&q=80" alt="YSL Y EDP">
-            <img class="img-hover" src="https://images.unsplash.com/photo-1590736969955-71cc94901144?auto=format&fit=crop&w=700&q=80" alt="YSL Y EDP detail">
-          </div>
-          <div class="product-meta">
-            <p class="product-brand">YSL</p>
-            <h3>Y Eau de Parfum</h3>
-            <p class="product-price">3.400.000₫</p>
-            <div class="product-actions">
-              <button class="action-icon favorite-btn" aria-pressed="false"><span class="heart-core">♡</span></button>
-              <button class="action-icon add-cart-btn">🛒</button>
-            </div>
-          </div>
-        </article>
-
-        <article class="product-card reveal" data-brand="gucci" data-scent="floral" data-price="3200000" data-concentration="edt" tabindex="0" role="link" aria-label="Xem chi tiết Gucci Guilty EDT">
-          <div class="product-media">
-            <img class="img-primary" src="https://images.unsplash.com/photo-1608528577891-eb055944f2e7?auto=format&fit=crop&w=700&q=80" alt="Gucci Guilty Pour Homme">
-            <img class="img-hover" src="https://images.unsplash.com/photo-1547887538-e3a2f32cb1cc?auto=format&fit=crop&w=700&q=80" alt="Gucci Guilty detail">
-          </div>
-          <div class="product-meta">
-            <p class="product-brand">Gucci</p>
-            <h3>Gucci Guilty EDT</h3>
-            <p class="product-price">3.200.000₫</p>
-            <div class="product-actions">
-              <button class="action-icon favorite-btn" aria-pressed="false"><span class="heart-core">♡</span></button>
-              <button class="action-icon add-cart-btn">🛒</button>
-            </div>
-          </div>
-        </article>
-
-        <article class="product-card reveal" data-brand="versace" data-scent="citrus" data-price="2600000" data-concentration="edt" tabindex="0" role="link" aria-label="Xem chi tiết Dylan Blue EDT">
-          <div class="product-media">
-            <img class="img-primary" src="https://images.unsplash.com/photo-1587017539504-67cfbddac569?auto=format&fit=crop&w=700&q=80" alt="Versace Dylan Blue">
-            <img class="img-hover" src="https://images.unsplash.com/photo-1595425964071-9e6b82f3f986?auto=format&fit=crop&w=700&q=80" alt="Versace Dylan Blue detail">
-          </div>
-          <div class="product-meta">
-            <p class="product-brand">Versace</p>
-            <h3>Dylan Blue EDT</h3>
-            <p class="product-price">2.600.000₫</p>
-            <div class="product-actions">
-              <button class="action-icon favorite-btn" aria-pressed="false"><span class="heart-core">♡</span></button>
-              <button class="action-icon add-cart-btn">🛒</button>
-            </div>
-          </div>
-        </article>
-
-        <article class="product-card reveal" data-brand="dior" data-scent="amber" data-price="4700000" data-concentration="parfum" tabindex="0" role="link" aria-label="Xem chi tiết Dior Homme Parfum">
-          <div class="product-media">
-            <img class="img-primary" src="https://images.unsplash.com/photo-1563170351-be82bc888aa4?auto=format&fit=crop&w=700&q=80" alt="Dior Homme Parfum">
-            <img class="img-hover" src="https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&w=700&q=80" alt="Dior Homme Parfum detail">
-          </div>
-          <div class="product-meta">
-            <p class="product-brand">Dior</p>
-            <h3>Dior Homme Parfum</h3>
-            <p class="product-price">4.700.000₫</p>
-            <div class="product-actions">
-              <button class="action-icon favorite-btn" aria-pressed="false"><span class="heart-core">♡</span></button>
-              <button class="action-icon add-cart-btn">🛒</button>
-            </div>
-          </div>
-        </article>
-
-        <article class="product-card reveal" data-brand="chanel" data-scent="woody" data-price="5100000" data-concentration="parfum" tabindex="0" role="link" aria-label="Xem chi tiết Égoïste Platinum">
-          <div class="product-media">
-            <img class="img-primary" src="https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?auto=format&fit=crop&w=700&q=80" alt="Chanel Egoiste">
-            <img class="img-hover" src="https://images.unsplash.com/photo-1610461888750-10bfc601b874?auto=format&fit=crop&w=700&q=80" alt="Chanel Egoiste detail">
-          </div>
-          <div class="product-meta">
-            <p class="product-brand">Chanel</p>
-            <h3>Égoïste Platinum</h3>
-            <p class="product-price">5.100.000₫</p>
-            <div class="product-actions">
-              <button class="action-icon favorite-btn" aria-pressed="false"><span class="heart-core">♡</span></button>
-              <button class="action-icon add-cart-btn">🛒</button>
-            </div>
-          </div>
-        </article>
+        {% empty %}
+        <p>Chưa có sản phẩm trong danh mục này.</p>
+        {% endfor %}
       </div>
     </div>
   </section>

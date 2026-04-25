@@ -1,8 +1,9 @@
 from django.contrib import admin
 # from django.template.response import TemplateResponse
 from django.contrib.auth.models import User, Group
-from .models import BienThe, BienTheThuocTinh, GiaTriThuocTinh, LoaiSanPham, NhomHuong, SanPham, ThuocTinh, ThuongHieu
+from .models import BienThe, BienTheThuocTinh, GiaTriThuocTinh, LoaiSanPham, NhomHuong, SanPham, ThuocTinh, ThuongHieu, HinhAnh
 # from app.admin import admin_site 
+from django.utils.html import format_html
 
 class MyAdminSite(admin.AdminSite):
     site_header = "Ami Admin"
@@ -22,6 +23,10 @@ admin_site.register(Group)
 
 
 # 
+class HinhAnhInline(admin.TabularInline):
+    model = HinhAnh
+    extra = 1
+
 class BienTheThuocTinhInline(admin.TabularInline):
     model = BienTheThuocTinh
     extra = 1
@@ -39,6 +44,7 @@ class SanPhamAdmin(admin.ModelAdmin):
     list_display = ('TenSanPham', 'TrangThai_SanPham', 'id_ThuongHieu', 'id_LoaiSanPham', 'id_NhomHuong')
     search_fields = ('TenSanPham',)
     list_filter = ('TrangThai_SanPham', 'id_ThuongHieu', 'id_LoaiSanPham', 'id_NhomHuong')
+    inlines = [HinhAnhInline] 
 
     # 👇 QUAN TRỌNG
     fieldsets = (
@@ -84,6 +90,27 @@ class BienTheThuocTinhAdmin(admin.ModelAdmin):
     autocomplete_fields = ('id_BienThe', 'id_GiaTriThuocTinh')
 
 
-admin_site.register(ThuongHieu)
+class HinhAnhThuongHieuInline(admin.TabularInline):
+    model = HinhAnh
+    extra = 1
+
+    # 👇 chỉ hiển thị field upload ảnh
+    fields = ('url',)
+
+    # ❌ bỏ exclude id_ThuongHieu
+    exclude = ('id_SanPham', 'id_BienThe', 'id_NhomHuong')
+
+@admin.register(ThuongHieu, site=admin_site)
+class ThuongHieuAdmin(admin.ModelAdmin):
+    list_display = ('TenThuongHieu', 'logo_preview')
+    inlines = [HinhAnhThuongHieuInline]
+
+    def logo_preview(self, obj):
+        img = HinhAnh.objects.filter(id_ThuongHieu=obj).first()
+        if img and img.url:
+            return format_html('<img src="{}" width="50"/>', img.url.url)
+        return '-'
+
 admin_site.register(LoaiSanPham)
 admin_site.register(NhomHuong)
+admin_site.register(HinhAnh)

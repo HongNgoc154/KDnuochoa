@@ -281,7 +281,7 @@ body {
   position: absolute; inset: 0;
   background:
     linear-gradient(160deg, rgba(35,40,22,0.55) 0%, rgba(61,69,39,0.45) 60%, rgba(15,15,10,0.65) 100%),
-    url('https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=1800&q=85') center/cover no-repeat;
+    url('../images/moi.jpg') center/cover no-repeat;
   transform: scale(1.04);
   transition: transform 8s ease;
 }
@@ -1521,34 +1521,45 @@ body.filter-open .filter-sidebar { transform: translateX(0); }
    ============================================================= */
 
 /* ─── MEGA DROPDOWN NAVIGATION ─── */
-.mega-menu { position: static; }
+/* ═══════════════════════════════════════
+   MEGA MENU — Nước hoa dropdown
+   ═══════════════════════════════════════ */
 
+/* navbar phải có position relative để dropdown tính top: 100% từ đây */
+#navbar { position: fixed !important; }
+
+/* li.mega-menu không được position:relative — để dropdown thoát ra full width */
+.mega-menu { position: static !important; }
+
+/* ── Wrapper dropdown ── */
 .mega-dropdown {
-  position: fixed;
-  left: 0; right: 0;
-  top: 108px; /* header height + navbar height */
-  background: rgba(255,255,255,0.98);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid var(--beige-dark);
+  /* Bám vào bottom của #navbar — KHÔNG dùng fixed+top cứng */
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+
+  background: #ffffff;
+  border-top: 2px solid var(--beige-deep);
   border-bottom: 1px solid var(--beige-dark);
-  box-shadow: 0 20px 60px rgba(87,98,56,0.12);
-  padding: 40px 48px;
+  box-shadow: 0 16px 48px rgba(87,98,56,0.14), 0 2px 8px rgba(87,98,56,0.06);
+
+  /* Hai cột: trái (danh mục) + phải (thương hiệu) */
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 48px;
-  max-width: 100%;
+  grid-template-columns: 380px 1fr;
+  align-items: start;
+  gap: 0;
+
+  padding: 0;          /* padding sẽ đặt bên trong từng .mega-col */
+
   opacity: 0;
   pointer-events: none;
-  transform: translateY(-8px);
-  transition: opacity 0.3s ease, transform 0.3s ease;
-  z-index: 990;
+  transform: translateY(-10px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  z-index: 998;
 }
 
-#navbar.scrolled .mega-dropdown {
-  top: 98px; /* adjust when header is scrolled */
-}
-
+/* Hiện khi hover vào li.mega-menu */
 .mega-menu:hover .mega-dropdown,
 .mega-menu:focus-within .mega-dropdown {
   opacity: 1;
@@ -1556,120 +1567,197 @@ body.filter-open .filter-sidebar { transform: translateX(0); }
   transform: translateY(0);
 }
 
+/* ── Mỗi cột ── */
+.mega-col {
+  padding: 28px 32px 32px;
+}
+
+/* Cột trái có đường kẻ phân cách */
+.mega-col.mega-categories {
+  border-right: 1px solid var(--beige-dark);
+  background: var(--cream);
+}
+
+/* Tiêu đề cột */
 .mega-col-title {
+  display: block;
   font-size: 10px;
   letter-spacing: 4px;
   text-transform: uppercase;
   color: var(--olive);
-  font-weight: 600;
-  margin-bottom: 20px;
-  padding-bottom: 12px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--beige-dark);
 }
 
-/* ── Categories column ── */
+/* ─────────────────────────────────────
+   CỘT TRÁI: Danh mục
+   Mỗi item = ảnh bên TRÁI + chữ bên PHẢI (nằm NGANG)
+───────────────────────────────────── */
 .mega-categories {
   display: flex;
-  flex-direction: column;
-  gap: 0;
+  flex-direction: column;   /* các item xếp dọc */
+  gap: 2px;
 }
 
+/* Một item danh mục — NGANG: [ảnh] [nhóm chữ] */
 .mega-cat-item {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 10px 12px;
+  display: flex !important;
+  flex-direction: row !important;   /* ảnh TRÁI, chữ PHẢI */
+  align-items: center !important;
+  gap: 14px;
+  padding: 9px 10px;
   border-radius: 10px;
   text-decoration: none;
   color: var(--text);
-  transition: background var(--transition), transform 0.2s;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
 }
 .mega-cat-item:hover {
   background: var(--beige);
-  transform: translateX(4px);
+  transform: translateX(5px);
 }
 
+/* Thumbnail ảnh — hình chữ nhật nằm ngang */
 .mega-cat-img {
-  width: 64px;
-  height: 48px;
+  width: 76px !important;
+  height: 54px !important;
   border-radius: 8px;
   background-size: cover;
   background-position: center;
+  background-color: var(--beige-dark);   /* hiện màu nền khi ảnh chưa load */
   flex-shrink: 0;
   position: relative;
   overflow: hidden;
+  border: 1px solid rgba(87,98,56,0.1);
 }
 .mega-cat-overlay {
-  position: absolute; inset: 0;
-  background: rgba(87,98,56,0.08);
-  transition: background var(--transition);
+  position: absolute;
+  inset: 0;
+  background: rgba(87,98,56,0.05);
+  transition: background 0.2s ease;
 }
 .mega-cat-item:hover .mega-cat-overlay {
-  background: rgba(87,98,56,0.18);
+  background: rgba(87,98,56,0.14);
+}
+
+/* Nhóm chữ bên phải ảnh */
+.mega-cat-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 
 .mega-cat-label {
+  display: block;
   font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0.5px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--text);          /* chữ tối, rõ trên nền trắng */
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
-/* ── Brands column ── */
+.mega-cat-desc {
+  display: block;
+  font-size: 11px;
+  color: var(--text-light);
+  letter-spacing: 0.3px;
+  line-height: 1.3;
+}
+
+/* ─────────────────────────────────────
+   CỘT PHẢI: Thương hiệu
+   Grid 3 cột — mỗi ô: logo trên, tên dưới
+───────────────────────────────────── */
+.mega-brands {
+  display: flex;
+  flex-direction: column;
+}
+
 .mega-brands-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: 10px;
+  margin-bottom: 16px;
 }
 
+/* Ô thương hiệu — logo ở trên, tên ở dưới, căn giữa */
 .mega-brand-link {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 14px 10px;
+  padding: 16px 12px;
   border-radius: 10px;
   border: 1px solid var(--beige-dark);
+  background: var(--white);
   text-decoration: none;
   color: var(--text-light);
-  transition: border-color var(--transition), background var(--transition), transform 0.2s, box-shadow var(--transition);
+  transition: border-color 0.2s ease, background 0.2s ease,
+              transform 0.2s ease, box-shadow 0.2s ease;
+  min-height: 80px;
 }
 .mega-brand-link:hover {
   border-color: var(--olive-light);
   background: var(--beige);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
-}
-.mega-brand-link img {
-  max-width: 72px;
-  max-height: 36px;
-  object-fit: contain;
-  filter: grayscale(80%);
-  transition: filter var(--transition);
-}
-.mega-brand-link:hover img { filter: grayscale(0%); }
-.mega-brand-link span {
-  font-size: 10px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  font-weight: 600;
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(87,98,56,0.12);
 }
 
+/* Logo dùng thẻ <img> — ẩn khi broken, chỉ hiện tên */
+.mega-brand-link img {
+  display: block;
+  max-width: 80px;
+  max-height: 36px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  filter: grayscale(75%) opacity(0.7);
+  transition: filter 0.25s ease;
+  flex-shrink: 0;
+}
+.mega-brand-link:hover img {
+  filter: grayscale(0%) opacity(1);
+}
+/* Ẩn icon broken-image bằng cách set width=0 khi lỗi (JS sẽ thêm class) */
+.mega-brand-link img.img-error {
+  display: none;
+}
+
+.mega-brand-link span {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--text);
+  text-align: center;
+  line-height: 1;
+}
+
+/* Link "Xem tất cả thương hiệu" */
 .mega-all-brands {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
-  letter-spacing: 2px;
+  font-size: 10px;
+  letter-spacing: 2.5px;
   text-transform: uppercase;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--olive);
   text-decoration: none;
-  border-bottom: 1px solid var(--olive);
-  padding-bottom: 2px;
-  transition: opacity var(--transition);
+  padding: 8px 0 2px;
+  border-bottom: 1.5px solid transparent;
+  transition: border-color 0.2s ease, gap 0.2s ease;
 }
-.mega-all-brands:hover { opacity: 0.7; }
+.mega-all-brands:hover {
+  border-bottom-color: var(--olive);
+  gap: 10px;
+}
 
 /* ─── ARTICLES TEASER BLOCK ─── */
 .articles-teaser {
@@ -1970,11 +2058,13 @@ body.filter-open .filter-sidebar { transform: translateX(0); }
 
 /* ─── RESPONSIVE: MEGA MENU ─── */
 @media (max-width: 900px) {
+  /* Ẩn hoàn toàn trên mobile */
   .mega-dropdown { display: none !important; }
 }
 @media (max-width: 1200px) {
-  .mega-dropdown { padding: 32px 28px; gap: 28px; }
+  .mega-dropdown { grid-template-columns: 320px 1fr; }
   .mega-brands-grid { grid-template-columns: repeat(2, 1fr); }
+  .mega-col { padding: 24px 24px 28px; }
 }
 
 /* ─── RESPONSIVE: CART ─── */

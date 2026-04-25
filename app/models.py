@@ -81,6 +81,8 @@ class ThuongHieu(models.Model):
         db_column='TenThuongHieu'
     )
 
+    # logo = models.ImageField(upload_to='brands/', null=True, blank=True)
+
     class Meta:
         managed = False
         db_table = 'ThuongHieu'
@@ -103,6 +105,61 @@ class NhomHuong(models.Model):
 
     def __str__(self):
         return self.TenNhomHuong
+    
+class HinhAnh(models.Model):
+    id_HinhAnh = models.AutoField(primary_key=True)
+
+    url = models.ImageField(upload_to='products/')
+
+    id_SanPham = models.ForeignKey(
+        SanPham,
+        on_delete=models.DO_NOTHING,
+        db_column='id_SanPham',
+        null=True,
+        blank=True,
+    )
+
+    id_ThuongHieu = models.ForeignKey(
+        ThuongHieu,
+        on_delete=models.DO_NOTHING,
+        db_column='id_ThuongHieu',
+        null=True,
+        blank=True
+    )
+
+    id_BienThe = models.ForeignKey(
+        BienThe,
+        on_delete=models.DO_NOTHING,
+        db_column='id_BienThe',
+        null=True,
+        blank=True,
+    )
+
+    id_NhomHuong = models.ForeignKey(
+        NhomHuong,
+        on_delete=models.DO_NOTHING,
+        db_column='id_NhomHuong',
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        managed = False   # ✅ FIX QUAN TRỌNG
+        db_table = 'HinhAnh'
+
+
+
+
+class BaiViet(models.Model):
+    id_BaiViet = models.AutoField(primary_key=True)
+    TieuDe = models.CharField(max_length=255)
+    NoiDung = models.TextField(null=True)
+    NgayTao = models.DateTimeField(null=True)
+    TacGia = models.CharField(max_length=255, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'BaiViet'
     
 class ThuocTinh(models.Model):
     id_ThuocTinh = models.AutoField(primary_key=True)
