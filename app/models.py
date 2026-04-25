@@ -32,39 +32,27 @@ class SanPham(models.Model):
         return self.TenSanPham
     
 
-class DungTich(models.Model):
-    id_DungTich = models.AutoField(primary_key=True)
-    GiaTri = models.CharField(max_length=50)  # 30ml, 50ml
-
-    class Meta:
-        managed = False
-        db_table = 'DungTich'
-
-    def __str__(self):
-        return self.GiaTri
-
 
 class BienThe(models.Model):
     id_BienThe = models.AutoField(primary_key=True)
 
     id_SanPham = models.ForeignKey(
-    SanPham,
-    on_delete=models.DO_NOTHING,
-    db_column='id_SanPham'
-)
-
-    id_DungTich = models.ForeignKey(
-        DungTich,
+        SanPham,
         on_delete=models.DO_NOTHING,
-        db_column='id_DungTich'
+        db_column='id_SanPham'
     )
 
+    Sku = models.CharField(max_length=100)
+    GiaNhap = models.DecimalField(max_digits=10, decimal_places=2)
     GiaBan = models.DecimalField(max_digits=10, decimal_places=2)
     SoLuong = models.IntegerField()
 
     class Meta:
         managed = False
         db_table = 'BienThe'
+
+    def __str__(self):
+        return f"{self.id_SanPham.TenSanPham} - {self.Sku}"
 
 
 
@@ -143,7 +131,7 @@ class GiaTriThuocTinh(models.Model):
         db_table = 'GiaTriThuocTinh'
 
     def __str__(self):
-        return self.GiaTri
+        return f"{self.id_ThuocTinh.TenThuocTinh}: {self.GiaTri}"
 
 
 class BienTheThuocTinh(models.Model):
@@ -163,4 +151,7 @@ class BienTheThuocTinh(models.Model):
         managed = False
         db_table = 'BienThe_ThuocTinh'
         unique_together = (('id_BienThe', 'id_GiaTriThuocTinh'),)
+    
+    def __str__(self):
+        return f"{self.id_BienThe} -> {self.id_GiaTriThuocTinh}"
 
