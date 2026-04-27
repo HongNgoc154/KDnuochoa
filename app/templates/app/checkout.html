@@ -40,17 +40,17 @@
         <div class="co-form-grid">
           <div class="co-field" id="coNameField">
             <label class="co-label" for="coName">Họ và tên</label>
-            <input class="co-input" type="text" id="coName" placeholder="Nguyễn Văn A" value="Nguyễn Minh Khang" autocomplete="name" required>
+            <input class="co-input" type="text" id="coName" placeholder="Nguyễn Văn A" value="{{ checkout.name }}" autocomplete="name" required>
             <span class="co-error" id="coNameErr"></span>
           </div>
           <div class="co-field" id="coPhoneField">
             <label class="co-label" for="coPhone">Số điện thoại</label>
-            <input class="co-input" type="tel" id="coPhone" placeholder="09xx xxx xxx" value="0901 234 567" autocomplete="tel" required>
+            <input class="co-input" type="tel" id="coPhone" placeholder="09xx xxx xxx" value="{{ checkout.phone }}" autocomplete="tel" required>
             <span class="co-error" id="coPhoneErr"></span>
           </div>
           <div class="co-field" id="coEmailField">
             <label class="co-label" for="coEmail">Email</label>
-            <input class="co-input" type="email" id="coEmail" placeholder="email@example.com" value="minhkhang@email.com" autocomplete="email" required>
+            <input class="co-input" type="email" id="coEmail" placeholder="email@example.com" value="{{ checkout.email }}" autocomplete="email" required>
             <span class="co-error" id="coEmailErr"></span>
           </div>
           <div class="co-field" id="coCountryField">
@@ -68,12 +68,12 @@
           </div>
           <div class="co-field" id="coAddrField" style="grid-column:1/-1;">
             <label class="co-label" for="coAddr">Địa chỉ giao hàng</label>
-            <input class="co-input" type="text" id="coAddr" placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành" value="123 Đường 30/4, P.Hưng Lợi, Q.Ninh Kiều, Cần Thơ" autocomplete="street-address" required>
+            <input class="co-input" type="text" id="coAddr" placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành" value="{{ checkout.address }}" autocomplete="street-address" required>
             <span class="co-error" id="coAddrErr"></span>
           </div>
           <div class="co-field" style="grid-column:1/-1;">
             <label class="co-label" for="coNote">Ghi chú (tùy chọn)</label>
-            <input class="co-input" type="text" id="coNote" placeholder="Ví dụ: Giao giờ hành chính, gọi trước khi giao…">
+            <input class="co-input" type="text" id="coNote" placeholder="Ví dụ: Giao giờ hành chính, gọi trước khi giao…" value="{{ checkout.note }}">
           </div>
         </div>
       </form>

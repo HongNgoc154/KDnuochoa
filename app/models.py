@@ -60,17 +60,15 @@ class BienThe(models.Model):
 class LoaiSanPham(models.Model):
     id_LoaiSanPham = models.AutoField(primary_key=True)
 
-    TenLoaiSanPham = models.CharField(
-        max_length=255,
-        db_column='TenLoaiSanPham'
-    )
+    TenLoaiSanPham = models.CharField(max_length=255)
+    HinhanhUrl = models.ImageField(upload_to='categories/', null=True, blank=True)
+
+    MoTa = models.TextField(null=True, blank=True)   # 👈 thêm
+    GhiChu = models.CharField(max_length=500, null=True, blank=True)  # 👈 thêm
 
     class Meta:
         managed = False
         db_table = 'LoaiSanPham'
-
-    def __str__(self):
-        return self.TenLoaiSanPham
 
 
 class ThuongHieu(models.Model):
@@ -81,8 +79,7 @@ class ThuongHieu(models.Model):
         db_column='TenThuongHieu'
     )
 
-    # logo = models.ImageField(upload_to='brands/', null=True, blank=True)
-
+    LogoUrl = models.ImageField(upload_to='brands/', null=True, blank=True)
     class Meta:
         managed = False
         db_table = 'ThuongHieu'
@@ -98,6 +95,7 @@ class NhomHuong(models.Model):
         max_length=255,
         db_column='TenNhomHuong'
     )
+    IconUrl = models.ImageField(upload_to='scents/', null=True, blank=True)
 
     class Meta:
         managed = False
@@ -119,26 +117,11 @@ class HinhAnh(models.Model):
         blank=True,
     )
 
-    id_ThuongHieu = models.ForeignKey(
-        ThuongHieu,
-        on_delete=models.DO_NOTHING,
-        db_column='id_ThuongHieu',
-        null=True,
-        blank=True
-    )
-
+    
     id_BienThe = models.ForeignKey(
         BienThe,
         on_delete=models.DO_NOTHING,
         db_column='id_BienThe',
-        null=True,
-        blank=True,
-    )
-
-    id_NhomHuong = models.ForeignKey(
-        NhomHuong,
-        on_delete=models.DO_NOTHING,
-        db_column='id_NhomHuong',
         null=True,
         blank=True,
     )
@@ -212,3 +195,152 @@ class BienTheThuocTinh(models.Model):
     def __str__(self):
         return f"{self.id_BienThe} -> {self.id_GiaTriThuocTinh}"
 
+class TaiKhoan(models.Model):
+    id_TaiKhoan = models.AutoField(primary_key=True)
+    Username = models.CharField(max_length=100, null=True)
+    MatKhau = models.CharField(max_length=255, null=True)
+    TenDangNhap = models.CharField(max_length=255, null=True)
+    Email = models.CharField(max_length=255, null=True)
+    SDT = models.CharField(max_length=20, null=True)
+    LoaiTaiKhoan = models.CharField(max_length=50, null=True)
+    TrangThai_TaiKhoan = models.CharField(max_length=50, null=True)
+    NgayTao = models.DateTimeField(null=True)
+
+    class Meta:
+        managed = False
+        db_table = "TaiKhoan"
+
+
+class KhachHang(models.Model):
+    id_KhachHang = models.AutoField(primary_key=True)
+    id_TaiKhoan = models.ForeignKey(
+        TaiKhoan,
+        on_delete=models.DO_NOTHING,
+        db_column="id_TaiKhoan",
+        null=True,
+        blank=True,
+    )
+    TenKhachHang = models.CharField(max_length=255, null=True)
+    DiaChi = models.TextField(null=True)
+    GioiTinh = models.CharField(max_length=10, null=True)
+
+    class Meta:
+        managed = False
+        db_table = "KhachHang"
+
+
+class GiaoHang(models.Model):
+    id_GiaoHang = models.AutoField(primary_key=True)
+    id_TaiKhoan = models.ForeignKey(
+        TaiKhoan,
+        on_delete=models.DO_NOTHING,
+        db_column="id_TaiKhoan",
+        null=True,
+        blank=True,
+    )
+    TenNguoiNhan = models.CharField(max_length=255, null=True)
+    SDT = models.CharField(max_length=20, null=True)
+    DiaChi = models.TextField(null=True)
+    GhiChu = models.TextField(null=True)
+
+    class Meta:
+        managed = False
+        db_table = "GiaoHang"
+
+
+class DonHang(models.Model):
+    id_DonHang = models.AutoField(primary_key=True)
+    MaDonHang = models.CharField(max_length=100, null=True)
+    id_KhachHang = models.ForeignKey(
+        KhachHang,
+        on_delete=models.DO_NOTHING,
+        db_column="id_KhachHang",
+        null=True,
+        blank=True,
+    )
+    ThoiGian = models.DateTimeField(null=True)
+    id_GiaoHang = models.ForeignKey(
+        GiaoHang,
+        on_delete=models.DO_NOTHING,
+        db_column="id_GiaoHang",
+        null=True,
+        blank=True,
+    )
+    HinhThucThanhToan = models.CharField(max_length=100, null=True)
+    TrangThai = models.CharField(max_length=50, null=True)
+    TongTien = models.DecimalField(max_digits=12, decimal_places=2, null=True)
+
+    class Meta:
+        managed = False
+        db_table = "DonHang"
+
+
+class ChiTietDonHang(models.Model):
+    id_ChiTietDon = models.AutoField(primary_key=True)
+    id_DonHang = models.ForeignKey(
+        DonHang,
+        on_delete=models.DO_NOTHING,
+        db_column="id_DonHang",
+    )
+    id_BienThe = models.ForeignKey(
+        BienThe,
+        on_delete=models.DO_NOTHING,
+        db_column="id_BienThe",
+    )
+    SoLuong = models.IntegerField(default=0)
+    GiaBan = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    GiaGiam = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+
+    class Meta:
+        managed = False
+        db_table = "ChiTietDonHang"
+
+
+class DanhGia(models.Model):
+    id_DanhGia = models.AutoField(primary_key=True)
+    id_SanPham = models.ForeignKey(SanPham, on_delete=models.DO_NOTHING, db_column="id_SanPham")
+    id_TaiKhoan = models.ForeignKey(TaiKhoan, on_delete=models.DO_NOTHING, db_column="id_TaiKhoan")
+    SoSao = models.IntegerField(null=True, blank=True)
+    NoiDung = models.TextField(null=True)
+    parent_id = models.ForeignKey(
+        "self",
+        on_delete=models.DO_NOTHING,
+        db_column="parent_id",
+        null=True,
+        blank=True,
+    )
+    NgayDanhGia = models.DateTimeField(null=True)
+
+    class Meta:
+        managed = False
+        db_table = "DanhGia"
+
+
+class HoiDap(models.Model):
+    id_HoiDap = models.AutoField(primary_key=True)
+    id_SanPham = models.ForeignKey(SanPham, on_delete=models.DO_NOTHING, db_column="id_SanPham")
+    id_TaiKhoan = models.ForeignKey(TaiKhoan, on_delete=models.DO_NOTHING, db_column="id_TaiKhoan")
+    NoiDung = models.TextField(null=True)
+    NgayTao = models.DateTimeField(null=True)
+    parent_id = models.ForeignKey(
+        "self",
+        on_delete=models.DO_NOTHING,
+        db_column="parent_id",
+        null=True,
+        blank=True,
+    )
+    TrangThai = models.CharField(max_length=50, null=True)
+
+    class Meta:
+        managed = False
+        db_table = "HoiDap"
+
+
+class YeuThich(models.Model):
+    id_TaiKhoan = models.ForeignKey(TaiKhoan, on_delete=models.DO_NOTHING, db_column="id_TaiKhoan")
+    id_SanPham = models.ForeignKey(SanPham, on_delete=models.DO_NOTHING, db_column="id_SanPham")
+
+    class Meta:
+        managed = False
+        db_table = "YeuThich"
+        unique_together = (("id_TaiKhoan", "id_SanPham"),)

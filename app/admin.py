@@ -4,6 +4,7 @@ from django.contrib.auth.models import User, Group
 from .models import BienThe, BienTheThuocTinh, GiaTriThuocTinh, LoaiSanPham, NhomHuong, SanPham, ThuocTinh, ThuongHieu, HinhAnh
 # from app.admin import admin_site 
 from django.utils.html import format_html
+# from .forms import ThuongHieuForm  
 
 class MyAdminSite(admin.AdminSite):
     site_header = "Ami Admin"
@@ -90,27 +91,34 @@ class BienTheThuocTinhAdmin(admin.ModelAdmin):
     autocomplete_fields = ('id_BienThe', 'id_GiaTriThuocTinh')
 
 
-class HinhAnhThuongHieuInline(admin.TabularInline):
-    model = HinhAnh
-    extra = 1
 
-    # 👇 chỉ hiển thị field upload ảnh
-    fields = ('url',)
-
-    # ❌ bỏ exclude id_ThuongHieu
-    exclude = ('id_SanPham', 'id_BienThe', 'id_NhomHuong')
 
 @admin.register(ThuongHieu, site=admin_site)
 class ThuongHieuAdmin(admin.ModelAdmin):
     list_display = ('TenThuongHieu', 'logo_preview')
-    inlines = [HinhAnhThuongHieuInline]
 
     def logo_preview(self, obj):
-        img = HinhAnh.objects.filter(id_ThuongHieu=obj).first()
-        if img and img.url:
-            return format_html('<img src="{}" width="50"/>', img.url.url)
+        # dùng LogoUrl có sẵn
+        if obj.LogoUrl:
+            return format_html('<img src="{}" width="50"/>', obj.LogoUrl)
         return '-'
 
-admin_site.register(LoaiSanPham)
-admin_site.register(NhomHuong)
+@admin.register(LoaiSanPham, site=admin_site)
+class LoaiSanPhamAdmin(admin.ModelAdmin):
+    list_display = ('TenLoaiSanPham', 'image_preview')
+
+    def image_preview(self, obj):
+        if obj.HinhanhUrl:
+            return format_html('<img src="{}" width="50"/>', obj.HinhanhUrl.url)
+        return '-'
+
+
+@admin.register(NhomHuong, site=admin_site)
+class NhomHuongAdmin(admin.ModelAdmin):
+    list_display = ('TenNhomHuong', 'icon_preview')
+
+    def icon_preview(self, obj):
+        if obj.IconUrl:
+            return format_html('<img src="{}" width="50"/>', obj.IconUrl.url)
+        return '-'
 admin_site.register(HinhAnh)

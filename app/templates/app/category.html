@@ -31,14 +31,12 @@
         <button class="edge-arrow edge-arrow-left" type="button" aria-label="Scroll trái">←</button>
         <button class="edge-arrow edge-arrow-right" type="button" aria-label="Scroll phải">→</button>
         <div class="edge-track brand-track" data-carousel-track>
-          <a class="brand-chip stagger-1" href="#"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Chanel_logo_interlocking_cs.svg/512px-Chanel_logo_interlocking_cs.svg.png" alt="Chanel"><span>Chanel</span></a>
-          <a class="brand-chip stagger-2" href="#"><img src="https://i.pinimg.com/736x/ad/23/59/ad23591aa7a2f2839d1ff1d1b2238aa0.jpg" alt="Dior"><span>Dior</span></a>
-          <a class="brand-chip stagger-1" href="#"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/1960s_Gucci_Logo.svg/512px-1960s_Gucci_Logo.svg.png" alt="Gucci"><span>Gucci</span></a>
-          <a class="brand-chip stagger-2" href="#"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Hermes_logo.svg/512px-Hermes_logo.svg.png" alt="Hermes"><span>Hermès</span></a>
-          <a class="brand-chip stagger-1" href="#"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Yves_Saint_Laurent_%28brand%2C_2012%29_logo.svg/512px-Yves_Saint_Laurent_%28brand%2C_2012%29_logo.svg.png" alt="YSL"><span>YSL</span></a>
-          <a class="brand-chip stagger-2" href="#"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Tom_Ford_logo.svg/512px-Tom_Ford_logo.svg.png" alt="Tom Ford"><span>Tom Ford</span></a>
-          <a class="brand-chip stagger-1" href="#"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Versace_logo.svg/512px-Versace_logo.svg.png" alt="Versace"><span>Versace</span></a>
-          <a class="brand-chip stagger-2" href="#"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Lanc%C3%B4me_logo.svg/512px-Lanc%C3%B4me_logo.svg.png" alt="Lancome"><span>Lancôme</span></a>
+          {% for brand in brands %}
+          <a class="brand-chip stagger-{% cycle '1' '2' %}" href="{% url 'brand-detail' brand.TenThuongHieu|slugify %}">
+            <img src="{{ brand.LogoUrl|default:'https://images.unsplash.com/photo-1610461888750-10bfc601b874?auto=format&fit=crop&w=120&q=80' }}" alt="{{ brand.TenThuongHieu }}">
+            <span>{{ brand.TenThuongHieu }}</span>
+          </a>
+          {% endfor %}
         </div>
       </div>
     </div>
@@ -77,12 +75,9 @@
         <h3>Thương hiệu</h3>
         <input type="search" id="brandSearch" class="filter-search" placeholder="Tìm thương hiệu...">
         <div class="brand-options" id="brandOptions">
-          <label><input type="checkbox" name="brand" value="chanel"> Chanel</label>
-          <label><input type="checkbox" name="brand" value="dior"> Dior</label>
-          <label><input type="checkbox" name="brand" value="ysl"> YSL</label>
-          <label><input type="checkbox" name="brand" value="gucci"> Gucci</label>
-          <label><input type="checkbox" name="brand" value="tom-ford"> Tom Ford</label>
-          <label><input type="checkbox" name="brand" value="versace"> Versace</label>
+          {% for brand in brands %}
+          <label><input type="checkbox" name="brand" value="{{ brand.TenThuongHieu|slugify }}"> {{ brand.TenThuongHieu }}</label>
+          {% endfor %}
         </div>
       </div>
 

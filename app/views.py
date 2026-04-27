@@ -1,8 +1,24 @@
 from django.contrib.auth import logout
+from django.db import DatabaseError
 from django.shortcuts import render, redirect
 from django.utils.text import slugify
+from .models import LoaiSanPham, NhomHuong
 
-from .models import BaiViet, BienThe, HinhAnh, SanPham, ThuongHieu
+from .models import (
+    BaiViet,
+    BienThe,
+    ChiTietDonHang,
+    DanhGia,
+    DonHang,
+    GiaoHang,
+    HinhAnh,
+    HoiDap,
+    KhachHang,
+    SanPham,
+    TaiKhoan,
+    ThuongHieu,
+    YeuThich,
+)
 
 
 # Create your views here.
@@ -19,6 +35,20 @@ def _format_currency(value):
     if value is None:
         return "Liên hệ"
     return f"{int(value):,}".replace(",", ".") + "₫"
+
+
+def _safe_list(queryset):
+    try:
+        return list(queryset)
+    except DatabaseError:
+        return []
+
+
+def _safe_first(queryset):
+    try:
+        return queryset.first()
+    except DatabaseError:
+        return None
 
 
 def _product_image_map(product_ids):
@@ -68,7 +98,25 @@ def _build_product_cards(products):
 
 
 def home(request):
-    return render(request, "app/home.html")
+    brands = _safe_list(ThuongHieu.objects.order_by("TenThuongHieu"))
+    categories = _safe_list(LoaiSanPham.objects.all())
+    featured_products = _build_product_cards(
+        _safe_list(
+            SanPham.objects.select_related("id_ThuongHieu", "id_LoaiSanPham", "id_NhomHuong")
+            .order_by("-id_SanPham")[:8]
+        )
+    )
+    latest_articles = _safe_list(BaiViet.objects.order_by("-NgayTao")[:4])
+    return render(
+        request,
+        "app/home.html",
+        {
+            "brands_home": brands,
+             "categories": categories, 
+            "featured_products": featured_products,
+            "latest_articles_home": latest_articles,
+        },
+    )
 
 def category(request, segment='tat-ca'):
     category_map = {
@@ -117,18 +165,57 @@ def category(request, segment='tat-ca'):
 
     context["products"] = _build_product_cards(products)
     context["product_count"] = len(context["products"])
+    # context["brands"] = _safe_list(ThuongHieu.objects.order_by("TenThuongHieu"))
+
 
     return render(request, "app/category.html", context)
 
 
 def product_detail(request):
-    return render(request, "app/product.html")
+    product_obj = _safe_first(
+        SanPham.objects.select_related("id_ThuongHieu", "id_LoaiSanPham", "id_NhomHuong").order_by("id_SanPham")
+    )
+    if not product_obj:
+        return render(request, "app/product.html", {"product_data": {}, "product_images": []})
+
+    variants = _safe_list(BienThe.objects.filter(id_SanPham=product_obj).order_by("GiaBan"))
+    images = _safe_list(HinhAnh.objects.filter(id_SanPham=product_obj).order_by("id_HinhAnh"))
+    root_reviews = _safe_list(
+        DanhGia.objects.select_related("id_TaiKhoan")
+        .filter(id_SanPham=product_obj, parent_id__isnull=True)
+        .order_by("-NgayDanhGia")[:5]
+    )
+    questions = _safe_list(
+        HoiDap.objects.select_related("id_TaiKhoan")
+        .filter(id_SanPham=product_obj, parent_id__isnull=True)
+        .order_by("-NgayTao")[:5]
+    )
+    top_variant = variants[0] if variants else None
+    rating_values = [item.SoSao for item in root_reviews if item.SoSao]
+    rating_avg = round(sum(rating_values) / len(rating_values), 1) if rating_values else 0
+    product_data = {
+        "name": product_obj.TenSanPham,
+        "brand": product_obj.id_ThuongHieu.TenThuongHieu,
+        "description": product_obj.MoTa_SanPham,
+        "category": product_obj.id_LoaiSanPham.TenLoaiSanPham,
+        "scent_group": product_obj.id_NhomHuong.TenNhomHuong,
+        "price": _format_currency(top_variant.GiaBan if top_variant else None),
+        "stock": top_variant.SoLuong if top_variant else 0,
+        "rating_avg": rating_avg,
+        "rating_count": len(root_reviews),
+        "questions": questions,
+        "reviews": root_reviews,
+    }
+    product_images = [img.url.url if hasattr(img.url, "url") else str(img.url) for img in images]
+
+    return render(request, "app/product.html", {"product_data": product_data, "product_images": product_images})
 
 
 def brand_list(request):
-    brand_names = list(ThuongHieu.objects.values_list("TenThuongHieu", flat=True))
+    brand_rows = list(ThuongHieu.objects.values("TenThuongHieu", "LogoUrl"))
     brands = []
-    for name in brand_names:
+    for row in brand_rows:
+        name = row["TenThuongHieu"]
         slug = slugify(name)
         brands.append(
             {
@@ -136,7 +223,7 @@ def brand_list(request):
                 "name": name,
                 "tagline": "Tinh hoa mùi hương đẳng cấp",
                 "palette": "#6f7d62",
-                "poster_image": FALLBACK_IMAGES["brand_poster"],
+                "poster_image": row["LogoUrl"] or FALLBACK_IMAGES["brand_poster"],
             }
         )
     return render(request, "app/brand_list.html", {"brands": brands})
@@ -160,8 +247,8 @@ def brand_detail(request, slug):
         "name": brand_obj.TenThuongHieu,
         "tagline": "Di sản mùi hương tinh tế",
         "palette": "#6f7d62",
-        "hero_image": FALLBACK_IMAGES["brand_hero"],
-        "about_image": FALLBACK_IMAGES["brand_about"],
+        "hero_image": brand_obj.LogoUrl or FALLBACK_IMAGES["brand_hero"],
+        "about_image": brand_obj.LogoUrl or FALLBACK_IMAGES["brand_about"],
         "story": f"{brand_obj.TenThuongHieu} là thương hiệu được yêu thích trong bộ sưu tập nước hoa tại Ami.",
         "philosophy": "Tập trung vào chiều sâu mùi hương, sự cân bằng và tính ứng dụng mỗi ngày.",
         "signature_notes": ["Citrus", "Floral", "Woody"],
@@ -268,62 +355,79 @@ def contact_page(request):
             "answer": "Có. Đơn hàng được đóng gói chống sốc, hỗ trợ COD và đổi trả theo chính sách.",
         },
     ]
-    reviews = [
-        {"name": "Minh Khang", "comment": "Tư vấn cực kỳ có tâm, chọn đúng mùi cho môi trường văn phòng."},
-        {"name": "Ngọc Ánh", "comment": "Không gian boutique sang và dịch vụ hậu mãi rất tốt."},
-        {"name": "Quốc Đạt", "comment": "Đặt lịch nhanh, được hướng dẫn layering rất chuyên nghiệp."},
-    ]
+    reviews = []
+    recent_reviews = _safe_list(
+        DanhGia.objects.select_related("id_TaiKhoan").filter(parent_id__isnull=True).order_by("-NgayDanhGia")[:6]
+    )
+    for row in recent_reviews:
+        reviews.append(
+            {
+                "name": row.id_TaiKhoan.TenDangNhap or row.id_TaiKhoan.Username or "Khách hàng",
+                "comment": row.NoiDung or "Trải nghiệm tốt.",
+            }
+        )
+    if not reviews:
+        reviews = [{"name": "Ami", "comment": "Đội ngũ luôn sẵn sàng hỗ trợ bạn qua hotline và email."}]
     return render(request, 'app/contact.html', {'faq_items': faq_items, 'reviews': reviews})
 
 
 def cart_page(request):
-    cart_items = [
-        {
-            "name": "Dior Sauvage Elixir",
-            "price": 4200000,
-            "quantity": 1,
-            "image": "https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=600&q=80",
-        },
-        {
-            "name": "Bleu de Chanel EDP",
-            "price": 3800000,
-            "quantity": 2,
-            "image": "https://images.unsplash.com/photo-1619994403073-2cec5a97dd6d?auto=format&fit=crop&w=600&q=80",
-        },
-    ]
-    suggestions = [
-        {
-            "name": "Y Eau de Parfum",
-            "price": "3.400.000₫",
-            "image": "https://images.unsplash.com/photo-1588405748880-12d1d2a59a75?auto=format&fit=crop&w=700&q=80",
-        },
-        {
-            "name": "Gucci Guilty EDT",
-            "price": "3.200.000₫",
-            "image": "https://images.unsplash.com/photo-1608528577891-eb055944f2e7?auto=format&fit=crop&w=700&q=80",
-        },
-        {
-            "name": "Dior Homme Parfum",
-            "price": "4.700.000₫",
-            "image": "https://images.unsplash.com/photo-1563170351-be82bc888aa4?auto=format&fit=crop&w=700&q=80",
-        },
-        {
-            "name": "Oud Wood Parfum",
-            "price": "6.900.000₫",
-            "image": "https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&w=700&q=80",
-        },
-    ]
+    cart_items = []
+    order = _safe_first(DonHang.objects.select_related("id_KhachHang").order_by("-ThoiGian"))
+    if order:
+        details = _safe_list(
+            ChiTietDonHang.objects.select_related("id_BienThe__id_SanPham").filter(id_DonHang=order)
+        )
+        product_ids = [row.id_BienThe.id_SanPham_id for row in details]
+        image_map = _product_image_map(product_ids)
+        for row in details:
+            product = row.id_BienThe.id_SanPham
+            cart_items.append(
+                {
+                    "name": product.TenSanPham,
+                    "price": row.GiaBan or row.id_BienThe.GiaBan,
+                    "quantity": row.SoLuong,
+                    "image": image_map.get(product.id_SanPham, FALLBACK_IMAGES["default"]),
+                }
+            )
+
+    suggestions = _build_product_cards(
+        _safe_list(
+            SanPham.objects.select_related("id_ThuongHieu", "id_LoaiSanPham", "id_NhomHuong")
+            .order_by("-id_SanPham")[:8]
+        )
+    )[:4]
     return render(request, 'app/cart.html', {'cart_items': cart_items, 'suggestions': suggestions})
 
 def auth_page(request):
     return render(request, 'app/auth.html')
 
 def profile_page(request):
-    return render(request, 'app/profile.html')
+    account = _safe_first(TaiKhoan.objects.order_by("id_TaiKhoan"))
+    customer = _safe_first(
+        KhachHang.objects.select_related("id_TaiKhoan").filter(id_TaiKhoan=account) if account else KhachHang.objects.none()
+    )
+    profile = {
+        "full_name": (customer.TenKhachHang if customer else None) or (account.TenDangNhap if account else "") or "Khách hàng",
+        "username": (account.Username if account else "") or "guest",
+        "email": (account.Email if account else "") or "",
+        "phone": (account.SDT if account else "") or "",
+        "address": (customer.DiaChi if customer else "") or "",
+        "gender": (customer.GioiTinh if customer else "") or "",
+    }
+    return render(request, 'app/profile.html', {"profile": profile})
 
 
 def checkout_page(request):
-    return render(request, 'app/checkout.html')
+    delivery = _safe_first(GiaoHang.objects.select_related("id_TaiKhoan").order_by("-id_GiaoHang"))
+    form_data = {
+        "name": delivery.TenNguoiNhan if delivery else "",
+        "phone": delivery.SDT if delivery else "",
+        "email": delivery.id_TaiKhoan.Email if delivery and delivery.id_TaiKhoan else "",
+        "address": delivery.DiaChi if delivery else "",
+        "note": delivery.GhiChu if delivery else "",
+    }
+    return render(request, 'app/checkout.html', {"checkout": form_data})
 
 def logout_view(request):
     logout(request)

@@ -48,8 +48,8 @@
       <div class="pd-main-img-inner" id="pdImgInner">
         <img
           id="pdMainImg"
-          src="https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=1200&q=90"
-          alt="Dior Sauvage Elixir"
+          src="{{ product_images.0|default:'https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=1200&q=90' }}"
+          alt="{{ product_data.name|default:'Sản phẩm' }}"
           draggable="false"
         >
         <!-- Lens overlay -->
@@ -75,21 +75,23 @@
 
     <!-- Brand + Name -->
     <div class="pd-header reveal-up">
-      <p class="pd-brand">Dior</p>
-      <h1 class="pd-name">Sauvage<br><em>Elixir</em></h1>
+      <p class="pd-brand">{{ product_data.brand|default:'Thương hiệu' }}</p>
+      <h1 class="pd-name">{{ product_data.name|default:'Sản phẩm' }}</h1>
       <div class="pd-meta-row">
         <div class="pd-rating" aria-label="4.9 trên 5 sao">
           <span class="pd-stars">★★★★★</span>
-          <span class="pd-rating-score">4.9</span>
-          <span class="pd-rating-count">(128 đánh giá)</span>
+          <span class="pd-rating-score">{{ product_data.rating_avg|default:'0' }}</span>
+          <span class="pd-rating-count">({{ product_data.rating_count|default:'0' }} đánh giá)</span>
         </div>
-        <span class="pd-status in-stock">● Còn hàng</span>
+        <span class="pd-status {% if product_data.stock|default:0 > 0 %}in-stock{% endif %}">
+          ● {% if product_data.stock|default:0 > 0 %}Còn hàng{% else %}Hết hàng{% endif %}
+        </span>
       </div>
     </div>
 
     <!-- Price -->
     <div class="pd-price-block reveal-up delay-1">
-      <span class="pd-price">4.200.000₫</span>
+      <span class="pd-price">{{ product_data.price|default:'Liên hệ' }}</span>
       <span class="pd-price-note">/ 60ml EDP</span>
     </div>
 
@@ -225,8 +227,8 @@
       <div class="pd-detail-grid">
         <div>
           <h3 class="pd-tab-heading">Mô tả sản phẩm</h3>
-          <p class="pd-tab-body">Sauvage Elixir là đỉnh cao của dòng Sauvage — một Elixir đặc biệt với hàm lượng tinh dầu cực cao. Mùi hương bắt đầu bằng sự bùng nổ của grapefruit và bergamot Calabrian, trước khi lắng xuống thành tầng heart mạnh mẽ với lavender và geranium Grasse. Tầng base là sự kết hợp hoàn hảo giữa sandalwood, vetiver và ambroxan huyền thoại.</p>
-          <p class="pd-tab-body">Được thiết kế bởi François Demachy, Sauvage Elixir là sự tôn vinh nam tính thuần túy — không ồn ào mà sâu lắng, không phô trương mà đầy quyền lực.</p>
+          <p class="pd-tab-body">{{ product_data.description|default:'Thông tin sản phẩm đang được cập nhật.' }}</p>
+          <p class="pd-tab-body">Nhóm hương: {{ product_data.scent_group|default:'Đang cập nhật' }} · Danh mục: {{ product_data.category|default:'Đang cập nhật' }}.</p>
           <h3 class="pd-tab-heading" style="margin-top:32px">Thành phần chính</h3>
           <ul class="pd-ingredients">
             <li>Bergamot Calabrian (Italy)</li>

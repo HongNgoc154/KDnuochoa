@@ -43,8 +43,8 @@
         <input type="file" id="avatarInput" accept="image/*" aria-label="Chọn ảnh đại diện">
       </div>
       <div class="profile-info">
-        <h2 class="profile-name">Nguyễn Minh Khang</h2>
-        <p class="profile-username">@minhkhang</p>
+        <h2 class="profile-name">{{ profile.full_name }}</h2>
+        <p class="profile-username">@{{ profile.username }}</p>
         <div class="profile-badges">
           <span class="badge-vip">⭐ VIP Member</span>
           <span class="badge-pts">2.840 điểm</span>
@@ -110,31 +110,31 @@
           <div class="form-grid">
             <div class="field-group">
               <label class="field-label" for="pName">Họ và tên</label>
-              <input class="field-input" type="text" id="pName" value="Nguyễn Minh Khang" placeholder="Họ và tên">
+              <input class="field-input" type="text" id="pName" value="{{ profile.full_name }}" placeholder="Họ và tên">
               <span class="field-error"></span>
             </div>
             <div class="field-group">
               <label class="field-label" for="pGender">Giới tính</label>
               <select class="field-input" id="pGender">
-                <option value="male" selected>Nam</option>
-                <option value="female">Nữ</option>
-                <option value="other">Khác</option>
+                <option value="Nam" {% if profile.gender|lower == 'nam' %}selected{% endif %}>Nam</option>
+                <option value="Nữ" {% if profile.gender|lower == 'nữ' %}selected{% endif %}>Nữ</option>
+                <option value="Khác" {% if profile.gender|lower == 'khác' %}selected{% endif %}>Khác</option>
               </select>
               <span class="field-error"></span>
             </div>
             <div class="field-group">
               <label class="field-label" for="pEmail">Email</label>
-              <input class="field-input" type="email" id="pEmail" value="minhkhang@email.com" placeholder="Email">
+              <input class="field-input" type="email" id="pEmail" value="{{ profile.email }}" placeholder="Email">
               <span class="field-error"></span>
             </div>
             <div class="field-group">
               <label class="field-label" for="pPhone">Số điện thoại</label>
-              <input class="field-input" type="tel" id="pPhone" value="0901 234 567" placeholder="SĐT">
+              <input class="field-input" type="tel" id="pPhone" value="{{ profile.phone }}" placeholder="SĐT">
               <span class="field-error"></span>
             </div>
             <div class="field-group full-width">
               <label class="field-label" for="pUsername">Tên đăng nhập</label>
-              <input class="field-input" type="text" id="pUsername" value="minhkhang" placeholder="Username">
+              <input class="field-input" type="text" id="pUsername" value="{{ profile.username }}" placeholder="Username">
               <span class="field-error"></span>
             </div>
           </div>

@@ -21,67 +21,30 @@
 <section class="brands-section">
   <div class="brands-ticker-wrap">
     <div class="brands-ticker" id="brandsTicker">
-      <a href="{% url 'brand-detail' 'chanel' %}" class="brand-item">
-        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Chanel_logo_interlocking_cs.svg/512px-Chanel_logo_interlocking_cs.svg.png" alt="Chanel"></div>
-        <span class="brand-item-name">Chanel</span>
+      {% for brand in brands_home %}
+      <a href="{% url 'brand-detail' brand.TenThuongHieu|slugify %}" class="brand-item">
+        <div class="brand-item-logo">{% if brand.LogoUrl %}
+  <img src="{{ brand.LogoUrl.url }}" alt="{{ brand.TenThuongHieu }}">
+{% else %}
+  <img src="https://via.placeholder.com/100" alt="no image">
+{% endif %}</div>
+        <span class="brand-item-name">{{ brand.TenThuongHieu }}</span>
       </a>
       <div class="brand-item-sep"></div>
-      <a href="{% url 'brand-detail' 'dior' %}" class="brand-item">
-        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Christian_Dior_SE_logo.svg/512px-Christian_Dior_SE_logo.svg.png" alt="Dior"></div>
-        <span class="brand-item-name">Dior</span>
+      {% endfor %}
+      {% for brand in brands_home %}
+      <a href="{% url 'brand-detail' brand.TenThuongHieu|slugify %}" class="brand-item">
+        <div class="brand-item-logo">
+          {% if brand.LogoUrl %}
+            <img src="{{ brand.LogoUrl.url }}" alt="{{ brand.TenThuongHieu }}">
+          {% else %}
+            <img src="https://via.placeholder.com/100" alt="no image">
+          {% endif %}
+        </div>
+        <span class="brand-item-name">{{ brand.TenThuongHieu }}</span>
       </a>
       <div class="brand-item-sep"></div>
-      <a href="{% url 'brand-detail' 'gucci' %}" class="brand-item">
-        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/1960s_Gucci_Logo.svg/512px-1960s_Gucci_Logo.svg.png" alt="Gucci"></div>
-        <span class="brand-item-name">Gucci</span>
-      </a>
-      <div class="brand-item-sep"></div>
-      <a href="{% url 'brand-detail' 'hermes' %}" class="brand-item">
-        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Hermes_logo.svg/512px-Hermes_logo.svg.png" alt="Hermès"></div>
-        <span class="brand-item-name">Hermès</span>
-      </a>
-      <div class="brand-item-sep"></div>
-      <a href="{% url 'brand-detail' 'ysl' %}" class="brand-item">
-        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Yves_Saint_Laurent_%28brand%2C_2012%29_logo.svg/512px-Yves_Saint_Laurent_%28brand%2C_2012%29_logo.svg.png" alt="YSL"></div>
-        <span class="brand-item-name">YSL</span>
-      </a>
-      <div class="brand-item-sep"></div>
-      <a href="{% url 'brand-detail' 'lancome' %}" class="brand-item">
-        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Lanc%C3%B4me_logo.svg/512px-Lanc%C3%B4me_logo.svg.png" alt="Lancôme"></div>
-        <span class="brand-item-name">Lancôme</span>
-      </a>
-      <div class="brand-item-sep"></div>
-      <!-- Duplicate set for seamless loop -->
-      <a href="{% url 'brand-detail' 'chanel' %}" class="brand-item">
-        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Chanel_logo_interlocking_cs.svg/512px-Chanel_logo_interlocking_cs.svg.png" alt="Chanel"></div>
-        <span class="brand-item-name">Chanel</span>
-      </a>
-      <div class="brand-item-sep"></div>
-      <a href="{% url 'brand-detail' 'dior' %}" class="brand-item">
-        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Christian_Dior_SE_logo.svg/512px-Christian_Dior_SE_logo.svg.png" alt="Dior"></div>
-        <span class="brand-item-name">Dior</span>
-      </a>
-      <div class="brand-item-sep"></div>
-      <a href="{% url 'brand-detail' 'gucci' %}" class="brand-item">
-        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/1960s_Gucci_Logo.svg/512px-1960s_Gucci_Logo.svg.png" alt="Gucci"></div>
-        <span class="brand-item-name">Gucci</span>
-      </a>
-      <div class="brand-item-sep"></div>
-      <a href="{% url 'brand-detail' 'hermes' %}" class="brand-item">
-        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Hermes_logo.svg/512px-Hermes_logo.svg.png" alt="Hermès"></div>
-        <span class="brand-item-name">Hermès</span>
-      </a>
-      <div class="brand-item-sep"></div>
-      <a href="{% url 'brand-detail' 'ysl' %}" class="brand-item">
-        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Yves_Saint_Laurent_%28brand%2C_2012%29_logo.svg/512px-Yves_Saint_Laurent_%28brand%2C_2012%29_logo.svg.png" alt="YSL"></div>
-        <span class="brand-item-name">YSL</span>
-      </a>
-      <div class="brand-item-sep"></div>
-      <a href="{% url 'brand-detail' 'lancome' %}" class="brand-item">
-        <div class="brand-item-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Lanc%C3%B4me_logo.svg/512px-Lanc%C3%B4me_logo.svg.png" alt="Lancôme"></div>
-        <span class="brand-item-name">Lancôme</span>
-      </a>
-      <div class="brand-item-sep"></div>
+      {% endfor %}
     </div>
   </div>
 </section>
@@ -139,63 +102,52 @@
 
 <!-- ─── CATEGORIES ─── -->
 <section class="categories-section">
-  <div class="container" style="text-align:center;">
-    <h2 class="section-title reveal reveal-delay-1" style="margin-left:auto;margin-right:auto;">Bộ sưu tập <em>nước hoa</em></h2>
-    <p class="section-desc reveal reveal-delay-2" style="margin-left:auto;margin-right:auto;max-width:520px;">Từ hương thơm nam tính đến nữ tính, từ mạnh mẽ đến tinh tế — luôn có một mùi hương dành riêng cho bạn.</p>
-  </div>
   <div class="cat-list">
-    <div class="cat-row" data-reveal-row>
+
+    {% for cate in categories %}
+    <div class="cat-row {% if forloop.counter|divisibleby:2 %}reverse{% endif %}" data-reveal-row>
+
+      <!-- IMAGE -->
       <div class="cat-row-img">
-        <div class="cat-row-img-inner" style="background-image: url('https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?auto=format&fit=crop&w=1200&q=85')"></div>
+        <div class="cat-row-img-inner"
+          style="background-image: url('{% if cate.HinhanhUrl %}{{ cate.HinhanhUrl.url }}{% else %}https://via.placeholder.com/1200{% endif %}')">
+        </div>
         <div class="cat-row-img-overlay"></div>
       </div>
+
+      <!-- CONTENT -->
       <div class="cat-row-body">
-        <div class="cat-row-index">01</div>
-        <p class="cat-row-tag">For Him</p>
-        <h3 class="cat-row-title">Nước hoa <em>Nam</em></h3>
-        <p class="cat-row-desc">Hương gỗ trầm, da thuộc, cam bergamot — những mùi hương mạnh mẽ và đẳng cấp dành riêng cho người đàn ông hiện đại.</p>
-        <a href="{% url 'category-segment' 'nam' %}" class="cat-row-btn">Xem bộ sưu tập<span class="cat-row-btn-arrow">→</span></a>
+
+        <!-- STT -->
+        <div class="cat-row-index">
+          {{ forloop.counter|stringformat:"02d" }}
+        </div>
+
+        <!-- GHI CHÚ (For Him / For Her / For All) -->
+        <p class="cat-row-tag">
+          {{ cate.GhiChu|default:"For All" }}
+        </p>
+
+        <!-- TÊN -->
+        <h3 class="cat-row-title">
+          {{ cate.TenLoaiSanPham }}
+        </h3>
+
+        <!-- MÔ TẢ -->
+        <p class="cat-row-desc">
+          {{ cate.MoTa }}
+        </p>
+
+        <!-- BUTTON -->
+        <a href="{% url 'category-segment' cate.TenLoaiSanPham|lower %}" class="cat-row-btn">
+          Xem bộ sưu tập
+          <span class="cat-row-btn-arrow">→</span>
+        </a>
+
       </div>
     </div>
-    <div class="cat-row reverse" data-reveal-row>
-      <div class="cat-row-img">
-        <div class="cat-row-img-inner" style="background-image: url('https://images.unsplash.com/photo-1541643600914-78b084683702?auto=format&fit=crop&w=1200&q=85')"></div>
-        <div class="cat-row-img-overlay"></div>
-      </div>
-      <div class="cat-row-body">
-        <div class="cat-row-index">02</div>
-        <p class="cat-row-tag">For Her</p>
-        <h3 class="cat-row-title">Nước hoa <em>Nữ</em></h3>
-        <p class="cat-row-desc">Hoa hồng, jasmine, vanilla ngọt ngào — những làn hương dịu dàng, quyến rũ và tinh tế dành cho người phụ nữ của mọi thời đại.</p>
-        <a href="{% url 'category-segment' 'nu' %}" class="cat-row-btn">Xem bộ sưu tập<span class="cat-row-btn-arrow">→</span></a>
-      </div>
-    </div>
-    <div class="cat-row" data-reveal-row>
-      <div class="cat-row-img">
-        <div class="cat-row-img-inner" style="background-image: url('https://images.unsplash.com/photo-1586521995568-39abaa0c2311?auto=format&fit=crop&w=1200&q=85')"></div>
-        <div class="cat-row-img-overlay"></div>
-      </div>
-      <div class="cat-row-body">
-        <div class="cat-row-index">03</div>
-        <p class="cat-row-tag">For All</p>
-        <h3 class="cat-row-title">Nước hoa <em>Unisex</em></h3>
-        <p class="cat-row-desc">Vượt qua mọi ranh giới giới tính, những mùi hương unisex tôn vinh cá tính tự do và phong cách riêng không thể nhầm lẫn.</p>
-        <a href="{% url 'category-segment' 'unisex' %}" class="cat-row-btn">Xem bộ sưu tập<span class="cat-row-btn-arrow">→</span></a>
-      </div>
-    </div>
-    <div class="cat-row reverse" data-reveal-row>
-      <div class="cat-row-img">
-        <div class="cat-row-img-inner" style="background-image: url('https://images.unsplash.com/photo-1563170351-be82bc888aa4?auto=format&fit=crop&w=1200&q=85')"></div>
-        <div class="cat-row-img-overlay"></div>
-      </div>
-      <div class="cat-row-body">
-        <div class="cat-row-index">04</div>
-        <p class="cat-row-tag">On The Go</p>
-        <h3 class="cat-row-title">Mini &amp; <em>Travel Size</em></h3>
-        <p class="cat-row-desc">Nhỏ gọn, tiện lợi, không kém phần sang trọng. Mang theo mùi hương yêu thích của bạn trên mọi hành trình.</p>
-        <a href="{% url 'category-all' %}" class="cat-row-btn">Xem bộ sưu tập<span class="cat-row-btn-arrow">→</span></a>
-      </div>
-    </div>
+    {% endfor %}
+
   </div>
 </section>
 
@@ -210,83 +162,20 @@
   <div class="container">
     <div class="articles-grid" id="articlesGrid">
 
-      <!-- Bài 1 -->
-      <a href="{% url 'blog-list' %}" class="article-card reveal reveal-delay-1">
-        <div class="article-img">
-          <div class="article-img-bg" style="background-image: url('https://images.unsplash.com/photo-1608528577891-eb055944f2e7?auto=format&fit=crop&w=800&q=80')"></div>
-        </div>
-        <div class="article-body">
-          <p class="article-cat">Hướng dẫn</p>
-          <h3 class="article-title">Cách chọn nước hoa phù hợp với cá tính của bạn</h3>
-          <p class="article-desc">Hương thơm không chỉ là mùi — đó là ngôn ngữ riêng của từng người. Khám phá cách tìm mùi hương đúng với bạn.</p>
-          <div class="article-meta"><span>📅 12 tháng 7, 2025</span><span>⏱ 5 phút đọc</span></div>
-        </div>
-      </a>
-
-      <!-- Bài 2 -->
-      <a href="{% url 'blog-list' %}" class="article-card reveal reveal-delay-2">
-        <div class="article-img">
-          <div class="article-img-bg" style="background-image: url('https://images.unsplash.com/photo-1567016376408-0226e4d0c1ea?auto=format&fit=crop&w=800&q=80')"></div>
-        </div>
-        <div class="article-body">
-          <p class="article-cat">Thương hiệu</p>
-          <h3 class="article-title">Chanel No.5 — Huyền thoại nước hoa 100 năm tuổi</h3>
-          <p class="article-desc">Câu chuyện đằng sau chai nước hoa biểu tượng nhất lịch sử thời trang và những bí ẩn ít ai biết đến.</p>
-          <div class="article-meta"><span>📅 5 tháng 7, 2025</span><span>⏱ 7 phút đọc</span></div>
-        </div>
-      </a>
-
-      <!-- Bài 3 -->
-      <a href="{% url 'blog-list' %}" class="article-card reveal reveal-delay-3">
+      {% for article in latest_articles_home %}
+      <a href="{% url 'article-detail' article.TieuDe|slugify %}" class="article-card reveal {% if forloop.counter > 3 %}article-extra{% endif %}" {% if forloop.counter > 3 %}style="display:none;"{% endif %}>
         <div class="article-img">
           <div class="article-img-bg" style="background-image: url('https://images.unsplash.com/photo-1585386959984-a4155224a1ad?auto=format&fit=crop&w=800&q=80')"></div>
         </div>
         <div class="article-body">
-          <p class="article-cat">Mẹo hay</p>
-          <h3 class="article-title">5 cách xịt nước hoa để mùi hương lưu lại cả ngày</h3>
-          <p class="article-desc">Bạn đã xịt nước hoa đúng cách chưa? Những mẹo nhỏ này sẽ giúp hương thơm của bạn bền hơn đáng kể.</p>
-          <div class="article-meta"><span>📅 28 tháng 6, 2025</span><span>⏱ 4 phút đọc</span></div>
+          <p class="article-cat">Blog</p>
+          <h3 class="article-title">{{ article.TieuDe }}</h3>
+          <p class="article-desc">{{ article.NoiDung|default:''|truncatechars:140 }}</p>
+          <div class="article-meta"><span>📅 {{ article.NgayTao|date:'d/m/Y' }}</span><span>⏱ 5 phút đọc</span></div>
         </div>
       </a>
 
-      <!-- Bài 4 (ẩn mặc định nếu muốn demo nút xem thêm, hiện nếu <= 5 bài đầu) -->
-      <a href="{% url 'blog-list' %}" class="article-card reveal reveal-delay-1 article-extra" style="display:none;">
-        <div class="article-img">
-          <div class="article-img-bg" style="background-image: url('https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&w=800&q=80')"></div>
-        </div>
-        <div class="article-body">
-          <p class="article-cat">Phong cách</p>
-          <h3 class="article-title">Mùi hương nào phù hợp với mỗi mùa trong năm?</h3>
-          <p class="article-desc">Mùa hè cần tươi mát, mùa đông cần ấm áp — bí quyết chọn nước hoa theo từng mùa sẽ làm bạn bất ngờ.</p>
-          <div class="article-meta"><span>📅 20 tháng 6, 2025</span><span>⏱ 6 phút đọc</span></div>
-        </div>
-      </a>
-
-      <!-- Bài 5 -->
-      <a href="{% url 'blog-list' %}" class="article-card reveal reveal-delay-2 article-extra" style="display:none;">
-        <div class="article-img">
-          <div class="article-img-bg" style="background-image: url('https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=800&q=80')"></div>
-        </div>
-        <div class="article-body">
-          <p class="article-cat">Kiến thức</p>
-          <h3 class="article-title">Top note, Heart note, Base note — Bí ẩn 3 tầng hương</h3>
-          <p class="article-desc">Tại sao nước hoa lại thay đổi mùi theo thời gian? Giải mã cấu trúc 3 tầng hương mà mọi tín đồ nước hoa cần biết.</p>
-          <div class="article-meta"><span>📅 15 tháng 6, 2025</span><span>⏱ 8 phút đọc</span></div>
-        </div>
-      </a>
-
-      <!-- Bài 6 -->
-      <a href="{% url 'blog-list' %}" class="article-card reveal reveal-delay-3 article-extra" style="display:none;">
-        <div class="article-img">
-          <div class="article-img-bg" style="background-image: url('https://images.unsplash.com/photo-1590156562745-5f4d4b3b1e33?auto=format&fit=crop&w=800&q=80')"></div>
-        </div>
-        <div class="article-body">
-          <p class="article-cat">Xu hướng</p>
-          <h3 class="article-title">Nước hoa niche — Khi xa xỉ là sự khác biệt</h3>
-          <p class="article-desc">Niche perfume không phải để ai cũng hiểu, nhưng những người hiểu sẽ không thể quên. Khám phá thế giới nước hoa độc lập.</p>
-          <div class="article-meta"><span>📅 10 tháng 6, 2025</span><span>⏱ 5 phút đọc</span></div>
-        </div>
-      </a>
+      {% endfor %}
 
     </div><!-- /.articles-grid -->
 
