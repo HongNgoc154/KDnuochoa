@@ -57,10 +57,11 @@ def _product_image_map(product_ids):
         .order_by("id_HinhAnh")
         .values("id_SanPham_id", "url")
     )
+
     image_map = {}
     for row in image_rows:
         product_id = row["id_SanPham_id"]
-        image_map.setdefault(product_id, row["url"])
+        image_map.setdefault(product_id, []).append(row["url"])  # 👈 sửa
     return image_map
 
 
@@ -100,21 +101,38 @@ def _build_product_cards(products):
 def home(request):
     brands = _safe_list(ThuongHieu.objects.order_by("TenThuongHieu"))
     categories = _safe_list(LoaiSanPham.objects.all())
+
     featured_products = _build_product_cards(
         _safe_list(
             SanPham.objects.select_related("id_ThuongHieu", "id_LoaiSanPham", "id_NhomHuong")
             .order_by("-id_SanPham")[:8]
         )
     )
+
+    total_products = SanPham.objects.count()
+    total_brands = ThuongHieu.objects.count()
+    total_customers = KhachHang.objects.count()
+
+    def format_k(num):
+        if num >= 1000:
+            return f"{num//1000}K"
+        return str(num)
+
+    total_customers = format_k(total_customers)
+
     latest_articles = _safe_list(BaiViet.objects.order_by("-NgayTao")[:4])
+
     return render(
         request,
         "app/home.html",
         {
             "brands_home": brands,
-             "categories": categories, 
+            "categories": categories,
             "featured_products": featured_products,
             "latest_articles_home": latest_articles,
+            "total_products": total_products,
+            "total_brands": total_brands,
+            "total_customers": total_customers,
         },
     )
 

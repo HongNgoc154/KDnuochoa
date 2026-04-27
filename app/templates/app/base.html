@@ -61,98 +61,65 @@
     <li><a href="{% url 'home' %}">Trang chủ</a></li>
 
     <li class="has-dropdown mega-menu">
-      <a href="{% url 'category-all' %}">Nước hoa <i class="bi bi-chevron-down" style="font-size:9px;margin-left:4px;"></i></a>
+      <a href="{% url 'category-all' %}">
+        Nước hoa 
+        <i class="bi bi-chevron-down" style="font-size:9px;margin-left:4px;"></i>
+      </a>
 
       <div class="mega-dropdown">
 
-        <!-- CỘT 1: Danh mục — ảnh NGANG với chữ -->
+        <!-- CỘT 1: DANH MỤC -->
         <div class="mega-col mega-categories">
           <p class="mega-col-title">Danh mục</p>
 
-          <a href="{% url 'category-segment' 'nam' %}" class="mega-cat-item">
-            <div class="mega-cat-img" style="background-image:url('https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?auto=format&fit=crop&w=200&q=70');">
-              <div class="mega-cat-overlay"></div>
-            </div>
-            <div class="mega-cat-text">
-              <span class="mega-cat-label">Nước hoa Nam</span>
-              <span class="mega-cat-desc">Gỗ trầm · Da thuộc · Bergamot</span>
-            </div>
-          </a>
+          {% for cate in nav_categories %}
+          <a href="{% url 'category-segment' cate.TenLoaiSanPham|slugify %}" class="mega-cat-item">
 
-          <a href="{% url 'category-segment' 'nu' %}" class="mega-cat-item">
-            <div class="mega-cat-img" style="background-image:url('https://images.unsplash.com/photo-1541643600914-78b084683702?auto=format&fit=crop&w=200&q=70');">
+            <div class="mega-cat-img"
+                 style="background-image:url('{% if cate.HinhanhUrl %}{{ cate.HinhanhUrl.url }}{% else %}https://via.placeholder.com/200{% endif %}')">
               <div class="mega-cat-overlay"></div>
             </div>
-            <div class="mega-cat-text">
-              <span class="mega-cat-label">Nước hoa Nữ</span>
-              <span class="mega-cat-desc">Hoa hồng · Jasmine · Vanilla</span>
-            </div>
-          </a>
 
-          <a href="{% url 'category-segment' 'unisex' %}" class="mega-cat-item">
-            <div class="mega-cat-img" style="background-image:url('https://images.unsplash.com/photo-1586521995568-39abaa0c2311?auto=format&fit=crop&w=200&q=70');">
-              <div class="mega-cat-overlay"></div>
-            </div>
             <div class="mega-cat-text">
-              <span class="mega-cat-label">Unisex</span>
-              <span class="mega-cat-desc">Tự do · Phá cách · Hiện đại</span>
-            </div>
-          </a>
+              <span class="mega-cat-label">
+                {{ cate.TenLoaiSanPham }}
+              </span>
 
-          <a href="{% url 'category-all' %}" class="mega-cat-item">
-            <div class="mega-cat-img" style="background-image:url('https://images.unsplash.com/photo-1563170351-be82bc888aa4?auto=format&fit=crop&w=200&q=70');">
-              <div class="mega-cat-overlay"></div>
+              <span class="mega-cat-desc">
+                {{ cate.MoTa|default:"Mùi hương cao cấp"|truncatewords:5 }}
+              </span>
             </div>
-            <div class="mega-cat-text">
-              <span class="mega-cat-label">Mini &amp; Travel Size</span>
-              <span class="mega-cat-desc">Nhỏ gọn · Tiện lợi · Sang trọng</span>
-            </div>
+
           </a>
+          {% empty %}
+          <p style="padding:10px;">Chưa có danh mục</p>
+          {% endfor %}
         </div>
 
-        <!-- CỘT 2: Thương hiệu — logo trên, tên dưới -->
+        <!-- CỘT 2: THƯƠNG HIỆU -->
         <div class="mega-col mega-brands">
           <p class="mega-col-title">Thương hiệu nổi bật</p>
+
           <div class="mega-brands-grid">
+            {% for brand in nav_brands %}
+            <a href="{% url 'brand-detail' brand.TenThuongHieu|slugify %}" class="mega-brand-link">
 
-            <a href="{% url 'brand-detail' 'chanel' %}" class="mega-brand-link">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Chanel_logo_interlocking_cs.svg/512px-Chanel_logo_interlocking_cs.svg.png"
-                   alt="" onerror="this.classList.add('img-error')">
-              <span>Chanel</span>
+              {% if brand.LogoUrl %}
+                <img src="{{ brand.LogoUrl.url }}" alt="{{ brand.TenThuongHieu }}">
+              {% else %}
+                <img src="https://via.placeholder.com/100" alt="no image">
+              {% endif %}
+
+              <span>{{ brand.TenThuongHieu }}</span>
             </a>
-
-            <a href="{% url 'brand-detail' 'dior' %}" class="mega-brand-link">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Christian_Dior_SE_logo.svg/512px-Christian_Dior_SE_logo.svg.png"
-                   alt="" onerror="this.classList.add('img-error')">
-              <span>Dior</span>
-            </a>
-
-            <a href="{% url 'brand-detail' 'gucci' %}" class="mega-brand-link">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/1960s_Gucci_Logo.svg/512px-1960s_Gucci_Logo.svg.png"
-                   alt="" onerror="this.classList.add('img-error')">
-              <span>Gucci</span>
-            </a>
-
-            <a href="{% url 'brand-detail' 'hermes' %}" class="mega-brand-link">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Hermes_logo.svg/512px-Hermes_logo.svg.png"
-                   alt="" onerror="this.classList.add('img-error')">
-              <span>Hermès</span>
-            </a>
-
-            <a href="{% url 'brand-detail' 'ysl' %}" class="mega-brand-link">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Yves_Saint_Laurent_%28brand%2C_2012%29_logo.svg/512px-Yves_Saint_Laurent_%28brand%2C_2012%29_logo.svg.png"
-                   alt="" onerror="this.classList.add('img-error')">
-              <span>YSL</span>
-            </a>
-
-            <a href="{% url 'brand-detail' 'lancome' %}" class="mega-brand-link">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Lanc%C3%B4me_logo.svg/512px-Lanc%C3%B4me_logo.svg.png"
-                   alt="" onerror="this.classList.add('img-error')">
-              <span>Lancôme</span>
-            </a>
-
+            {% empty %}
+              <p>Chưa có thương hiệu</p>
+            {% endfor %}
           </div>
-          <a href="{% url 'brand-list' %}" class="mega-all-brands">Xem tất cả thương hiệu →</a>
+
+          <a href="{% url 'brand-list' %}" class="mega-all-brands">
+            Xem tất cả thương hiệu →
+          </a>
         </div>
 
       </div>

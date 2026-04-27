@@ -75,22 +75,28 @@
       </div>
       <div class="story-stats">
         <div class="story-stat">
-          <div class="story-stat-num">500<span style="font-size:24px">+</span></div>
+          <div class="story-stat-num">
+            {{ total_products }}<span style="font-size:24px">+</span>
+          </div>
           <div class="story-stat-label">Mùi hương chính hãng</div>
         </div>
         <div class="story-stat">
-          <div class="story-stat-num">30<span style="font-size:24px">+</span></div>
+          <div class="story-stat-num">
+            {{ total_brands }}<span style="font-size:24px">+</span>
+          </div>
           <div class="story-stat-label">Thương hiệu danh tiếng</div>
         </div>
         <div class="story-stat">
-          <div class="story-stat-num">5K<span style="font-size:24px">+</span></div>
+          <div class="story-stat-num">
+            {{ total_customers|floatformat:0 }}<span style="font-size:24px">+</span>
+          </div>
           <div class="story-stat-label">Khách hàng tin tưởng</div>
         </div>
       </div>
     </div>
     <div class="story-visual-panel">
       <div class="story-visual-glow"></div>
-      <img class="story-visual-img" src="https://images.unsplash.com/photo-1566977776052-6e61e6d6c6be?auto=format&fit=crop&w=1200&q=85" alt="Nước hoa nghệ thuật" loading="lazy">
+      <img class="story-visual-img" src="https://i.pinimg.com/736x/df/35/d5/df35d535c817ceb23d77b6450ff1d92b.jpg" alt="Nước hoa nghệ thuật" loading="lazy">
       <div class="story-visual-overlay"></div>
       <div class="story-visual-label">
         <p class="story-visual-label-text">Ánh sáng, hương thơm<br>và cảm xúc</p>
