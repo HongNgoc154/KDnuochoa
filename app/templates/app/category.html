@@ -150,6 +150,14 @@
 
             <!-- PRICE -->
             <p class="product-price">{{ item.price }}</p>
+            {% if item.variant_count > 0 %}
+            <p class="product-price">
+              Có {{ item.variant_count }} biến thể
+              {% if item.variant_values %}
+                · {{ item.variant_values|join:", " }}
+              {% endif %}
+            </p>
+            {% endif %}
 
             <!-- ACTION -->
             <div class="product-actions">

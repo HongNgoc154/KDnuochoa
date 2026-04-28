@@ -1,5 +1,6 @@
 from django.contrib.auth import logout
 from django.db import DatabaseError
+from django.db import models
 from django.db.models import Q
 from django.shortcuts import render, redirect
 from django.utils.text import slugify
@@ -8,6 +9,7 @@ from .models import LoaiSanPham, NhomHuong
 from .models import (
     BaiViet,
     BienThe,
+    BienTheThuocTinh,
     ChiTietDonHang,
     DanhGia,
     DonHang,
@@ -86,11 +88,35 @@ def _first_variant_map(product_ids):
         first_variant_map.setdefault(variant.id_SanPham_id, variant)
     return first_variant_map
 
+def _variant_value_map(product_ids):
+    rows = _safe_list(
+        BienTheThuocTinh.objects.select_related(
+            "id_BienThe",
+            "id_GiaTriThuocTinh",
+            "id_GiaTriThuocTinh__id_ThuocTinh",
+        ).filter(id_BienThe__id_SanPham_id__in=product_ids)
+    )
+    mapping = {}
+    for row in rows:
+        product_id = row.id_BienThe.id_SanPham_id
+        value = row.id_GiaTriThuocTinh.GiaTri
+        if not value:
+            continue
+        mapping.setdefault(product_id, set()).add(value)
+    return {pid: sorted(values) for pid, values in mapping.items()}
+
 def _build_product_cards(products):
     product_ids = [item.id_SanPham for item in products]
     image_map = _product_image_map(product_ids)
 
     first_variant_map = _first_variant_map(product_ids)
+    variant_value_map = _variant_value_map(product_ids)
+    variant_count_map = {
+        row["id_SanPham_id"]: row["count"]
+        for row in BienThe.objects.filter(id_SanPham_id__in=product_ids)
+        .values("id_SanPham_id")
+        .annotate(count=models.Count("id_BienThe"))
+    }
 
     cards = []
     for product in products:
@@ -113,6 +139,8 @@ def _build_product_cards(products):
                 "is_new": is_active,
                 "primary_image": primary_image,
                 "hover_image": hover_image,
+                "variant_values": variant_value_map.get(product.id_SanPham, []),
+                "variant_count": variant_count_map.get(product.id_SanPham, 0),
             }
         )
     return cards
@@ -208,6 +236,13 @@ def product_detail(request, product_id=None):
         return render(request, "app/product.html", {"product_data": {}, "product_images": []})
 
     variants = _safe_list(BienThe.objects.filter(id_SanPham=product_obj).order_by("id_BienThe"))
+    variant_attr_rows = _safe_list(
+        BienTheThuocTinh.objects.select_related(
+            "id_BienThe",
+            "id_GiaTriThuocTinh",
+            "id_GiaTriThuocTinh__id_ThuocTinh",
+        ).filter(id_BienThe__id_SanPham=product_obj)
+    )
     images = _safe_list(
         HinhAnh.objects.filter(
             Q(id_SanPham=product_obj) | Q(id_BienThe__id_SanPham=product_obj)
@@ -224,6 +259,27 @@ def product_detail(request, product_id=None):
         .order_by("-NgayTao")[:5]
     )
     top_variant = variants[0] if variants else None
+    variant_attr_map = {}
+    option_groups = {}
+    for row in variant_attr_rows:
+        variant_id = row.id_BienThe_id
+        attr_name = row.id_GiaTriThuocTinh.id_ThuocTinh.TenThuocTinh
+        attr_value = row.id_GiaTriThuocTinh.GiaTri
+        variant_attr_map.setdefault(variant_id, {})[attr_name] = attr_value
+        option_groups.setdefault(attr_name, set()).add(attr_value)
+
+    variant_payload = []
+    for variant in variants:
+        variant_payload.append(
+            {
+                "id": variant.id_BienThe,
+                "sku": variant.Sku,
+                "price": _format_currency(variant.GiaBan),
+                "price_raw": int(variant.GiaBan or 0),
+                "stock": int(variant.SoLuong or 0),
+                "attributes": variant_attr_map.get(variant.id_BienThe, {}),
+            }
+        )
     rating_values = [item.SoSao for item in root_reviews if item.SoSao]
     rating_avg = round(sum(rating_values) / len(rating_values), 1) if rating_values else 0
     product_data = {
@@ -241,6 +297,9 @@ def product_detail(request, product_id=None):
         "rating_count": len(root_reviews),
         "questions": questions,
         "reviews": root_reviews,
+        "variants": variant_payload,
+        "variant_count": len(variant_payload),
+        "option_groups": {k: sorted(list(v)) for k, v in option_groups.items()},
     }
     product_images = [img.url.url if hasattr(img.url, "url") else str(img.url) for img in images]
 

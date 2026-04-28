@@ -1,156 +1,356 @@
 from django.contrib import admin
-# from django.template.response import TemplateResponse
 from django.contrib.auth.models import User, Group
-from .models import BienThe, BienTheThuocTinh, GiaTriThuocTinh, LoaiSanPham, NhomHuong, SanPham, ThuocTinh, ThuongHieu, HinhAnh, SanPhamNhomHuong
-# from app.admin import admin_site 
 from django.utils.html import format_html
-# from .forms import ThuongHieuForm  
+from django import forms
 
+from .models import (
+    BienThe, BienTheThuocTinh, GiaTriThuocTinh,
+    LoaiSanPham, NhomHuong, SanPham, ThuocTinh,
+    ThuongHieu, HinhAnh, SanPhamNhomHuong,
+)
+
+
+# ═══════════════════════════════════════
+#  CUSTOM ADMIN SITE
+# ═══════════════════════════════════════
 class MyAdminSite(admin.AdminSite):
-    site_header = "Ami Admin"
+    site_header  = "Ami Perfumery · Quản trị"
+    site_title   = "Ami Admin"
+    index_title  = "Tổng quan hệ thống"
+    index_template   = "admin/ami_index.html"
+    app_index_template = "admin/ami_app_index.html"
 
     def index(self, request, extra_context=None):
         extra_context = extra_context or {}
         extra_context.update({
             "total_orders": 120,
             "total_users": 45,
-            "revenue": 25000000,
+            "revenue": "25.000.000₫",
         })
         return super().index(request, extra_context)
+
 
 admin_site = MyAdminSite(name='myadmin')
 admin_site.register(User)
 admin_site.register(Group)
 
 
-# 
+# ═══════════════════════════════════════
+#  FORM tùy chỉnh cho SanPham
+# ═══════════════════════════════════════
+class SanPhamForm(forms.ModelForm):
+    """
+    Thêm widget checkbox đẹp cho nhom_huongs thay vì
+    SelectMultiple mặc định.
+    """
+    nhom_huongs = forms.ModelMultipleChoiceField(
+        queryset=NhomHuong.objects.all(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'nhom-huong-checks'}),
+        label="Nhóm hương",
+    )
+
+    class Meta:
+        model  = SanPham
+        fields = '__all__'
+        widgets = {
+            'TenSanPham': forms.TextInput(attrs={
+                'class': 'ami-input',
+                'placeholder': 'Nhập tên sản phẩm...',
+            }),
+            'MoTa_SanPham': forms.Textarea(attrs={
+                'class': 'ami-textarea',
+                'rows': 5,
+                'placeholder': 'Mô tả chi tiết về sản phẩm...',
+            }),
+            'TrangThai_SanPham': forms.Select(
+                choices=[
+                    ('', '— Chọn trạng thái —'),
+                    ('active',   'Đang bán'),
+                    ('inactive', 'Ngừng bán'),
+                    ('draft',    'Nháp'),
+                ],
+                attrs={'class': 'ami-select'},
+            ),
+            'id_ThuongHieu': forms.Select(attrs={'class': 'ami-select'}),
+            'id_LoaiSanPham': forms.Select(attrs={'class': 'ami-select'}),
+        }
+
+
+# ═══════════════════════════════════════
+#  INLINES
+# ═══════════════════════════════════════
 class HinhAnhInline(admin.TabularInline):
-    model = HinhAnh
-    extra = 1
+    model       = HinhAnh
+    extra       = 1
+    fields      = ('url', 'image_thumb', 'id_BienThe')
+    readonly_fields = ('image_thumb',)
+    verbose_name        = "Hình ảnh"
+    verbose_name_plural = "📷  Hình ảnh sản phẩm"
+
+    def image_thumb(self, obj):
+        if obj.url:
+            return format_html(
+                '<img src="{}" style="width:64px;height:64px;object-fit:cover;'
+                'border-radius:8px;border:1px solid #e0d9cc;" />',
+                obj.url.url,
+            )
+        return "—"
+    image_thumb.short_description = "Xem trước"
+
 
 class BienTheThuocTinhInline(admin.TabularInline):
-    model = BienTheThuocTinh
-    extra = 1
+    model               = BienTheThuocTinh
+    extra               = 1
     autocomplete_fields = ('id_GiaTriThuocTinh',)
-
-class BienTheInline(admin.TabularInline):
-    model = BienThe
-    extra = 1
-    fields = ('Sku', 'GiaNhap', 'GiaBan', 'SoLuong')
+    verbose_name        = "Thuộc tính"
+    verbose_name_plural = "Thuộc tính biến thể"
 
 
-class SanPhamNhomHuongInline(admin.TabularInline):
-    model = SanPhamNhomHuong
-    extra = 1
+class BienTheInline(admin.StackedInline):
+    """
+    Dùng StackedInline để mỗi biến thể hiển thị rộng rãi hơn,
+    dễ nhìn hơn TabularInline khi có nhiều trường.
+    """
+    model               = BienThe
+    extra               = 1
+    fields              = ('Sku', 'GiaNhap', 'GiaBan', 'SoLuong')
+    verbose_name        = "Biến thể"
+    verbose_name_plural = "📦  Biến thể sản phẩm (kích thước / nồng độ)"
 
+    def get_formset(self, request, obj=None, **kwargs):
+        formset = super().get_formset(request, obj, **kwargs)
+        for field_name, widget_class, placeholder in [
+            ('Sku',     forms.TextInput,   'VD: CHANEL-NO5-50ML'),
+            ('GiaNhap', forms.NumberInput, 'Giá nhập'),
+            ('GiaBan',  forms.NumberInput, 'Giá bán'),
+            ('SoLuong', forms.NumberInput, 'Số lượng tồn'),
+        ]:
+            if field_name in formset.form.base_fields:
+                formset.form.base_fields[field_name].widget = widget_class(attrs={
+                    'class': 'ami-input',
+                    'placeholder': placeholder,
+                })
+        return formset
+
+
+# ═══════════════════════════════════════
+#  SanPham ADMIN
+# ═══════════════════════════════════════
 @admin.register(SanPham, site=admin_site)
 class SanPhamAdmin(admin.ModelAdmin):
+    form          = SanPhamForm
+    change_form_template = "admin/sanpham_change_form.html"
 
-    list_display = (
-        'TenSanPham',
-        'TrangThai_SanPham',
+    # Danh sách
+    list_display  = (
+        'product_card',         # custom HTML column
+        'TrangThai_badge',
         'ten_thuong_hieu',
         'ten_loai_san_pham',
-        'get_nhom_huong'
+        'get_nhom_huong',
+        'so_bien_the',
     )
+    list_display_links = ('product_card',)
     search_fields = ('TenSanPham',)
-    list_filter = ('TrangThai_SanPham', 'id_ThuongHieu', 'id_LoaiSanPham', 'nhom_huongs',)
-    inlines = [BienTheInline, HinhAnhInline, SanPhamNhomHuongInline,] 
+    list_filter   = (
+        'TrangThai_SanPham',
+        'id_ThuongHieu',
+        'id_LoaiSanPham',
+        'nhom_huongs',
+    )
+    list_per_page = 20
 
-    # 👇 QUAN TRỌNG
+    # Form thêm/sửa — một khối duy nhất, không chia tab
     fieldsets = (
-        ('Thông tin sản phẩm', {
+        (None, {
             'fields': (
                 'TenSanPham',
-                'MoTa_SanPham',
+                ('id_ThuongHieu', 'id_LoaiSanPham'),
                 'TrangThai_SanPham',
-                'id_ThuongHieu',
-                'id_LoaiSanPham',
-                # 'id_NhomHuong',
-                # 'nhom_huongs',
-            )
-        }),
-        ('Biến thể & Hình ảnh', {
-            'classes': ('wide',),  # 👈 quan trọng
-            'fields': ()  # để trống để inline nằm dưới
+                'MoTa_SanPham',
+                'nhom_huongs',
+            ),
         }),
     )
-    def get_nhom_huong(self, obj):
-        return ", ".join([h.TenNhomHuong for h in obj.nhom_huongs.all()])
-    
+
+    inlines = [BienTheInline, HinhAnhInline]
+
+    # ── Custom list_display columns ──────────────────────────
+    def product_card(self, obj):
+        img = "—"
+        first_img = HinhAnh.objects.filter(id_SanPham=obj).first()
+        if first_img and first_img.url:
+            img = format_html(
+                '<img src="{}" style="width:48px;height:48px;object-fit:cover;'
+                'border-radius:8px;vertical-align:middle;margin-right:10px;'
+                'border:1px solid #e0d9cc;"/>',
+                first_img.url.url,
+            )
+        return format_html(
+            '{}<strong style="vertical-align:middle;">{}</strong>',
+            img, obj.TenSanPham,
+        )
+    product_card.short_description = "Sản phẩm"
+    product_card.allow_tags = True
+
+    def TrangThai_badge(self, obj):
+        colors = {
+            'active':   ('#e8f5e9', '#2e7d32', '●  Đang bán'),
+            'inactive': ('#fce4ec', '#c62828', '● Ngừng bán'),
+            'draft':    ('#fff8e1', '#f57f17', '●  Nháp'),
+        }
+        bg, fg, label = colors.get(
+            obj.TrangThai_SanPham,
+            ('#f5f5f5', '#616161', f'● {obj.TrangThai_SanPham or "—"}'),
+        )
+        return format_html(
+            '<span style="background:{};color:{};padding:3px 10px;border-radius:20px;'
+            'font-size:11px;font-weight:600;white-space:nowrap;">{}</span>',
+            bg, fg, label,
+        )
+    TrangThai_badge.short_description = "Trạng thái"
+
     def ten_thuong_hieu(self, obj):
-        return obj.id_ThuongHieu.TenThuongHieu
+        try:
+            return obj.id_ThuongHieu.TenThuongHieu
+        except Exception:
+            return "—"
     ten_thuong_hieu.short_description = "Thương hiệu"
 
-
     def ten_loai_san_pham(self, obj):
-        return obj.id_LoaiSanPham.TenLoaiSanPham
-    ten_loai_san_pham.short_description = "Loại sản phẩm"
+        try:
+            return obj.id_LoaiSanPham.TenLoaiSanPham
+        except Exception:
+            return "—"
+    ten_loai_san_pham.short_description = "Loại"
 
+    def get_nhom_huong(self, obj):
+        huongs = obj.nhom_huongs.all()
+        if not huongs:
+            return "—"
+        badges = "".join(
+            f'<span style="background:#f0eadc;color:#576238;padding:2px 8px;'
+            f'border-radius:12px;font-size:11px;margin-right:4px;">{h.TenNhomHuong}</span>'
+            for h in huongs
+        )
+        return format_html(badges)
     get_nhom_huong.short_description = "Nhóm hương"
-    # filter_horizontal = ('nhom_huongs',)
 
-    
+    def so_bien_the(self, obj):
+        count = BienThe.objects.filter(id_SanPham=obj).count()
+        color = "#2e7d32" if count > 0 else "#9e9e9e"
+        return format_html(
+            '<span style="color:{};font-weight:600;">{} biến thể</span>',
+            color, count,
+        )
+    so_bien_the.short_description = "Biến thể"
 
+    class Media:
+        css  = {'all': ('admin/css/ami_admin.css',)}
+        js   = ('admin/js/ami_admin.js',)
+
+
+# ═══════════════════════════════════════
+#  Các model khác
+# ═══════════════════════════════════════
 @admin.register(BienThe, site=admin_site)
 class BienTheAdmin(admin.ModelAdmin):
-    inlines = [BienTheThuocTinhInline]
-    list_display = ('id_BienThe', 'id_SanPham', 'Sku', 'GiaNhap', 'GiaBan', 'SoLuong')
+    inlines       = [BienTheThuocTinhInline]
+    list_display  = ('id_BienThe', 'id_SanPham', 'Sku', 'gia_ban_fmt', 'SoLuong', 'ton_kho_badge')
     search_fields = ('Sku', 'id_SanPham__TenSanPham')
-    list_filter = ('id_SanPham__id_ThuongHieu', 'id_SanPham__id_LoaiSanPham')
+    list_filter   = ('id_SanPham__id_ThuongHieu', 'id_SanPham__id_LoaiSanPham')
     autocomplete_fields = ('id_SanPham',)
+
+    def gia_ban_fmt(self, obj):
+        return f"{int(obj.GiaBan):,}".replace(",", ".") + "₫" if obj.GiaBan else "—"
+    gia_ban_fmt.short_description = "Giá bán"
+
+    def ton_kho_badge(self, obj):
+        if obj.SoLuong <= 0:
+            return format_html('<span style="color:#c62828;font-weight:600;">Hết hàng</span>')
+        if obj.SoLuong < 10:
+            return format_html('<span style="color:#f57f17;font-weight:600;">Sắp hết ({})</span>', obj.SoLuong)
+        return format_html('<span style="color:#2e7d32;font-weight:600;">Còn hàng ({})</span>', obj.SoLuong)
+    ton_kho_badge.short_description = "Tồn kho"
+
+    class Media:
+        css = {'all': ('admin/css/ami_admin.css',)}
 
 
 @admin.register(ThuocTinh, site=admin_site)
 class ThuocTinhAdmin(admin.ModelAdmin):
-    list_display = ('id_ThuocTinh', 'TenThuocTinh')
+    list_display  = ('id_ThuocTinh', 'TenThuocTinh')
     search_fields = ('TenThuocTinh',)
 
 
 @admin.register(GiaTriThuocTinh, site=admin_site)
 class GiaTriThuocTinhAdmin(admin.ModelAdmin):
-    list_display = ('id_GiaTriThuocTinh', 'GiaTri', 'id_ThuocTinh')
-    list_filter = ('id_ThuocTinh',)
+    list_display  = ('id_GiaTriThuocTinh', 'GiaTri', 'id_ThuocTinh')
+    list_filter   = ('id_ThuocTinh',)
     search_fields = ('GiaTri', 'id_ThuocTinh__TenThuocTinh')
     autocomplete_fields = ('id_ThuocTinh',)
 
 
 @admin.register(BienTheThuocTinh, site=admin_site)
 class BienTheThuocTinhAdmin(admin.ModelAdmin):
-    list_display = ('id_BienThe', 'id_GiaTriThuocTinh')
-    list_filter = ('id_GiaTriThuocTinh__id_ThuocTinh',)
+    list_display  = ('id_BienThe', 'id_GiaTriThuocTinh')
+    list_filter   = ('id_GiaTriThuocTinh__id_ThuocTinh',)
     autocomplete_fields = ('id_BienThe', 'id_GiaTriThuocTinh')
-
-
 
 
 @admin.register(ThuongHieu, site=admin_site)
 class ThuongHieuAdmin(admin.ModelAdmin):
-    list_display = ('TenThuongHieu', 'logo_preview')
+    list_display  = ('logo_preview', 'TenThuongHieu')
+    search_fields = ('TenThuongHieu',)
 
     def logo_preview(self, obj):
-        # dùng LogoUrl có sẵn
         if obj.LogoUrl:
-            return format_html('<img src="{}" width="50"/>', obj.LogoUrl)
-        return '-'
+            return format_html(
+                '<img src="{}" style="height:32px;object-fit:contain;"/>',
+                obj.LogoUrl.url if hasattr(obj.LogoUrl, 'url') else obj.LogoUrl,
+            )
+        return "—"
+    logo_preview.short_description = "Logo"
+
+    class Media:
+        css = {'all': ('admin/css/ami_admin.css',)}
+
 
 @admin.register(LoaiSanPham, site=admin_site)
 class LoaiSanPhamAdmin(admin.ModelAdmin):
-    list_display = ('TenLoaiSanPham', 'image_preview')
+    list_display  = ('image_preview', 'TenLoaiSanPham', 'MoTa')
+    search_fields = ('TenLoaiSanPham',)
 
     def image_preview(self, obj):
         if obj.HinhanhUrl:
-            return format_html('<img src="{}" width="50"/>', obj.HinhanhUrl.url)
-        return '-'
+            return format_html(
+                '<img src="{}" style="width:48px;height:48px;object-fit:cover;border-radius:8px;"/>',
+                obj.HinhanhUrl.url,
+            )
+        return "—"
+    image_preview.short_description = "Ảnh"
+
+    class Media:
+        css = {'all': ('admin/css/ami_admin.css',)}
 
 
 @admin.register(NhomHuong, site=admin_site)
 class NhomHuongAdmin(admin.ModelAdmin):
-    list_display = ('TenNhomHuong', 'icon_preview')
+    list_display  = ('icon_preview', 'TenNhomHuong')
+    search_fields = ('TenNhomHuong',)
 
     def icon_preview(self, obj):
         if obj.IconUrl:
-            return format_html('<img src="{}" width="50"/>', obj.IconUrl.url)
-        return '-'
-admin_site.register(HinhAnh)
+            return format_html(
+                '<img src="{}" style="width:40px;height:40px;object-fit:cover;border-radius:50%;"/>',
+                obj.IconUrl.url,
+            )
+        return "🌸"
+    icon_preview.short_description = "Icon"
 
+    class Media:
+        css = {'all': ('admin/css/ami_admin.css',)}
+
+
+admin_site.register(HinhAnh)

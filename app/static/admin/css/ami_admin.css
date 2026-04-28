@@ -1,0 +1,622 @@
+/* =============================================================
+   Ami Perfumery — ami_admin.css
+   File đặt tại: app/static/admin/css/ami_admin.css
+   ============================================================= */
+
+/* ── Design tokens ─────────────────────────────── */
+:root {
+  --ami-olive:        #576238;
+  --ami-olive-dark:   #3d4527;
+  --ami-olive-light:  #7a8a50;
+  --ami-beige:        #f0eadc;
+  --ami-beige-dark:   #e4dac8;
+  --ami-cream:        #faf8f4;
+  --ami-white:        #ffffff;
+  --ami-text:         #2a2a2a;
+  --ami-text-light:   #6b6b5e;
+  --ami-border:       #e0d9cc;
+  --ami-shadow-sm:    0 2px 8px rgba(87,98,56,0.10);
+  --ami-shadow-md:    0 6px 24px rgba(87,98,56,0.13);
+  --ami-radius:       12px;
+  --ami-radius-sm:    8px;
+  --ami-font:         'Jost', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* ── Base reset cho admin ────────────────────────── */
+#content-main,
+.ami-form-wrap {
+  font-family: var(--ami-font);
+  color: var(--ami-text);
+}
+
+/* ── Header / branding ───────────────────────────── */
+#header {
+  background: var(--ami-olive-dark) !important;
+  padding: 14px 20px !important;
+}
+#header a:link,
+#header a:visited { color: #f0eadc !important; }
+#branding h1 a {
+  font-family: 'Georgia', serif;
+  font-size: 22px !important;
+  letter-spacing: 1px;
+}
+#user-tools { color: rgba(240,234,220,0.8) !important; font-size: 13px; }
+#user-tools a { color: var(--ami-beige) !important; }
+
+/* ── Breadcrumb ──────────────────────────────────── */
+div.breadcrumbs {
+  background: #f7f5f0 !important;
+  border-bottom: 1px solid var(--ami-border);
+  padding: 10px 20px;
+  font-size: 12px;
+  color: var(--ami-text-light);
+}
+div.breadcrumbs a { color: var(--ami-olive) !important; }
+
+/* ── Sidebar navigation ──────────────────────────── */
+#nav-sidebar {
+  background: var(--ami-cream) !important;
+  border-right: 1px solid var(--ami-border);
+}
+.module caption {
+  background: var(--ami-olive) !important;
+  color: #fff !important;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 10px 14px;
+  border-radius: 8px 8px 0 0;
+}
+.module table tr:hover td,
+.module table tr:hover th {
+  background: var(--ami-beige) !important;
+}
+
+/* ════════════════════════════════════════
+   FORM LAYOUT — hai cột
+════════════════════════════════════════ */
+.ami-form-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 24px;
+  align-items: start;
+  padding: 0 0 40px;
+}
+
+@media (max-width: 1100px) {
+  .ami-form-layout { grid-template-columns: 1fr; }
+  .ami-col-side { order: -1; }
+}
+
+/* ── CARD ────────────────────────────────────────── */
+.ami-card {
+  background: var(--ami-white);
+  border: 1px solid var(--ami-border);
+  border-radius: var(--ami-radius);
+  overflow: hidden;
+  box-shadow: var(--ami-shadow-sm);
+  margin-bottom: 20px;
+}
+
+.ami-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, var(--ami-cream) 0%, #f7f3eb 100%);
+  border-bottom: 1px solid var(--ami-border);
+}
+.ami-card-icon { font-size: 18px; line-height: 1; flex-shrink: 0; }
+.ami-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--ami-text);
+  margin: 0;
+  flex: 1;
+}
+.ami-card-badge {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ami-text-light);
+  background: var(--ami-beige);
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--ami-border);
+}
+.ami-card-body {
+  padding: 20px;
+}
+
+/* ── FIELDS ──────────────────────────────────────── */
+.ami-field {
+  margin-bottom: 18px;
+}
+.ami-field:last-child { margin-bottom: 0; }
+
+.ami-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ami-text-light);
+  margin-bottom: 7px;
+}
+.ami-required {
+  color: #c62828;
+  margin-left: 3px;
+}
+
+/* Input, Select, Textarea chung */
+.ami-input,
+.ami-select,
+.ami-textarea,
+input.ami-input,
+select.ami-select,
+textarea.ami-textarea,
+.ami-form-wrap input[type="text"],
+.ami-form-wrap input[type="number"],
+.ami-form-wrap input[type="email"],
+.ami-form-wrap select,
+.ami-form-wrap textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid var(--ami-border);
+  border-radius: var(--ami-radius-sm);
+  font-family: var(--ami-font);
+  font-size: 14px;
+  color: var(--ami-text);
+  background: var(--ami-cream);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
+}
+
+.ami-form-wrap input[type="text"]:focus,
+.ami-form-wrap input[type="number"]:focus,
+.ami-form-wrap input[type="email"]:focus,
+.ami-form-wrap select:focus,
+.ami-form-wrap textarea:focus {
+  border-color: var(--ami-olive);
+  box-shadow: 0 0 0 3px rgba(87,98,56,0.12);
+  background: var(--ami-white);
+}
+
+.ami-form-wrap textarea { resize: vertical; min-height: 120px; }
+
+/* Help text */
+.ami-help {
+  font-size: 12px;
+  color: var(--ami-text-light);
+  margin-top: 5px;
+  line-height: 1.5;
+}
+.ami-help--top { margin-bottom: 14px; }
+
+/* Error */
+.ami-field--error input,
+.ami-field--error select,
+.ami-field--error textarea {
+  border-color: #c62828;
+}
+.ami-error-msg {
+  font-size: 12px;
+  color: #c62828;
+  margin-top: 5px;
+}
+.ami-error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #fce4ec;
+  border: 1px solid #f48fb1;
+  border-radius: var(--ami-radius-sm);
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: #b71c1c;
+}
+.ami-error-icon { font-size: 20px; flex-shrink: 0; }
+
+/* ════════════════════════════════════════
+   NHÓM HƯƠNG — checkbox đẹp
+════════════════════════════════════════ */
+.ami-field--scents ul,
+.nhom-huong-checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.ami-field--scents ul li,
+.nhom-huong-checks li {
+  display: flex;
+  align-items: center;
+}
+
+/* Ẩn checkbox gốc */
+.ami-field--scents input[type="checkbox"],
+.nhom-huong-checks input[type="checkbox"] {
+  width: 0 !important;
+  height: 0 !important;
+  position: absolute;
+  opacity: 0;
+}
+
+/* Label như pill button */
+.ami-field--scents label,
+.nhom-huong-checks label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1.5px solid var(--ami-border);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ami-text);
+  background: var(--ami-cream);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.ami-field--scents label:hover,
+.nhom-huong-checks label:hover {
+  border-color: var(--ami-olive-light);
+  background: #f0eadc;
+  color: var(--ami-olive);
+}
+
+/* Label khi checkbox được chọn */
+.ami-field--scents input[type="checkbox"]:checked + label,
+.nhom-huong-checks input[type="checkbox"]:checked + label {
+  background: var(--ami-olive);
+  border-color: var(--ami-olive);
+  color: #fff;
+}
+
+/* Dấu check custom */
+.ami-field--scents label::before,
+.nhom-huong-checks label::before {
+  content: '○';
+  font-size: 14px;
+  flex-shrink: 0;
+  line-height: 1;
+  color: var(--ami-border);
+  transition: all 0.2s ease;
+}
+.ami-field--scents input[type="checkbox"]:checked + label::before,
+.nhom-huong-checks input[type="checkbox"]:checked + label::before {
+  content: '✓';
+  color: rgba(255,255,255,0.9);
+}
+
+/* ════════════════════════════════════════
+   INLINES (Biến thể & Hình ảnh)
+════════════════════════════════════════ */
+.ami-inline-wrap .inline-group { border: none; padding: 0; margin: 0; }
+.ami-inline-wrap h2 { display: none; }  /* ẩn title inline mặc định (đã có trong card header) */
+.ami-inline-wrap .tabular { overflow-x: auto; }
+
+/* Header của bảng inline */
+.ami-inline-wrap .tabular thead th,
+.ami-form-wrap .tabular thead th {
+  background: var(--ami-olive) !important;
+  color: #fff !important;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 10px 12px;
+  border: none;
+  font-weight: 600;
+}
+
+/* Dòng inline */
+.ami-inline-wrap .tabular tr.form-row,
+.ami-form-wrap .tabular tr.form-row {
+  background: var(--ami-white);
+  border-bottom: 1px solid var(--ami-beige);
+  transition: background 0.15s ease;
+}
+.ami-inline-wrap .tabular tr.form-row:hover,
+.ami-form-wrap .tabular tr.form-row:hover {
+  background: var(--ami-cream);
+}
+
+/* Input bên trong inline */
+.ami-form-wrap .tabular td input[type="text"],
+.ami-form-wrap .tabular td input[type="number"],
+.ami-form-wrap .tabular td select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1.5px solid var(--ami-border);
+  border-radius: 6px;
+  font-size: 13px;
+  background: #fbf9f5;
+  transition: border-color 0.2s ease;
+}
+.ami-form-wrap .tabular td input:focus,
+.ami-form-wrap .tabular td select:focus {
+  border-color: var(--ami-olive);
+  outline: none;
+  background: #fff;
+}
+
+/* Nút xóa inline */
+.ami-form-wrap .inline-deletelink {
+  background: none !important;
+  color: #c62828 !important;
+  font-size: 18px;
+  font-weight: bold;
+  text-decoration: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+.ami-form-wrap .inline-deletelink:hover { background: #fce4ec !important; }
+
+/* Nút Thêm dòng inline */
+.ami-form-wrap .add-row td,
+.ami-inline-wrap .add-row td {
+  background: var(--ami-cream) !important;
+  border-top: 1px dashed var(--ami-border);
+  padding: 10px 14px;
+}
+.ami-form-wrap .add-row a,
+.ami-inline-wrap .add-row a {
+  color: var(--ami-olive) !important;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1.5px dashed var(--ami-olive-light);
+  border-radius: 20px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.ami-form-wrap .add-row a:hover {
+  background: var(--ami-olive);
+  color: #fff !important;
+  border-style: solid;
+}
+
+/* ── Stacked inline (BienThe) ─────── */
+.ami-form-wrap .inline-related.has_original h3,
+.ami-form-wrap .inline-related h3 {
+  background: var(--ami-beige) !important;
+  border-top: 3px solid var(--ami-olive-light) !important;
+  padding: 10px 16px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ami-text);
+  border-radius: 0 0 0 0;
+}
+
+.ami-form-wrap .inline-related {
+  border: 1px solid var(--ami-border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.ami-form-wrap .inline-related .form-row {
+  padding: 12px 16px;
+  background: var(--ami-white);
+  border-bottom: 1px solid var(--ami-beige);
+}
+.ami-form-wrap .inline-related .form-row:last-child { border-bottom: none; }
+
+/* ════════════════════════════════════════
+   BUTTONS (sidebar)
+════════════════════════════════════════ */
+.ami-save-box { position: sticky; top: 20px; }
+
+.ami-submit-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 !important;
+  float: none !important;
+  overflow: visible;
+}
+
+.ami-btn {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  text-align: center;
+  font-family: var(--ami-font);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border: none;
+  border-radius: 40px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  line-height: 1.4;
+}
+.ami-btn:hover { transform: translateY(-2px); }
+
+.ami-btn--primary {
+  background: var(--ami-olive);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(87,98,56,0.3);
+}
+.ami-btn--primary:hover {
+  background: var(--ami-olive-dark);
+  box-shadow: 0 6px 20px rgba(87,98,56,0.4);
+}
+
+.ami-btn--secondary {
+  background: var(--ami-beige);
+  color: var(--ami-olive);
+  border: 1.5px solid var(--ami-beige-dark);
+}
+.ami-btn--secondary:hover {
+  background: #e8e0cc;
+}
+
+.ami-btn--ghost {
+  background: transparent;
+  color: var(--ami-text-light);
+  border: 1.5px solid var(--ami-border);
+}
+.ami-btn--ghost:hover {
+  background: var(--ami-cream);
+  color: var(--ami-text);
+}
+
+.ami-btn--danger {
+  background: transparent;
+  color: #c62828;
+  border: 1.5px solid #ef9a9a;
+  font-size: 11px;
+}
+.ami-btn--danger:hover {
+  background: #fce4ec;
+}
+
+/* Object tools */
+.ami-object-tools { margin: 0 0 20px; padding: 0; list-style: none; display: flex; gap: 8px; flex-wrap: wrap; }
+.ami-tool-btn {
+  display: inline-block;
+  padding: 7px 16px;
+  background: var(--ami-beige);
+  color: var(--ami-olive) !important;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  border-radius: 20px;
+  text-decoration: none !important;
+  border: 1.5px solid var(--ami-beige-dark);
+  transition: background 0.2s ease;
+}
+.ami-tool-btn:hover { background: var(--ami-beige-dark); }
+
+/* ════════════════════════════════════════
+   LIST PAGE
+════════════════════════════════════════ */
+#changelist {
+  background: transparent;
+}
+#changelist .results {
+  border-radius: var(--ami-radius);
+  overflow: hidden;
+  box-shadow: var(--ami-shadow-sm);
+  border: 1px solid var(--ami-border);
+}
+
+#result_list thead th {
+  background: var(--ami-olive) !important;
+  color: #fff !important;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 12px 14px;
+  border: none;
+  white-space: nowrap;
+}
+#result_list thead th a { color: #fff !important; }
+#result_list thead th.sorted { background: var(--ami-olive-dark) !important; }
+
+#result_list tbody tr {
+  background: var(--ami-white);
+  transition: background 0.15s ease;
+}
+#result_list tbody tr:nth-child(even) { background: #fdfbf8; }
+#result_list tbody tr:hover { background: var(--ami-beige) !important; }
+#result_list tbody td { padding: 12px 14px; border-bottom: 1px solid var(--ami-beige); font-size: 13px; vertical-align: middle; }
+#result_list tbody td a { color: var(--ami-olive); font-weight: 600; text-decoration: none; }
+#result_list tbody td a:hover { text-decoration: underline; }
+
+/* Pagination */
+.paginator {
+  background: var(--ami-cream) !important;
+  border-top: 1px solid var(--ami-border);
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--ami-text-light);
+}
+.paginator a:link, .paginator a:visited {
+  background: var(--ami-olive) !important;
+  color: #fff !important;
+  padding: 5px 12px;
+  border-radius: 6px;
+  text-decoration: none;
+}
+
+/* Search */
+#toolbar { background: var(--ami-cream) !important; border-bottom: 1px solid var(--ami-border); padding: 12px 16px; }
+#searchbar {
+  padding: 9px 14px;
+  border: 1.5px solid var(--ami-border) !important;
+  border-radius: var(--ami-radius-sm) !important;
+  font-family: var(--ami-font);
+  font-size: 13px;
+  width: 280px;
+  background: var(--ami-white);
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+#searchbar:focus { border-color: var(--ami-olive) !important; }
+#changelist-search input[type="submit"] {
+  background: var(--ami-olive) !important;
+  color: #fff !important;
+  border: none;
+  border-radius: var(--ami-radius-sm);
+  padding: 9px 18px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Filters sidebar */
+#changelist-filter {
+  background: var(--ami-cream) !important;
+  border-left: 1px solid var(--ami-border);
+}
+#changelist-filter h2 {
+  background: var(--ami-olive) !important;
+  color: #fff !important;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 10px 14px;
+  margin: 0;
+}
+#changelist-filter h3 {
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ami-text-light);
+  padding: 12px 14px 4px;
+  margin: 0;
+}
+#changelist-filter ul { list-style: none; margin: 0; padding: 0 0 12px; }
+#changelist-filter ul li a { padding: 6px 14px; display: block; font-size: 13px; color: var(--ami-text); text-decoration: none; }
+#changelist-filter ul li a:hover { background: var(--ami-beige); color: var(--ami-olive); }
+#changelist-filter ul li.selected a { color: var(--ami-olive); font-weight: 700; }
+
+/* ── Misc ─────────────────────────────────────────── */
+.messagelist li {
+  padding: 12px 16px !important;
+  border-radius: 8px !important;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.messagelist .success { background: #e8f5e9 !important; color: #2e7d32 !important; border-left: 4px solid #2e7d32; }
+.messagelist .error   { background: #fce4ec !important; color: #c62828 !important; border-left: 4px solid #c62828; }
+.messagelist .warning { background: #fff8e1 !important; color: #f57f17 !important; border-left: 4px solid #f57f17; }

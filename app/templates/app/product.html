@@ -77,7 +77,7 @@
           <span class="pd-rating-score">{{ product_data.rating_avg|default:'0' }}</span>
           <span class="pd-rating-count">({{ product_data.rating_count|default:'0' }} đánh giá)</span>
         </div>
-         <span class="pd-status {% if product_data.stock|default:0 > 0 and product_data.status|lower == 'active' %}in-stock{% endif %}">
+         <span id="pdStockStatus" class="pd-status {% if product_data.stock|default:0 > 0 and product_data.status|lower == 'active' %}in-stock{% endif %}">
           ● {% if product_data.stock|default:0 > 0 and product_data.status|lower == 'active' %}Còn hàng{% else %}Hết hàng{% endif %}
         </span>
       </div>
@@ -85,19 +85,21 @@
 
     <!-- Price -->
     <div class="pd-price-block reveal-up delay-1">
-      <span class="pd-price">{{ product_data.price|default:'Liên hệ' }}</span>
-      <span class="pd-price-note">/ 60ml EDP</span>
+      <span class="pd-price" id="pdVariantPrice">{{ product_data.price|default:'Liên hệ' }}</span>
+      <span class="pd-price-note" id="pdVariantMeta">Có {{ product_data.variant_count|default:'0' }} biến thể</span>
     </div>
 
-    <!-- Size selector -->
+    <!-- Variant selector -->
+    {% for attr_name, attr_values in product_data.option_groups.items %}
     <div class="pd-option-group reveal-up delay-2">
-      <p class="pd-option-label">Dung tích</p>
-      <div class="pd-size-pills">
-        <button class="pd-size-pill" data-size="30ml">30ml</button>
-        <button class="pd-size-pill active" data-size="60ml">60ml</button>
-        <button class="pd-size-pill" data-size="100ml">100ml</button>
+      <p class="pd-option-label">{{ attr_name }}</p>
+      <div class="pd-size-pills" data-variant-group="{{ attr_name }}">
+        {% for attr_value in attr_values %}
+        <button class="pd-size-pill {% if forloop.first %}active{% endif %}" data-attr-name="{{ attr_name }}" data-attr-value="{{ attr_value }}">{{ attr_value }}</button>
+        {% endfor %}
       </div>
     </div>
+     {% endfor %}
 
     <!-- Quantity -->
     <div class="pd-option-group reveal-up delay-3">

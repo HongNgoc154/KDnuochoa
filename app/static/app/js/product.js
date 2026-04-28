@@ -227,14 +227,64 @@ function updateZoomPaneBg(src) {
 })();
 
 /* ─── 6. SIZE PILLS ────────────────────────────────────────── */
-(function initSizePills() {
-  const pills = document.querySelectorAll('.pd-size-pill');
-  pills.forEach(pill => {
+/* ─── 6. VARIANT PILLS ─────────────────────────────────────── */
+(function initVariantPills() {
+  const pills = [...document.querySelectorAll('.pd-size-pill')];
+  const priceEl = document.getElementById('pdVariantPrice');
+  const metaEl = document.getElementById('pdVariantMeta');
+  const stockEl = document.getElementById('pdStockStatus');
+  const variantsNode = document.getElementById('pdVariantsData');
+
+  if (!pills.length || !variantsNode) return;
+
+  let variants = [];
+  try {
+    variants = JSON.parse(variantsNode.textContent || '[]');
+  } catch {
+    variants = [];
+  }
+
+  const selectedAttrs = {};
+  pills.forEach((pill) => {
+    const attr = pill.dataset.attrName;
+    const value = pill.dataset.attrValue;
+    if (pill.classList.contains('active') && attr && value) {
+      selectedAttrs[attr] = value;
+    }
+  });
+
+  const isMatch = (variant) => {
+    const attrs = variant.attributes || {};
+    return Object.entries(selectedAttrs).every(([name, value]) => attrs[name] === value);
+  };
+
+  const applyVariant = () => {
+    const matched = variants.find(isMatch) || variants[0];
+    if (!matched) return;
+    if (priceEl) priceEl.textContent = matched.price || 'Liên hệ';
+    if (metaEl) metaEl.textContent = `${matched.sku || 'SKU'} · Còn ${matched.stock || 0}`;
+    if (stockEl) {
+      const inStock = Number(matched.stock || 0) > 0;
+      stockEl.textContent = inStock ? '● Còn hàng' : '● Hết hàng';
+      stockEl.classList.toggle('in-stock', inStock);
+    }
+  };
+
+  pills.forEach((pill) => {
     pill.addEventListener('click', () => {
-      pills.forEach(p => p.classList.remove('active'));
+      const attr = pill.dataset.attrName;
+      const value = pill.dataset.attrValue;
+      if (!attr || !value) return;
+
+      pills
+        .filter((p) => p.dataset.attrName === attr)
+        .forEach((p) => p.classList.remove('active'));
       pill.classList.add('active');
+      selectedAttrs[attr] = value;
+      applyVariant();
     });
   });
+  applyVariant();
 })();
 
 /* ─── 7. QUANTITY ──────────────────────────────────────────── */

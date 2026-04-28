@@ -1,0 +1,214 @@
+{% extends "admin/change_form.html" %}
+{% load i18n static %}
+
+{% block extrahead %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'admin/css/ami_admin.css' %}">
+{% endblock %}
+
+{% block content %}
+<div id="content-main" class="ami-form-wrap">
+
+  {% block object_tools %}
+  <ul class="object-tools ami-object-tools">
+    {% block object_tools_items %}
+      {% if change %}
+        {% if not is_popup %}
+          <li>
+            <a href="{% url opts|admin_urlname:'history' original.pk|admin_urlquote %}" class="historylink ami-tool-btn">
+              📋 Lịch sử thay đổi
+            </a>
+          </li>
+          {% if has_absolute_url %}
+          <li>
+            <a href="{{ absolute_url }}" class="viewsitelink ami-tool-btn" target="_blank">
+              👁 Xem trên website
+            </a>
+          </li>
+          {% endif %}
+        {% endif %}
+      {% endif %}
+    {% endblock %}
+  </ul>
+  {% endblock %}
+
+  <form {% if has_file_field %}enctype="multipart/form-data" {% endif %}
+        action="{{ form_url }}" method="post" id="{{ opts.model_name }}_form"
+        novalidate>
+    {% csrf_token %}
+
+    {% block form_top %}{% endblock %}
+
+    <p>{% if is_popup %}<input type="hidden" name="_popup" value="1">{% endif %}</p>
+
+    {% if errors %}
+    <div class="ami-error-banner">
+      <span class="ami-error-icon">⚠️</span>
+      <div>
+        <strong>Vui lòng kiểm tra lại thông tin bên dưới:</strong>
+        {{ adminform.form.non_field_errors }}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ══════════════════════════════════════
+         LAYOUT: hai cột
+         Trái: thông tin sản phẩm
+         Phải: nhóm hương + trạng thái
+    ════════════════════════════════════════ -->
+    <div class="ami-form-layout">
+
+      <!-- ── CỘT TRÁI ── -->
+      <div class="ami-col-main">
+
+        <!-- Thông tin cơ bản -->
+        <div class="ami-card">
+          <div class="ami-card-header">
+            <span class="ami-card-icon">📝</span>
+            <h2 class="ami-card-title">Thông tin sản phẩm</h2>
+          </div>
+          <div class="ami-card-body">
+
+            {% for fieldset in adminform %}
+              {% for line in fieldset %}
+                {% for field in line %}
+                  {% if field.field.name not in 'nhom_huongs,TrangThai_SanPham' %}
+                  <div class="ami-field {% if field.errors %}ami-field--error{% endif %}">
+                    <label class="ami-label" for="{{ field.field.id_for_label }}">
+                      {{ field.field.label }}
+                      {% if field.field.field.required %}<span class="ami-required">*</span>{% endif %}
+                    </label>
+                    {{ field.field }}
+                    {% if field.field.help_text %}
+                      <p class="ami-help">{{ field.field.help_text }}</p>
+                    {% endif %}
+                    {% if field.errors %}
+                      <p class="ami-error-msg">{{ field.errors }}</p>
+                    {% endif %}
+                  </div>
+                  {% endif %}
+                {% endfor %}
+              {% endfor %}
+            {% endfor %}
+
+          </div>
+        </div>
+
+        <!-- Biến thể -->
+        <div class="ami-card ami-card--variants">
+          <div class="ami-card-header">
+            <span class="ami-card-icon">📦</span>
+            <h2 class="ami-card-title">Biến thể sản phẩm</h2>
+            <span class="ami-card-badge">Kích thước / Nồng độ</span>
+          </div>
+          <div class="ami-card-body ami-inline-wrap">
+            {% for inline_admin_formset in inline_admin_formsets %}
+              {% if "BienThe" in inline_admin_formset.opts.model.__name__ %}
+                {% include inline_admin_formset.opts.template %}
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Hình ảnh -->
+        <div class="ami-card ami-card--images">
+          <div class="ami-card-header">
+            <span class="ami-card-icon">🖼️</span>
+            <h2 class="ami-card-title">Hình ảnh sản phẩm</h2>
+            <span class="ami-card-badge">Hỗ trợ JPG, PNG, WebP</span>
+          </div>
+          <div class="ami-card-body ami-inline-wrap">
+            {% for inline_admin_formset in inline_admin_formsets %}
+              {% if "HinhAnh" in inline_admin_formset.opts.model.__name__ %}
+                {% include inline_admin_formset.opts.template %}
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+
+      </div><!-- /.ami-col-main -->
+
+      <!-- ── CỘT PHẢI (sidebar) ── -->
+      <div class="ami-col-side">
+
+        <!-- Trạng thái & phân loại -->
+        <div class="ami-card">
+          <div class="ami-card-header">
+            <span class="ami-card-icon">⚙️</span>
+            <h2 class="ami-card-title">Phân loại &amp; Trạng thái</h2>
+          </div>
+          <div class="ami-card-body">
+            {% for fieldset in adminform %}
+              {% for line in fieldset %}
+                {% for field in line %}
+                  {% if field.field.name == 'TrangThai_SanPham' %}
+                  <div class="ami-field {% if field.errors %}ami-field--error{% endif %}">
+                    <label class="ami-label">{{ field.field.label }}</label>
+                    {{ field.field }}
+                  </div>
+                  {% endif %}
+                {% endfor %}
+              {% endfor %}
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Nhóm hương -->
+        <div class="ami-card ami-card--scents">
+          <div class="ami-card-header">
+            <span class="ami-card-icon">🌸</span>
+            <h2 class="ami-card-title">Nhóm hương</h2>
+          </div>
+          <div class="ami-card-body">
+            <p class="ami-help ami-help--top">Chọn một hoặc nhiều nhóm hương phù hợp với sản phẩm.</p>
+            {% for fieldset in adminform %}
+              {% for line in fieldset %}
+                {% for field in line %}
+                  {% if field.field.name == 'nhom_huongs' %}
+                  <div class="ami-field ami-field--scents {% if field.errors %}ami-field--error{% endif %}">
+                    {{ field.field }}
+                    {% if field.errors %}
+                      <p class="ami-error-msg">{{ field.errors }}</p>
+                    {% endif %}
+                  </div>
+                  {% endif %}
+                {% endfor %}
+              {% endfor %}
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Nút lưu -->
+        <div class="ami-save-box">
+          {% block submit_buttons_bottom %}
+          <div class="submit-row ami-submit-row">
+            <input type="submit" value="💾  Lưu sản phẩm"
+                   name="_save" class="ami-btn ami-btn--primary">
+            <input type="submit" value="Lưu &amp; tiếp tục chỉnh sửa"
+                   name="_continue" class="ami-btn ami-btn--secondary">
+            <input type="submit" value="Lưu &amp; thêm mới"
+                   name="_addanother" class="ami-btn ami-btn--ghost">
+            {% if change and has_delete_permission %}
+            <a href="{% url opts|admin_urlname:'delete' original.pk|admin_urlquote %}"
+               class="ami-btn ami-btn--danger"
+               onclick="return confirm('Bạn chắc chắn muốn xóa sản phẩm này?')">
+              🗑 Xóa
+            </a>
+            {% endif %}
+          </div>
+          {% endblock %}
+        </div>
+
+      </div><!-- /.ami-col-side -->
+
+    </div><!-- /.ami-form-layout -->
+
+    {% block after_field_sets %}{% endblock %}
+    {% block inline_field_sets %}{% endblock %}
+    {% block after_related_objects %}{% endblock %}
+
+    {% block submit_buttons_top %}{% endblock %}
+
+  </form>
+</div>
+{% endblock %}
