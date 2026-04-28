@@ -10,9 +10,10 @@ from .models import (
     BaiViet,
     BienThe,
     BienTheThuocTinh,
-    ChiTietDonHang,
+    
     DanhGia,
     DonHang,
+    ChiTietDonHang,
     GiaoHang,
     HinhAnh,
     HoiDap,
@@ -54,7 +55,7 @@ def _safe_first(queryset):
         return None
 
 
-from django.conf import settings
+
 
 from django.conf import settings
 

@@ -1,12 +1,11 @@
 from django.db import models
 
+
+# ===================== NHÓM HƯƠNG =====================
 class NhomHuong(models.Model):
     id_NhomHuong = models.AutoField(primary_key=True)
 
-    TenNhomHuong = models.CharField(
-        max_length=255,
-        db_column='TenNhomHuong'
-    )
+    TenNhomHuong = models.CharField(max_length=255)
     IconUrl = models.ImageField(upload_to='scents/', null=True, blank=True)
 
     class Meta:
@@ -16,6 +15,8 @@ class NhomHuong(models.Model):
     def __str__(self):
         return self.TenNhomHuong
 
+
+# ===================== SẢN PHẨM =====================
 class SanPham(models.Model):
     id_SanPham = models.AutoField(primary_key=True)
     TenSanPham = models.CharField(max_length=255)
@@ -34,15 +35,11 @@ class SanPham(models.Model):
         db_column='id_LoaiSanPham'
     )
 
-    # id_NhomHuong =ma models.ForeignKey(
-    #     'NhomHuong',
-    #     on_delete=models.DO_NOTHING,
-    #     db_column='id_NhomHuong'
-    # )
+    # ✅ FIX: dùng ManyToMany đơn giản (KHÔNG dùng through)
     nhom_huongs = models.ManyToManyField(
     NhomHuong,
     through='SanPhamNhomHuong',
-    blank=True
+    related_name='san_phams'
 )
 
     class Meta:
@@ -53,25 +50,28 @@ class SanPham(models.Model):
 
     def __str__(self):
         return self.TenSanPham
-    
+
 
 class SanPhamNhomHuong(models.Model):
+    id = models.AutoField(primary_key=True)
+
     id_SanPham = models.ForeignKey(
         'SanPham',
-        on_delete=models.CASCADE,
-        db_column='id_SanPham'   # 👈 thêm
+        on_delete=models.DO_NOTHING,
+        db_column='id_SanPham'
     )
 
     id_NhomHuong = models.ForeignKey(
         'NhomHuong',
-        on_delete=models.CASCADE,
-        db_column='id_NhomHuong' # 👈 thêm
+        on_delete=models.DO_NOTHING,
+        db_column='id_NhomHuong'
     )
 
     class Meta:
-        db_table = "SanPham_NhomHuong"
-        managed = False   # 👈 thêm luôn cho chắc
+        managed = False
+        db_table = 'SanPham_NhomHuong'
 
+# ===================== BIẾN THỂ =====================
 class BienThe(models.Model):
     id_BienThe = models.AutoField(primary_key=True)
 
@@ -96,17 +96,15 @@ class BienThe(models.Model):
         return f"{self.id_SanPham.TenSanPham} - {self.Sku}"
 
 
-
-
+# ===================== LOẠI SẢN PHẨM =====================
 class LoaiSanPham(models.Model):
     id_LoaiSanPham = models.AutoField(primary_key=True)
 
     TenLoaiSanPham = models.CharField(max_length=255)
     HinhanhUrl = models.ImageField(upload_to='categories/', null=True, blank=True)
 
-    MoTa = models.TextField(null=True, blank=True)   # 👈 thêm
-    GhiChu = models.CharField(max_length=500, null=True, blank=True)  # 👈 thêm
-
+    MoTa = models.TextField(null=True, blank=True)
+    GhiChu = models.CharField(max_length=500, null=True, blank=True)
 
     class Meta:
         managed = False
@@ -116,15 +114,13 @@ class LoaiSanPham(models.Model):
         return self.TenLoaiSanPham
 
 
+# ===================== THƯƠNG HIỆU =====================
 class ThuongHieu(models.Model):
     id_ThuongHieu = models.AutoField(primary_key=True)
 
-    TenThuongHieu = models.CharField(
-        max_length=255,
-        db_column='TenThuongHieu'
-    )
-
+    TenThuongHieu = models.CharField(max_length=255)
     LogoUrl = models.ImageField(upload_to='brands/', null=True, blank=True)
+
     class Meta:
         managed = False
         db_table = 'ThuongHieu'
@@ -133,8 +129,7 @@ class ThuongHieu(models.Model):
         return self.TenThuongHieu
 
 
-
-    
+# ===================== HÌNH ẢNH =====================
 class HinhAnh(models.Model):
     id_HinhAnh = models.AutoField(primary_key=True)
 
@@ -148,7 +143,6 @@ class HinhAnh(models.Model):
         blank=True,
     )
 
-    
     id_BienThe = models.ForeignKey(
         BienThe,
         on_delete=models.DO_NOTHING,
@@ -158,12 +152,11 @@ class HinhAnh(models.Model):
     )
 
     class Meta:
-        managed = False   # ✅ FIX QUAN TRỌNG
+        managed = False
         db_table = 'HinhAnh'
 
 
-
-
+# ===================== BÀI VIẾT =====================
 class BaiViet(models.Model):
     id_BaiViet = models.AutoField(primary_key=True)
     TieuDe = models.CharField(max_length=255)
@@ -174,20 +167,21 @@ class BaiViet(models.Model):
     class Meta:
         managed = False
         db_table = 'BaiViet'
-    
+
+
+# ===================== THUỘC TÍNH =====================
 class ThuocTinh(models.Model):
     id_ThuocTinh = models.AutoField(primary_key=True)
     TenThuocTinh = models.CharField(max_length=255)
 
     class Meta:
-        verbose_name = "Thuộc tính"
-        verbose_name_plural = "Thuộc tính"
         managed = False
         db_table = 'ThuocTinh'
 
     def __str__(self):
         return self.TenThuocTinh
-    
+
+
 class GiaTriThuocTinh(models.Model):
     id_GiaTriThuocTinh = models.AutoField(primary_key=True)
 
@@ -200,8 +194,6 @@ class GiaTriThuocTinh(models.Model):
     GiaTri = models.CharField(max_length=255)
 
     class Meta:
-        verbose_name = "Giá trị thuộc tính"
-        verbose_name_plural = "Giá trị thuộc tính"
         managed = False
         db_table = 'GiaTriThuocTinh'
 
@@ -228,6 +220,8 @@ class BienTheThuocTinh(models.Model):
         managed = False
         db_table = 'BienThe_ThuocTinh'
 
+
+# ===================== TÀI KHOẢN =====================
 class TaiKhoan(models.Model):
     id_TaiKhoan = models.AutoField(primary_key=True)
     Username = models.CharField(max_length=100, null=True)
@@ -244,136 +238,154 @@ class TaiKhoan(models.Model):
         db_table = "TaiKhoan"
 
 
-class KhachHang(models.Model):
-    id_KhachHang = models.AutoField(primary_key=True)
-    id_TaiKhoan = models.ForeignKey(
-        TaiKhoan,
-        on_delete=models.DO_NOTHING,
-        db_column="id_TaiKhoan",
-        null=True,
-        blank=True,
-    )
-    TenKhachHang = models.CharField(max_length=255, null=True)
-    DiaChi = models.TextField(null=True)
-    GioiTinh = models.CharField(max_length=10, null=True)
-
-    class Meta:
-        managed = False
-        db_table = "KhachHang"
-
-
-class GiaoHang(models.Model):
-    id_GiaoHang = models.AutoField(primary_key=True)
-    id_TaiKhoan = models.ForeignKey(
-        TaiKhoan,
-        on_delete=models.DO_NOTHING,
-        db_column="id_TaiKhoan",
-        null=True,
-        blank=True,
-    )
-    TenNguoiNhan = models.CharField(max_length=255, null=True)
-    SDT = models.CharField(max_length=20, null=True)
-    DiaChi = models.TextField(null=True)
-    GhiChu = models.TextField(null=True)
-
-    class Meta:
-        managed = False
-        db_table = "GiaoHang"
-
-
 class DonHang(models.Model):
     id_DonHang = models.AutoField(primary_key=True)
-    MaDonHang = models.CharField(max_length=100, null=True)
-    id_KhachHang = models.ForeignKey(
-        KhachHang,
-        on_delete=models.DO_NOTHING,
-        db_column="id_KhachHang",
-        null=True,
-        blank=True,
-    )
-    ThoiGian = models.DateTimeField(null=True)
-    id_GiaoHang = models.ForeignKey(
-        GiaoHang,
-        on_delete=models.DO_NOTHING,
-        db_column="id_GiaoHang",
-        null=True,
-        blank=True,
-    )
-    HinhThucThanhToan = models.CharField(max_length=100, null=True)
-    TrangThai = models.CharField(max_length=50, null=True)
+
+    TenKhachHang = models.CharField(max_length=255, null=True)
     TongTien = models.DecimalField(max_digits=12, decimal_places=2, null=True)
+    TrangThai = models.CharField(max_length=50, null=True)
+    NgayTao = models.DateTimeField(null=True)
 
     class Meta:
         managed = False
-        db_table = "DonHang"
+        db_table = 'DonHang'
+
+    def __str__(self):
+        return str(self.id_DonHang)
+    
 
 
+# ===================== CHI TIẾT ĐƠN HÀNG =====================
 class ChiTietDonHang(models.Model):
-    id_ChiTietDon = models.AutoField(primary_key=True)
+    id = models.AutoField(primary_key=True)
+
     id_DonHang = models.ForeignKey(
-        DonHang,
+        'DonHang',
         on_delete=models.DO_NOTHING,
-        db_column="id_DonHang",
+        db_column='id_DonHang',
+        null=True,
+        blank=True
     )
-    id_BienThe = models.ForeignKey(
-        BienThe,
+
+    id_SanPham = models.ForeignKey(
+        'SanPham',
         on_delete=models.DO_NOTHING,
-        db_column="id_BienThe",
+        db_column='id_SanPham',
+        null=True,
+        blank=True
     )
-    SoLuong = models.IntegerField(default=0)
-    GiaBan = models.DecimalField(max_digits=10, decimal_places=2, null=True)
-    GiaGiam = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+
+    SoLuong = models.IntegerField(null=True)
+    Gia = models.DecimalField(max_digits=12, decimal_places=2, null=True)
 
     class Meta:
         managed = False
-        db_table = "ChiTietDonHang"
+        db_table = 'ChiTietDonHang'
 
 
+# ===================== ĐÁNH GIÁ =====================
 class DanhGia(models.Model):
     id_DanhGia = models.AutoField(primary_key=True)
-    id_SanPham = models.ForeignKey(SanPham, on_delete=models.DO_NOTHING, db_column="id_SanPham")
-    id_TaiKhoan = models.ForeignKey(TaiKhoan, on_delete=models.DO_NOTHING, db_column="id_TaiKhoan")
-    SoSao = models.IntegerField(null=True, blank=True)
-    NoiDung = models.TextField(null=True)
-    parent_id = models.ForeignKey(
-        "self",
+
+    id_SanPham = models.ForeignKey(
+        'SanPham',
         on_delete=models.DO_NOTHING,
-        db_column="parent_id",
+        db_column='id_SanPham',
         null=True,
-        blank=True,
+        blank=True
     )
-    NgayDanhGia = models.DateTimeField(null=True)
+
+    NoiDung = models.TextField(null=True)
+    SoSao = models.IntegerField(null=True)
+    NgayTao = models.DateTimeField(null=True)
 
     class Meta:
         managed = False
-        db_table = "DanhGia"
+        db_table = 'DanhGia'
 
 
+# ===================== HỎI ĐÁP =====================
 class HoiDap(models.Model):
     id_HoiDap = models.AutoField(primary_key=True)
-    id_SanPham = models.ForeignKey(SanPham, on_delete=models.DO_NOTHING, db_column="id_SanPham")
-    id_TaiKhoan = models.ForeignKey(TaiKhoan, on_delete=models.DO_NOTHING, db_column="id_TaiKhoan")
-    NoiDung = models.TextField(null=True)
-    NgayTao = models.DateTimeField(null=True)
-    parent_id = models.ForeignKey(
-        "self",
+
+    id_SanPham = models.ForeignKey(
+        'SanPham',
         on_delete=models.DO_NOTHING,
-        db_column="parent_id",
+        db_column='id_SanPham',
         null=True,
-        blank=True,
+        blank=True
     )
+
+    CauHoi = models.TextField(null=True)
+    TraLoi = models.TextField(null=True)
+    NgayTao = models.DateTimeField(null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'HoiDap'
+
+
+# ===================== GIAO HÀNG =====================
+class GiaoHang(models.Model):
+    id_GiaoHang = models.AutoField(primary_key=True)
+
+    id_DonHang = models.ForeignKey(
+        'DonHang',
+        on_delete=models.DO_NOTHING,
+        db_column='id_DonHang',
+        null=True,
+        blank=True
+    )
+
+    DiaChi = models.CharField(max_length=255, null=True)
     TrangThai = models.CharField(max_length=50, null=True)
+    NgayGiao = models.DateTimeField(null=True)
 
     class Meta:
         managed = False
-        db_table = "HoiDap"
+        db_table = 'GiaoHang'
 
 
+# ===================== KHÁCH HÀNG =====================
+class KhachHang(models.Model):
+    id_KhachHang = models.AutoField(primary_key=True)
+
+    TenKhachHang = models.CharField(max_length=255, null=True)
+    Email = models.CharField(max_length=255, null=True)
+    SDT = models.CharField(max_length=20, null=True)
+    DiaChi = models.CharField(max_length=255, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'KhachHang'
+
+    def __str__(self):
+        return self.TenKhachHang or f"KH {self.id_KhachHang}"
+    
+
+
+# ===================== YÊU THÍCH =====================
 class YeuThich(models.Model):
-    id_TaiKhoan = models.ForeignKey(TaiKhoan, on_delete=models.DO_NOTHING, db_column="id_TaiKhoan")
-    id_SanPham = models.ForeignKey(SanPham, on_delete=models.DO_NOTHING, db_column="id_SanPham")
+    id_YeuThich = models.AutoField(primary_key=True)
+
+    id_KhachHang = models.ForeignKey(
+        'KhachHang',
+        on_delete=models.DO_NOTHING,
+        db_column='id_KhachHang',
+        null=True,
+        blank=True
+    )
+
+    id_SanPham = models.ForeignKey(
+        'SanPham',
+        on_delete=models.DO_NOTHING,
+        db_column='id_SanPham',
+        null=True,
+        blank=True
+    )
+
+    NgayTao = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         managed = False
-        db_table = "YeuThich"
-        unique_together = (("id_TaiKhoan", "id_SanPham"),)
+        db_table = 'YeuThich'

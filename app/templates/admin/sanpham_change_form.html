@@ -73,7 +73,7 @@
             {% for fieldset in adminform %}
               {% for line in fieldset %}
                 {% for field in line %}
-                  {% if field.field.name not in 'nhom_huongs,TrangThai_SanPham' %}
+                  {% if field.field.name != 'nhom_huongs' and field.field.name != 'TrangThai_SanPham' %}
                   <div class="ami-field {% if field.errors %}ami-field--error{% endif %}">
                     <label class="ami-label" for="{{ field.field.id_for_label }}">
                       {{ field.field.label }}
@@ -113,19 +113,37 @@
 
         <!-- Hình ảnh -->
         <div class="ami-card ami-card--images">
-          <div class="ami-card-header">
-            <span class="ami-card-icon">🖼️</span>
-            <h2 class="ami-card-title">Hình ảnh sản phẩm</h2>
-            <span class="ami-card-badge">Hỗ trợ JPG, PNG, WebP</span>
-          </div>
-          <div class="ami-card-body ami-inline-wrap">
-            {% for inline_admin_formset in inline_admin_formsets %}
-              {% if "hinhanh" in inline_admin_formset.opts.model_name %}
-                {% include inline_admin_formset.opts.template %}
-              {% endif %}
-            {% endfor %}
-          </div>
+  <div class="ami-card-header">
+    <span class="ami-card-icon">🖼️</span>
+    <h2 class="ami-card-title">Hình ảnh sản phẩm</h2>
+  </div>
+
+  <div class="ami-card-body ami-inline-wrap">
+
+    {% for inline_admin_formset in inline_admin_formsets %}
+
+    {# ===== NHÓM HƯƠNG ===== #}
+    {% if "nhom huong" in inline_admin_formset.opts.verbose_name|lower %}
+      <div class="ami-card ami-card--scents">
+        <div class="ami-card-header">
+          <span class="ami-card-icon">🌸</span>
+          <h2 class="ami-card-title">Nhóm hương</h2>
         </div>
+        <div class="ami-card-body">
+          {% include inline_admin_formset.opts.template %}
+        </div>
+      </div>
+    {% endif %}
+
+    {# ===== HÌNH ẢNH ===== #}
+    {% if "hinh anh" in inline_admin_formset.opts.verbose_name|lower %}
+        {% include inline_admin_formset.opts.template %}
+    {% endif %}
+
+{% endfor %}
+
+  </div>
+</div>
 
       </div><!-- /.ami-col-main -->
 
@@ -155,7 +173,7 @@
         </div>
 
         <!-- Nhóm hương -->
-        <div class="ami-card ami-card--scents">
+        {% comment %} <div class="ami-card ami-card--scents">
           <div class="ami-card-header">
             <span class="ami-card-icon">🌸</span>
             <h2 class="ami-card-title">Nhóm hương</h2>
@@ -165,7 +183,7 @@
             {% for fieldset in adminform %}
               {% for line in fieldset %}
                 {% for field in line %}
-                  {% if field.field.name == 'nhom_huongs' %}
+                   {% if field.field.name == 'nhom_huongs' %}
                   <div class="ami-field ami-field--scents {% if field.errors %}ami-field--error{% endif %}">
                     {{ field.field }}
                     {% if field.errors %}
@@ -177,7 +195,7 @@
               {% endfor %}
             {% endfor %}
           </div>
-        </div>
+        </div> {% endcomment %}
 
         <!-- Nút lưu -->
         <div class="ami-save-box">

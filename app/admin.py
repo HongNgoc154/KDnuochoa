@@ -7,7 +7,7 @@ from django.utils.safestring import mark_safe
 from .models import (
     BienThe, BienTheThuocTinh, GiaTriThuocTinh,
     LoaiSanPham, NhomHuong, SanPham, ThuocTinh,
-    ThuongHieu, HinhAnh, SanPhamNhomHuong,
+    ThuongHieu, HinhAnh, SanPhamNhomHuong
 )
 
 
@@ -38,43 +38,60 @@ admin_site.register(Group)
 # ═══════════════════════════════════════
 #  FORM tùy chỉnh cho SanPham
 # ═══════════════════════════════════════
-class SanPhamForm(forms.ModelForm):
-    """
-    Thêm widget checkbox đẹp cho nhom_huongs thay vì
-    SelectMultiple mặc định.
-    """
-    # nhom_huongs = forms.ModelMultipleChoiceField(
-    #     queryset=NhomHuong.objects.all(),
-    #     required=False,
-    #     widget=forms.CheckboxSelectMultiple(attrs={'class': 'nhom-huong-checks'}),
-    #     label="Nhóm hương",
-    # )
+# class SanPhamForm(forms.ModelForm):
+#     """
+#     Thêm widget checkbox đẹp cho nhom_huongs thay vì
+#     SelectMultiple mặc định.
+#     """
+#     nhom_huongs = forms.ModelMultipleChoiceField(
+#         queryset=NhomHuong.objects.all(),
+#         required=False,
+#         widget=forms.CheckboxSelectMultiple(attrs={'class': 'nhom-huong-checks'}),
+#         label="Nhóm hương",
+#     )
 
-    class Meta:
-        model  = SanPham
-        fields = '__all__'
-        widgets = {
-            'TenSanPham': forms.TextInput(attrs={
-                'class': 'ami-input',
-                'placeholder': 'Nhập tên sản phẩm...',
-            }),
-            'MoTa_SanPham': forms.Textarea(attrs={
-                'class': 'ami-textarea',
-                'rows': 5,
-                'placeholder': 'Mô tả chi tiết về sản phẩm...',
-            }),
-            'TrangThai_SanPham': forms.Select(
-                choices=[
-                    ('', '— Chọn trạng thái —'),
-                    ('active',   'Đang bán'),
-                    ('inactive', 'Ngừng bán'),
-                    ('draft',    'Nháp'),
-                ],
-                attrs={'class': 'ami-select'},
-            ),
-            'id_ThuongHieu': forms.Select(attrs={'class': 'ami-select'}),
-            'id_LoaiSanPham': forms.Select(attrs={'class': 'ami-select'}),
-        }
+#     class Meta:
+#         model  = SanPham
+#         fields = '__all__'
+#         # exclude = ('nhom_huongs',)
+#         widgets = {
+#             'TenSanPham': forms.TextInput(attrs={
+#                 'class': 'ami-input',
+#                 'placeholder': 'Nhập tên sản phẩm...',
+#             }),
+#             'MoTa_SanPham': forms.Textarea(attrs={
+#                 'class': 'ami-textarea',
+#                 'rows': 5,
+#                 'placeholder': 'Mô tả chi tiết về sản phẩm...',
+#             }),
+#             'TrangThai_SanPham': forms.Select(
+#                 choices=[
+#                     ('', '— Chọn trạng thái —'),
+#                     ('active',   'Đang bán'),
+#                     ('inactive', 'Ngừng bán'),
+#                     ('draft',    'Nháp'),
+#                 ],
+#                 attrs={'class': 'ami-select'},
+#             ),
+#             'id_ThuongHieu': forms.Select(attrs={'class': 'ami-select'}),
+#             'id_LoaiSanPham': forms.Select(attrs={'class': 'ami-select'}),
+#         }
+
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+
+#         if self.instance and self.instance.pk:
+#             self.fields['nhom_huongs'].initial = self.instance.nhom_huongs.all()
+
+#     def save(self, commit=True):
+#         instance = super().save(commit=commit)
+
+#         if commit and instance.pk:
+#             instance.nhom_huongs.set(self.cleaned_data.get('nhom_huongs'))
+
+#         return instance
+
+
 
 
 # ═══════════════════════════════════════
@@ -97,6 +114,19 @@ class HinhAnhInline(admin.TabularInline):
             )
         return "—"
     image_thumb.short_description = "Xem trước"
+
+
+    def get_formset(self, request, obj=None, **kwargs):
+        formset = super().get_formset(request, obj, **kwargs)
+        if 'id_BienThe' in formset.form.base_fields:
+            if obj is None:
+                formset.form.base_fields['id_BienThe'].queryset = BienThe.objects.none()
+                formset.form.base_fields['id_BienThe'].help_text = (
+                    "Vui lòng lưu sản phẩm và thêm biến thể trước để gán ảnh cho biến thể."
+                )
+            else:
+                formset.form.base_fields['id_BienThe'].queryset = BienThe.objects.filter(id_SanPham=obj)
+        return formset
 
 
 class BienTheThuocTinhInline(admin.TabularInline):
@@ -146,7 +176,7 @@ class SanPhamNhomHuongInline(admin.StackedInline):
 # ═══════════════════════════════════════
 @admin.register(SanPham, site=admin_site)
 class SanPhamAdmin(admin.ModelAdmin):
-    form          = SanPhamForm
+    # form          = SanPhamForm
     change_form_template = "admin/sanpham_change_form.html"
 
     # Danh sách
@@ -175,13 +205,17 @@ class SanPhamAdmin(admin.ModelAdmin):
                 'TenSanPham',
                 ('id_ThuongHieu', 'id_LoaiSanPham'),
                 'TrangThai_SanPham',
-                'MoTa_SanPham',
                 # 'nhom_huongs',
+                'MoTa_SanPham',
             ),
         }),
     )
-
-    inlines = [SanPhamNhomHuongInline, BienTheInline, HinhAnhInline]
+    # filter_horizontal = ('nhom_huongs',)
+    inlines = [
+    SanPhamNhomHuongInline,   # 👈 QUAN TRỌNG NHẤT
+    BienTheInline,
+    HinhAnhInline
+]
 
     # ── Custom list_display columns ──────────────────────────
     def product_card(self, obj):
@@ -235,7 +269,7 @@ class SanPhamAdmin(admin.ModelAdmin):
     def get_nhom_huong(self, obj):
         huongs = obj.nhom_huongs.all()
 
-        if not huongs:
+        if not huongs.exists():
             return "-"
 
         return mark_safe("".join([
