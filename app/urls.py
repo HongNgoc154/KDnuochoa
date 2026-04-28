@@ -1,7 +1,7 @@
-from django.contrib import admin
+# from django.contrib import admin
 from django.urls import path
 from . import views
-from app.admin import admin_site
+# from app.admin import admin_site
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -21,6 +21,7 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     # path('admin-dashboard/', views.admin_dashboard, name='admin-dashboard'),
     # path('admin/', views.admin_redirect),
-    path('admin/', admin_site.urls),
+    # path('admin/', admin_site.urls),
      
 ]
+

@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.models import User, Group
 from django.utils.html import format_html
 from django import forms
+from django.utils.safestring import mark_safe
 
 from .models import (
     BienThe, BienTheThuocTinh, GiaTriThuocTinh,
@@ -17,8 +18,7 @@ class MyAdminSite(admin.AdminSite):
     site_header  = "Ami Perfumery · Quản trị"
     site_title   = "Ami Admin"
     index_title  = "Tổng quan hệ thống"
-    index_template   = "admin/ami_index.html"
-    app_index_template = "admin/ami_app_index.html"
+    index_template = "admin/index.html"
 
     def index(self, request, extra_context=None):
         extra_context = extra_context or {}
@@ -43,12 +43,12 @@ class SanPhamForm(forms.ModelForm):
     Thêm widget checkbox đẹp cho nhom_huongs thay vì
     SelectMultiple mặc định.
     """
-    nhom_huongs = forms.ModelMultipleChoiceField(
-        queryset=NhomHuong.objects.all(),
-        required=False,
-        widget=forms.CheckboxSelectMultiple(attrs={'class': 'nhom-huong-checks'}),
-        label="Nhóm hương",
-    )
+    # nhom_huongs = forms.ModelMultipleChoiceField(
+    #     queryset=NhomHuong.objects.all(),
+    #     required=False,
+    #     widget=forms.CheckboxSelectMultiple(attrs={'class': 'nhom-huong-checks'}),
+    #     label="Nhóm hương",
+    # )
 
     class Meta:
         model  = SanPham
@@ -134,6 +134,13 @@ class BienTheInline(admin.StackedInline):
         return formset
 
 
+class SanPhamNhomHuongInline(admin.StackedInline):
+    model = SanPhamNhomHuong
+    extra = 1
+    autocomplete_fields = ('id_NhomHuong',)
+    verbose_name = "Nhóm hương"
+    verbose_name_plural = "🌿  Nhóm hương sản phẩm"
+
 # ═══════════════════════════════════════
 #  SanPham ADMIN
 # ═══════════════════════════════════════
@@ -169,12 +176,12 @@ class SanPhamAdmin(admin.ModelAdmin):
                 ('id_ThuongHieu', 'id_LoaiSanPham'),
                 'TrangThai_SanPham',
                 'MoTa_SanPham',
-                'nhom_huongs',
+                # 'nhom_huongs',
             ),
         }),
     )
 
-    inlines = [BienTheInline, HinhAnhInline]
+    inlines = [SanPhamNhomHuongInline, BienTheInline, HinhAnhInline]
 
     # ── Custom list_display columns ──────────────────────────
     def product_card(self, obj):
@@ -227,14 +234,14 @@ class SanPhamAdmin(admin.ModelAdmin):
 
     def get_nhom_huong(self, obj):
         huongs = obj.nhom_huongs.all()
+
         if not huongs:
-            return "—"
-        badges = "".join(
-            f'<span style="background:#f0eadc;color:#576238;padding:2px 8px;'
-            f'border-radius:12px;font-size:11px;margin-right:4px;">{h.TenNhomHuong}</span>'
+            return "-"
+
+        return mark_safe("".join([
+            f'<span style="padding:4px 8px;background:#e8f5e9;border-radius:6px;margin-right:4px;">{h.TenNhomHuong}</span>'
             for h in huongs
-        )
-        return format_html(badges)
+        ]))
     get_nhom_huong.short_description = "Nhóm hương"
 
     def so_bien_the(self, obj):

@@ -56,24 +56,21 @@ class SanPham(models.Model):
     
 
 class SanPhamNhomHuong(models.Model):
-    id = models.AutoField(primary_key=True)
-
     id_SanPham = models.ForeignKey(
         'SanPham',
-        on_delete=models.DO_NOTHING,
-        db_column='id_SanPham'
+        on_delete=models.CASCADE,
+        db_column='id_SanPham'   # 👈 thêm
     )
 
     id_NhomHuong = models.ForeignKey(
         'NhomHuong',
-        on_delete=models.DO_NOTHING,
-        db_column='id_NhomHuong'
+        on_delete=models.CASCADE,
+        db_column='id_NhomHuong' # 👈 thêm
     )
 
     class Meta:
-        managed = False
-        db_table = 'SanPham_NhomHuong'
-
+        db_table = "SanPham_NhomHuong"
+        managed = False   # 👈 thêm luôn cho chắc
 
 class BienThe(models.Model):
     id_BienThe = models.AutoField(primary_key=True)
