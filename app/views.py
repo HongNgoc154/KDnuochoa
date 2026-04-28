@@ -10,7 +10,7 @@ from .models import (
     BaiViet,
     BienThe,
     BienTheThuocTinh,
-    
+    SanPhamNhomHuong,
     DanhGia,
     DonHang,
     ChiTietDonHang,
@@ -23,6 +23,9 @@ from .models import (
     ThuongHieu,
     YeuThich,
 )
+from collections import defaultdict
+
+
 
 
 # Create your views here.
@@ -229,12 +232,18 @@ def category(request, segment='tat-ca'):
 def product_detail(request, product_id=None):
     product_queryset = SanPham.objects.select_related("id_ThuongHieu", "id_LoaiSanPham")\
                                         .prefetch_related("nhom_huongs")
+
     if product_id:
         product_obj = _safe_first(product_queryset.filter(id_SanPham=product_id))
     else:
         product_obj = _safe_first(product_queryset.order_by("id_SanPham"))
     if not product_obj:
         return render(request, "app/product.html", {"product_data": {}, "product_images": []})
+
+    nhom_huongs = SanPhamNhomHuong.objects.select_related("id_NhomHuong").filter(
+    id_SanPham=product_obj
+    )
+    nhom_huong_list = [item.id_NhomHuong for item in nhom_huongs]
 
     variants = _safe_list(BienThe.objects.filter(id_SanPham=product_obj).order_by("id_BienThe"))
     variant_attr_rows = _safe_list(
@@ -250,13 +259,13 @@ def product_detail(request, product_id=None):
         ).order_by("id_HinhAnh")
     )
     root_reviews = _safe_list(
-        DanhGia.objects.select_related("id_TaiKhoan")
-        .filter(id_SanPham=product_obj, parent_id__isnull=True)
+    DanhGia.objects.select_related("id_TaiKhoan")
+    .filter(id_SanPham=product_obj)
         .order_by("-NgayDanhGia")[:5]
     )
     questions = _safe_list(
-        HoiDap.objects.select_related("id_TaiKhoan")
-        .filter(id_SanPham=product_obj, parent_id__isnull=True)
+    HoiDap.objects.select_related("id_TaiKhoan")
+    .filter(id_SanPham=product_obj)
         .order_by("-NgayTao")[:5]
     )
     top_variant = variants[0] if variants else None
@@ -304,7 +313,7 @@ def product_detail(request, product_id=None):
     }
     product_images = [img.url.url if hasattr(img.url, "url") else str(img.url) for img in images]
 
-    return render(request, "app/product.html", {"product_data": product_data, "product_images": product_images})
+    return render(request, "app/product.html", {"product_data": product_data, "product_images": product_images, "nhom_huong_list": nhom_huong_list,})
 
 
 def brand_list(request):
@@ -455,7 +464,7 @@ def contact_page(request):
     ]
     reviews = []
     recent_reviews = _safe_list(
-        DanhGia.objects.select_related("id_TaiKhoan").filter(parent_id__isnull=True).order_by("-NgayDanhGia")[:6]
+    DanhGia.objects.select_related("id_TaiKhoan").order_by("-NgayDanhGia")[:6]
     )
     for row in recent_reviews:
         reviews.append(

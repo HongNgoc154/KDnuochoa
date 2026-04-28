@@ -969,3 +969,36 @@
 .product-card:hover .img-primary {
   opacity: 0;
 }
+
+.fragrance {
+    margin-top: 20px;
+}
+
+.fragrance .title {
+    font-size: 14px;
+    letter-spacing: 2px;
+    color: #777;
+    margin-bottom: 10px;
+}
+
+.fragrance-items {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: #e8f3d6;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.tag .icon {
+    width: 16px;
+    height: 16px;
+}

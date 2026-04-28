@@ -3,6 +3,7 @@ from django.contrib.auth.models import User, Group
 from django.utils.html import format_html
 from django import forms
 from django.utils.safestring import mark_safe
+import nested_admin
 
 from .models import (
     BienThe, BienTheThuocTinh, GiaTriThuocTinh,
@@ -97,13 +98,13 @@ admin_site.register(Group)
 # ═══════════════════════════════════════
 #  INLINES
 # ═══════════════════════════════════════
-class HinhAnhInline(admin.TabularInline):
+class HinhAnhInline(nested_admin.NestedTabularInline):
     model       = HinhAnh
-    extra       = 1
+    extra       = 3
     fields      = ('url', 'image_thumb', 'id_BienThe')
     readonly_fields = ('image_thumb',)
     verbose_name        = "Hình ảnh"
-    verbose_name_plural = "📷  Hình ảnh sản phẩm"
+    verbose_name_plural = "📷  Hình ảnh sản phẩm (có thể thêm nhiều ảnh)"
 
     def image_thumb(self, obj):
         if obj.url:
@@ -129,7 +130,7 @@ class HinhAnhInline(admin.TabularInline):
         return formset
 
 
-class BienTheThuocTinhInline(admin.TabularInline):
+class BienTheThuocTinhInline(nested_admin.NestedTabularInline):
     model               = BienTheThuocTinh
     extra               = 1
     autocomplete_fields = ('id_GiaTriThuocTinh',)
@@ -137,14 +138,19 @@ class BienTheThuocTinhInline(admin.TabularInline):
     verbose_name_plural = "Thuộc tính biến thể"
 
 
-class BienTheInline(admin.StackedInline):
+class BienTheInline(nested_admin.NestedStackedInline):
     """
     Dùng StackedInline để mỗi biến thể hiển thị rộng rãi hơn,
     dễ nhìn hơn TabularInline khi có nhiều trường.
     """
     model               = BienThe
     extra               = 1
-    fields              = ('Sku', 'GiaNhap', 'GiaBan', 'SoLuong')
+    inlines = [BienTheThuocTinhInline]
+    fieldsets = (
+        ("Thông tin biến thể", {
+            "fields": ("Sku", "GiaBan", "SoLuong"),
+        }),
+    )
     verbose_name        = "Biến thể"
     verbose_name_plural = "📦  Biến thể sản phẩm (kích thước / nồng độ)"
 
@@ -164,18 +170,18 @@ class BienTheInline(admin.StackedInline):
         return formset
 
 
-class SanPhamNhomHuongInline(admin.StackedInline):
+class SanPhamNhomHuongInline(nested_admin.NestedStackedInline):
     model = SanPhamNhomHuong
     extra = 1
     autocomplete_fields = ('id_NhomHuong',)
     verbose_name = "Nhóm hương"
-    verbose_name_plural = "🌿  Nhóm hương sản phẩm"
+    verbose_name_plural = "🌿  Nhóm hương sản phẩm (chọn 1 hoặc nhiều)"
 
 # ═══════════════════════════════════════
 #  SanPham ADMIN
 # ═══════════════════════════════════════
 @admin.register(SanPham, site=admin_site)
-class SanPhamAdmin(admin.ModelAdmin):
+class SanPhamAdmin(nested_admin.NestedModelAdmin):
     # form          = SanPhamForm
     change_form_template = "admin/sanpham_change_form.html"
 

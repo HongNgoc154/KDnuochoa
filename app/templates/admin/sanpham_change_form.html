@@ -33,7 +33,7 @@
   </ul>
   {% endblock %}
 
-  <form {% if has_file_field %}enctype="multipart/form-data" {% endif %}
+  <form enctype="multipart/form-data"
         action="{{ form_url }}" method="post" id="{{ opts.model_name }}_form"
         novalidate>
     {% csrf_token %}
@@ -95,6 +95,24 @@
           </div>
         </div>
 
+        <!-- Nhóm hương -->
+        <div class="ami-card ami-card--scents">
+          <div class="ami-card-header">
+            <span class="ami-card-icon">🌸</span>
+            <h2 class="ami-card-title">Nhóm hương</h2>
+          </div>
+          <div class="ami-card-body ami-inline-wrap">
+            <p class="ami-help ami-help--top">Chọn một hoặc nhiều nhóm hương cho sản phẩm.</p>
+            {% for inline_admin_formset in inline_admin_formsets %}
+              {% if "sanphamnhomhuong" in inline_admin_formset.formset.prefix %}
+                {{ inline_admin_formset.management_form }}
+                {% include inline_admin_formset.opts.template %}
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+
+
         <!-- Biến thể -->
         <div class="ami-card ami-card--variants">
           <div class="ami-card-header">
@@ -104,7 +122,8 @@
           </div>
           <div class="ami-card-body ami-inline-wrap">
             {% for inline_admin_formset in inline_admin_formsets %}
-              {% if "bienthe" in inline_admin_formset.opts.model_name %}
+              {% if "bienthe" in inline_admin_formset.formset.prefix %}
+                {{ inline_admin_formset.management_form }}
                 {% include inline_admin_formset.opts.template %}
               {% endif %}
             {% endfor %}
@@ -113,37 +132,26 @@
 
         <!-- Hình ảnh -->
         <div class="ami-card ami-card--images">
-  <div class="ami-card-header">
-    <span class="ami-card-icon">🖼️</span>
-    <h2 class="ami-card-title">Hình ảnh sản phẩm</h2>
-  </div>
+          <div class="ami-card-header">
+            <span class="ami-card-icon">🖼️</span>
+            <h2 class="ami-card-title">Hình ảnh sản phẩm</h2>
+            <span class="ami-card-badge">Upload từ máy, thêm nhiều ảnh</span>
+          </div>
 
-  <div class="ami-card-body ami-inline-wrap">
+          <div class="ami-card-body ami-inline-wrap">
 
-    {% for inline_admin_formset in inline_admin_formsets %}
+            {% for inline_admin_formset in inline_admin_formsets %}
 
-    {# ===== NHÓM HƯƠNG ===== #}
-    {% if "nhom huong" in inline_admin_formset.opts.verbose_name|lower %}
-      <div class="ami-card ami-card--scents">
-        <div class="ami-card-header">
-          <span class="ami-card-icon">🌸</span>
-          <h2 class="ami-card-title">Nhóm hương</h2>
+              {% if "hinhanh" in inline_admin_formset.formset.prefix %}
+                {{ inline_admin_formset.management_form }}
+                {% include inline_admin_formset.opts.template %}
+                
+              {% endif %}
+
+            {% endfor %}
+
+          </div>
         </div>
-        <div class="ami-card-body">
-          {% include inline_admin_formset.opts.template %}
-        </div>
-      </div>
-    {% endif %}
-
-    {# ===== HÌNH ẢNH ===== #}
-    {% if "hinh anh" in inline_admin_formset.opts.verbose_name|lower %}
-        {% include inline_admin_formset.opts.template %}
-    {% endif %}
-
-{% endfor %}
-
-  </div>
-</div>
 
       </div><!-- /.ami-col-main -->
 

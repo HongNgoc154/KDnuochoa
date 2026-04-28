@@ -146,52 +146,34 @@
       </div>
     </div>
 
-    <!-- Fragrance notes -->
-    <div class="pd-notes reveal-up delay-6">
-      <p class="pd-notes-title">Tầng hương</p>
-      <div class="pd-notes-tiers">
+    <div class="fragrance">
+    <h3 class="title">Nhóm hương</h3>
 
-        <div class="pd-notes-tier">
-          <span class="pd-tier-label">Top</span>
-          <div class="pd-notes-chips">
-            <span class="pd-note-chip citrus">🍋 Bergamot</span>
-            <span class="pd-note-chip citrus">🌿 Pepper</span>
-          </div>
-        </div>
-
-        <div class="pd-notes-tier">
-          <span class="pd-tier-label">Heart</span>
-          <div class="pd-notes-chips">
-            <span class="pd-note-chip woody">🪵 Lavender</span>
-            <span class="pd-note-chip woody">🌾 Geranium</span>
-          </div>
-        </div>
-
-        <div class="pd-notes-tier">
-          <span class="pd-tier-label">Base</span>
-          <div class="pd-notes-chips">
-            <span class="pd-note-chip amber">🌑 Ambroxan</span>
-            <span class="pd-note-chip amber">🪨 Vetiver</span>
-            <span class="pd-note-chip woody">🌲 Sandalwood</span>
-          </div>
-        </div>
-
-      </div>
+    <div class="fragrance-items">
+        {% for h in nhom_huong_list %}
+            <span class="tag">
+                {% if h.Icon %}
+                    <img src="{{ h.Icon.url }}" class="icon">
+                {% endif %}
+                {{ h.TenNhomHuong }}
+            </span>
+        {% endfor %}
+    </div>
     </div>
 
-    <!-- Longevity + sillage bars -->
-    <div class="pd-longevity reveal-up delay-7">
-      <div class="pd-longevity-row">
-        <span class="pd-lon-label">Độ lưu hương</span>
-        <div class="pd-lon-bar-wrap"><div class="pd-lon-bar" data-fill="85"></div></div>
-        <span class="pd-lon-val">8–10h</span>
-      </div>
-      <div class="pd-longevity-row">
-        <span class="pd-lon-label">Độ tỏa hương</span>
-        <div class="pd-lon-bar-wrap"><div class="pd-lon-bar" data-fill="70"></div></div>
-        <span class="pd-lon-val">Vừa phải</span>
-      </div>
-    </div>
+        <!-- Longevity + sillage bars -->
+        <div class="pd-longevity reveal-up delay-7">
+          <div class="pd-longevity-row">
+            <span class="pd-lon-label">Độ lưu hương</span>
+            <div class="pd-lon-bar-wrap"><div class="pd-lon-bar" data-fill="85"></div></div>
+            <span class="pd-lon-val">8–10h</span>
+          </div>
+          <div class="pd-longevity-row">
+            <span class="pd-lon-label">Độ tỏa hương</span>
+            <div class="pd-lon-bar-wrap"><div class="pd-lon-bar" data-fill="70"></div></div>
+            <span class="pd-lon-val">Vừa phải</span>
+          </div>
+        </div>
 
     <!-- Trust badges -->
     <div class="pd-badges reveal-up delay-8">

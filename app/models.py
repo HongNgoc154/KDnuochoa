@@ -295,6 +295,16 @@ class DanhGia(models.Model):
         blank=True
     )
 
+    id_TaiKhoan = models.ForeignKey(
+        'TaiKhoan',
+        on_delete=models.DO_NOTHING,
+        db_column='id_TaiKhoan',
+        null=True,
+        blank=True
+    )
+    parent_id = models.IntegerField(null=True, blank=True)
+
+    NgayDanhGia = models.DateTimeField(null=True, blank=True)
     NoiDung = models.TextField(null=True)
     SoSao = models.IntegerField(null=True)
     NgayTao = models.DateTimeField(null=True)
@@ -315,9 +325,19 @@ class HoiDap(models.Model):
         null=True,
         blank=True
     )
+    id_TaiKhoan = models.ForeignKey(
+        'TaiKhoan',
+        on_delete=models.DO_NOTHING,
+        db_column='id_TaiKhoan',
+        null=True,
+        blank=True
+    )
 
-    CauHoi = models.TextField(null=True)
-    TraLoi = models.TextField(null=True)
+    NoiDung = models.TextField(null=True)
+
+    # ✅ thêm parent giống DB
+    parent_id = models.IntegerField(null=True, blank=True)
+
     NgayTao = models.DateTimeField(null=True)
 
     class Meta:
