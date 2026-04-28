@@ -26,13 +26,12 @@
   if (!mainImg || !thumbBtns.length) return;
 
   /* Image sources (full-size) — synced with thumbnail srcs */
-  const imageSrcs = [
-    'https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=1200&q=90',
-    'https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&w=1200&q=90',
-    'https://images.unsplash.com/photo-1590736704728-f4730bb30770?auto=format&fit=crop&w=1200&q=90',
-    'https://images.unsplash.com/photo-1563170351-be82bc888aa4?auto=format&fit=crop&w=1200&q=90',
-    'https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?auto=format&fit=crop&w=1200&q=90',
-  ];
+  /* Image sources lấy trực tiếp từ thumbnail render bởi backend */
+    const imageSrcs = thumbBtns.map((btn) => {
+    const fullSrc = btn.dataset.full;
+    const thumbImg = btn.querySelector('img');
+    return fullSrc || thumbImg?.src;
+  }).filter(Boolean);
 
   let current = 0;
 

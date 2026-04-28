@@ -112,27 +112,57 @@
        <div class="product-grid" data-product-detail-url="{% url 'product-detail' %}">
         
         {% for item in products %}
-        <article class="product-card reveal {% if item.stock <= 0 %}sold-out{% endif %}" data-brand="{{ item.brand_slug }}" data-scent="{{ item.group|slugify }}" data-price="{{ item.price_raw }}" data-concentration="edp" tabindex="0" role="link" aria-label="Xem chi tiết {{ item.name }}">
+        <article class="product-card reveal {% if item.stock <= 0 %}sold-out{% endif %}"
+          data-brand="{{ item.brand_slug }}"
+          data-scent="{% for g in item.group_list %}{{ g|slugify }} {% endfor %}"
+          data-price="{{ item.price_raw }}"
+          data-concentration="edp"
+          data-detail-url="{% url 'product-detail-by-id' item.id %}"
+          tabindex="0"
+          role="link"
+          aria-label="Xem chi tiết {{ item.name }}">
+
           <div class="product-media">
             {% if item.stock <= 0 %}
               <span class="product-sold">SOLD OUT</span>
-              {% elif item.is_new %}
+            {% elif item.is_new %}
               <span class="product-badge">NEW</span>
-            
-        
-
             {% endif %}
-            <img class="img-primary" src="{{ item.image }}" alt="{{ item.name }}">
-            <img class="img-hover" src="{{ item.image }}" alt="{{ item.name }} chi tiết">
+
+            <img class="img-primary" src="{{ item.primary_image }}" alt="{{ item.name }}">
+            <img class="img-hover" src="{{ item.hover_image }}" alt="{{ item.name }} chi tiết">
           </div>
+
           <div class="product-meta">
+
+            <!-- BRAND -->
             <p class="product-brand">{{ item.brand }}</p>
-            <h3>{{ item.name }}</h3>
-            <p class="product-price">{{ item.price }}</p>
-            <div class="product-actions">
-              <button class="action-icon favorite-btn" aria-pressed="false"><span class="heart-core">♡</span></button>
-              <button class="action-icon add-cart-btn" {% if item.stock <= 0 %}disabled{% endif %}>🛒</button>
+
+            <!-- 👇 NHÓM HƯƠNG (THÊM MỚI) -->
+            <div class="product-group">
+              {% for g in item.group_list %}
+                <span class="tag">{{ g }}</span>
+              {% endfor %}
             </div>
+
+            <!-- NAME -->
+            <h3>{{ item.name }}</h3>
+
+            <!-- PRICE -->
+            <p class="product-price">{{ item.price }}</p>
+
+            <!-- ACTION -->
+            <div class="product-actions">
+              <button class="action-icon favorite-btn" aria-pressed="false">
+                <span class="heart-core">♡</span>
+              </button>
+
+              <button class="action-icon add-cart-btn"
+                {% if item.stock <= 0 %}disabled{% endif %}>
+                🛒
+              </button>
+            </div>
+
           </div>
         </article>
         {% empty %}

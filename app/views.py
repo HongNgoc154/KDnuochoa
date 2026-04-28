@@ -1,5 +1,6 @@
 from django.contrib.auth import logout
 from django.db import DatabaseError
+from django.db.models import Q
 from django.shortcuts import render, redirect
 from django.utils.text import slugify
 from .models import LoaiSanPham, NhomHuong
@@ -51,46 +52,67 @@ def _safe_first(queryset):
         return None
 
 
+from django.conf import settings
+
+from django.conf import settings
+
 def _product_image_map(product_ids):
-    image_rows = (
-        HinhAnh.objects.filter(id_SanPham_id__in=product_ids)
-        .order_by("id_HinhAnh")
-        .values("id_SanPham_id", "url")
-    )
+    images = HinhAnh.objects.filter(id_SanPham_id__in=product_ids)
 
-    image_map = {}
-    for row in image_rows:
-        product_id = row["id_SanPham_id"]
-        image_map.setdefault(product_id, []).append(row["url"])  # 👈 sửa
-    return image_map
+    mapping = {}
 
+    for img in images:
+        pid = img.id_SanPham_id
+
+        if img.url:
+            # 👉 luôn ép về URL đúng
+            url = str(img.url)
+
+            if not url.startswith("http"):
+                url = settings.MEDIA_URL + url  # 👈 FIX QUAN TRỌNG
+
+            if pid not in mapping:
+                mapping[pid] = []
+
+            mapping[pid].append(url)
+
+    return mapping
+
+
+def _first_variant_map(product_ids):
+    first_variant_map = {}
+    variant_rows = BienThe.objects.filter(id_SanPham_id__in=product_ids).order_by("id_SanPham_id", "id_BienThe")
+    for variant in variant_rows:
+        first_variant_map.setdefault(variant.id_SanPham_id, variant)
+    return first_variant_map
 
 def _build_product_cards(products):
     product_ids = [item.id_SanPham for item in products]
     image_map = _product_image_map(product_ids)
 
-    variant_prices = {}
-    for row in BienThe.objects.filter(id_SanPham_id__in=product_ids).values("id_SanPham_id", "GiaBan", "SoLuong"):
-        product_id = row["id_SanPham_id"]
-        current = variant_prices.get(product_id)
-        if current is None or row["GiaBan"] < current["price"]:
-            variant_prices[product_id] = {"price": row["GiaBan"], "stock": row["SoLuong"]}
+    first_variant_map = _first_variant_map(product_ids)
 
     cards = []
     for product in products:
-        variant_info = variant_prices.get(product.id_SanPham, {"price": None, "stock": 0})
+        default_variant = first_variant_map.get(product.id_SanPham)
+        product_images = image_map.get(product.id_SanPham, [])
+        primary_image = product_images[0] if product_images else FALLBACK_IMAGES["default"]
+        hover_image = product_images[1] if len(product_images) > 1 else primary_image
+        stock = int(default_variant.SoLuong) if default_variant else 0
+        is_active = (product.TrangThai_SanPham or "").lower() == "active"
         cards.append(
             {
                 "id": product.id_SanPham,
                 "name": product.TenSanPham,
                 "brand": product.id_ThuongHieu.TenThuongHieu,
                 "brand_slug": slugify(product.id_ThuongHieu.TenThuongHieu),
-                "group": product.id_NhomHuong.TenNhomHuong,
-                "price": _format_currency(variant_info["price"]),
-                "price_raw": int(variant_info["price"] or 0),
-                "stock": variant_info["stock"] or 0,
-                "is_new": product.TrangThai_SanPham.lower() == "active",
-                "image": image_map.get(product.id_SanPham, FALLBACK_IMAGES["default"]),
+                "group_list": [h.TenNhomHuong for h in product.nhom_huongs.all()],
+                "price": _format_currency(default_variant.GiaBan if default_variant else None),
+                "price_raw": int(default_variant.GiaBan or 0) if default_variant else 0,
+                "stock": stock if is_active else 0,
+                "is_new": is_active,
+                "primary_image": primary_image,
+                "hover_image": hover_image,
             }
         )
     return cards
@@ -104,7 +126,8 @@ def home(request):
 
     featured_products = _build_product_cards(
         _safe_list(
-            SanPham.objects.select_related("id_ThuongHieu", "id_LoaiSanPham", "id_NhomHuong")
+            SanPham.objects.select_related("id_ThuongHieu", "id_LoaiSanPham")
+                            .prefetch_related("nhom_huongs")
             .order_by("-id_SanPham")[:8]
         )
     )
@@ -137,67 +160,59 @@ def home(request):
     )
 
 def category(request, segment='tat-ca'):
-    category_map = {
-        "tat-ca": {
-            "page_title": "Ami Perfumery – Tất cả nước hoa",
-            "segment": "all",
-            "eyebrow": "Ami Selection",
-            "title": "Tất cả nước hoa",
-            "subtitle": "Khám phá toàn bộ bộ sưu tập niche cao cấp cho Nam, Nữ và Unisex.",
-            "breadcrumb": "Tất cả",
-        },
-        'nam': {
-            'page_title': 'Ami Perfumery – Nước hoa Nam',
-            'segment': 'men',
-            'eyebrow': 'For Him',
-            'title': 'Nước hoa Nam',
-            'subtitle': 'Tuyển chọn các tầng hương woody, leathery, citrus hiện đại dành cho quý ông thanh lịch.',
-            'breadcrumb': 'Nam',
-        },
-        'nu': {
-            'page_title': 'Ami Perfumery – Nước hoa Nữ',
-            'segment': 'women',
-            'eyebrow': 'For Her',
-            'title': 'Nước hoa Nữ',
-            'subtitle': 'Những hương floral, musky và gourmand thanh lịch tôn lên vẻ nữ tính tinh tế.',
-            'breadcrumb': 'Nữ',
-        },
-        'unisex': {
-            'page_title': 'Ami Perfumery – Nước hoa Unisex',
-            'segment': 'unisex',
-            'eyebrow': 'For All',
-            'title': 'Nước hoa Unisex',
-            'subtitle': 'Mùi hương cân bằng giữa hiện đại và cảm xúc, phù hợp cho mọi phong cách.',
-            'breadcrumb': 'Unisex',
-        },
+
+    # lấy tất cả danh mục
+    categories = LoaiSanPham.objects.all()
+
+    # tìm danh mục theo slug
+    current_category = None
+    for c in categories:
+        if slugify(c.TenLoaiSanPham) == segment:
+            current_category = c
+            break
+
+    # query sản phẩm
+    products = SanPham.objects.select_related(
+        "id_ThuongHieu",
+        "id_LoaiSanPham"
+    ).prefetch_related("nhom_huongs")
+
+    # nếu không phải "tất cả" thì filter
+    if segment != "tat-ca" and current_category:
+        products = products.filter(id_LoaiSanPham=current_category)
+
+    products = products.order_by("-id_SanPham")
+
+    # 👉 context động theo DB
+    context = {
+        "page_title": f"Ami – {current_category.TenLoaiSanPham}" if current_category else "Ami – Tất cả nước hoa",
+        "title": current_category.TenLoaiSanPham if current_category else "Tất cả nước hoa",
+        "subtitle": current_category.MoTa if current_category else "Khám phá toàn bộ bộ sưu tập nước hoa.",
+        "breadcrumb": current_category.TenLoaiSanPham if current_category else "Tất cả",
+        "products": _build_product_cards(products),
     }
-    context = category_map.get(segment, category_map["tat-ca"])
 
-    products = SanPham.objects.select_related("id_ThuongHieu", "id_LoaiSanPham", "id_NhomHuong").all()
-    if segment == "nam":
-        products = products.filter(id_LoaiSanPham__TenLoaiSanPham__icontains="nam")
-    elif segment == "nu":
-        products = products.filter(id_LoaiSanPham__TenLoaiSanPham__icontains="nữ")
-    elif segment == "unisex":
-        products = products.filter(id_LoaiSanPham__TenLoaiSanPham__icontains="unisex")
-
-    context["products"] = _build_product_cards(products)
     context["product_count"] = len(context["products"])
-    # context["brands"] = _safe_list(ThuongHieu.objects.order_by("TenThuongHieu"))
-
 
     return render(request, "app/category.html", context)
 
 
-def product_detail(request):
-    product_obj = _safe_first(
-        SanPham.objects.select_related("id_ThuongHieu", "id_LoaiSanPham", "id_NhomHuong").order_by("id_SanPham")
-    )
+def product_detail(request, product_id=None):
+    product_queryset = SanPham.objects.select_related("id_ThuongHieu", "id_LoaiSanPham")\
+                                        .prefetch_related("nhom_huongs")
+    if product_id:
+        product_obj = _safe_first(product_queryset.filter(id_SanPham=product_id))
+    else:
+        product_obj = _safe_first(product_queryset.order_by("id_SanPham"))
     if not product_obj:
         return render(request, "app/product.html", {"product_data": {}, "product_images": []})
 
-    variants = _safe_list(BienThe.objects.filter(id_SanPham=product_obj).order_by("GiaBan"))
-    images = _safe_list(HinhAnh.objects.filter(id_SanPham=product_obj).order_by("id_HinhAnh"))
+    variants = _safe_list(BienThe.objects.filter(id_SanPham=product_obj).order_by("id_BienThe"))
+    images = _safe_list(
+        HinhAnh.objects.filter(
+            Q(id_SanPham=product_obj) | Q(id_BienThe__id_SanPham=product_obj)
+        ).order_by("id_HinhAnh")
+    )
     root_reviews = _safe_list(
         DanhGia.objects.select_related("id_TaiKhoan")
         .filter(id_SanPham=product_obj, parent_id__isnull=True)
@@ -216,9 +231,12 @@ def product_detail(request):
         "brand": product_obj.id_ThuongHieu.TenThuongHieu,
         "description": product_obj.MoTa_SanPham,
         "category": product_obj.id_LoaiSanPham.TenLoaiSanPham,
-        "scent_group": product_obj.id_NhomHuong.TenNhomHuong,
+        "scent_group": ", ".join([
+                h.TenNhomHuong for h in product_obj.nhom_huongs.all()
+            ]),
         "price": _format_currency(top_variant.GiaBan if top_variant else None),
         "stock": top_variant.SoLuong if top_variant else 0,
+        "status": product_obj.TrangThai_SanPham,
         "rating_avg": rating_avg,
         "rating_count": len(root_reviews),
         "questions": questions,
@@ -255,7 +273,8 @@ def brand_detail(request, slug):
             return render(request, "app/brand_detail.html", {"brand": {}, "products": [], "pinned_products": []})
         brand_obj = first_brand
 
-    brand_products = SanPham.objects.select_related("id_ThuongHieu", "id_LoaiSanPham", "id_NhomHuong").filter(
+    brand_products = SanPham.objects.select_related("id_ThuongHieu", "id_LoaiSanPham")\
+                                    .prefetch_related("nhom_huongs").filter(
         id_ThuongHieu=brand_obj
     )
     products = _build_product_cards(brand_products)
@@ -344,7 +363,8 @@ def article_detail(request, slug):
     ][:5]
 
     suggested_products = _build_product_cards(
-        SanPham.objects.select_related("id_ThuongHieu", "id_LoaiSanPham", "id_NhomHuong").all()[:5]
+        SanPham.objects.select_related("id_ThuongHieu", "id_LoaiSanPham")\
+                        .prefetch_related("nhom_huongs").all()[:5]
     )
 
     return render(
@@ -411,7 +431,8 @@ def cart_page(request):
 
     suggestions = _build_product_cards(
         _safe_list(
-            SanPham.objects.select_related("id_ThuongHieu", "id_LoaiSanPham", "id_NhomHuong")
+            SanPham.objects.select_related("id_ThuongHieu", "id_LoaiSanPham")
+                            .prefetch_related("nhom_huongs")
             .order_by("-id_SanPham")[:8]
         )
     )[:4]

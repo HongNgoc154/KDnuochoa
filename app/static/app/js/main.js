@@ -285,14 +285,14 @@ if (isCategoryPage) {
     productGrid.addEventListener('click', e => {
       const card = e.target.closest('.product-card');
       if (!card || shouldIgnore(e.target)) return;
-      window.location.href = productDetailUrl;
+      window.location.href = card.dataset.detailUrl || productDetailUrl;
     });
     productGrid.addEventListener('keydown', e => {
       if (e.key !== 'Enter' && e.key !== ' ') return;
       const card = e.target.closest('.product-card');
       if (!card || shouldIgnore(e.target)) return;
       e.preventDefault();
-      window.location.href = productDetailUrl;
+      window.location.href = card.dataset.detailUrl || productDetailUrl;
     });
   }
 

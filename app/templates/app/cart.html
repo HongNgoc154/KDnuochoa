@@ -71,7 +71,7 @@
           <article class="suggestion-card">
             <img src="{{ item.image }}" alt="{{ item.name }}">
             <h4>{{ item.name }}</h4>
-            <p>{{ item.price }}</p>
+            <p>{{ item.price|default:item.price_raw }}</p>
           </article>
           {% endfor %}
         </div>

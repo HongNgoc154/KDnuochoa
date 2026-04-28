@@ -72,7 +72,43 @@ TEMPLATES = [
 
 
 JAZZMIN_SETTINGS = {
-    "changeform_format": "single",
+    "site_title": "Quản trị Ami",
+    "site_header": "Hệ thống quản lý",
+    "site_brand": "Ami Perfume",
+
+    "icons": {
+        "app.SanPham": "fas fa-box",
+        "app.BienThe": "fas fa-layer-group",
+        "app.ThuocTinh": "fas fa-tags",
+        "app.GiaTriThuocTinh": "fas fa-list",
+        "app.ThuongHieu": "fas fa-copyright",
+        "app.LoaiSanPham": "fas fa-th",
+        "app.NhomHuong": "fas fa-leaf",
+    },
+
+    # "custom_links": {
+    #     "app": [
+    #         {
+    #             "name": "Quản lý sản phẩm",
+    #             "url": "app_sanpham_changelist",
+    #             "icon": "fas fa-box",
+    #         },
+    #     ]
+    # },
+
+    # 🔥 CHIA NHÓM Ở SIDEBAR
+    "order_with_respect_to": [
+        "app.SanPham",
+        "app.BienThe",
+        "app.BienTheThuocTinh",
+        "app.ThuocTinh",
+        "app.GiaTriThuocTinh",
+        "app.LoaiSanPham",
+        "app.NhomHuong",
+        "app.ThuongHieu",
+    ],
+
+    "navigation_expanded": True,
 }
 
 WSGI_APPLICATION = 'kdnuochoa.wsgi.application'

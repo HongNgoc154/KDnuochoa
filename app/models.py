@@ -1,10 +1,26 @@
 from django.db import models
 
+class NhomHuong(models.Model):
+    id_NhomHuong = models.AutoField(primary_key=True)
+
+    TenNhomHuong = models.CharField(
+        max_length=255,
+        db_column='TenNhomHuong'
+    )
+    IconUrl = models.ImageField(upload_to='scents/', null=True, blank=True)
+
+    class Meta:
+        managed = False
+        db_table = 'NhomHuong'
+
+    def __str__(self):
+        return self.TenNhomHuong
+
 class SanPham(models.Model):
     id_SanPham = models.AutoField(primary_key=True)
     TenSanPham = models.CharField(max_length=255)
     MoTa_SanPham = models.TextField(null=True)
-    TrangThai_SanPham = models.CharField(max_length=50)
+    TrangThai_SanPham = models.CharField(max_length=50, null=True, blank=True)
 
     id_ThuongHieu = models.ForeignKey(
         'ThuongHieu',
@@ -18,6 +34,36 @@ class SanPham(models.Model):
         db_column='id_LoaiSanPham'
     )
 
+    # id_NhomHuong =ma models.ForeignKey(
+    #     'NhomHuong',
+    #     on_delete=models.DO_NOTHING,
+    #     db_column='id_NhomHuong'
+    # )
+    nhom_huongs = models.ManyToManyField(
+    NhomHuong,
+    through='SanPhamNhomHuong',
+    blank=True
+)
+
+    class Meta:
+        verbose_name = "Sản phẩm"
+        verbose_name_plural = "Sản phẩm"
+        managed = False
+        db_table = 'SanPham'
+
+    def __str__(self):
+        return self.TenSanPham
+    
+
+class SanPhamNhomHuong(models.Model):
+    id = models.AutoField(primary_key=True)
+
+    id_SanPham = models.ForeignKey(
+        'SanPham',
+        on_delete=models.DO_NOTHING,
+        db_column='id_SanPham'
+    )
+
     id_NhomHuong = models.ForeignKey(
         'NhomHuong',
         on_delete=models.DO_NOTHING,
@@ -26,11 +72,7 @@ class SanPham(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'SanPham'
-
-    def __str__(self):
-        return self.TenSanPham
-    
+        db_table = 'SanPham_NhomHuong'
 
 
 class BienThe(models.Model):
@@ -48,6 +90,8 @@ class BienThe(models.Model):
     SoLuong = models.IntegerField()
 
     class Meta:
+        verbose_name = "Biến thể"
+        verbose_name_plural = "Biến thể"
         managed = False
         db_table = 'BienThe'
 
@@ -66,9 +110,13 @@ class LoaiSanPham(models.Model):
     MoTa = models.TextField(null=True, blank=True)   # 👈 thêm
     GhiChu = models.CharField(max_length=500, null=True, blank=True)  # 👈 thêm
 
+
     class Meta:
         managed = False
         db_table = 'LoaiSanPham'
+
+    def __str__(self):
+        return self.TenLoaiSanPham
 
 
 class ThuongHieu(models.Model):
@@ -88,26 +136,12 @@ class ThuongHieu(models.Model):
         return self.TenThuongHieu
 
 
-class NhomHuong(models.Model):
-    id_NhomHuong = models.AutoField(primary_key=True)
 
-    TenNhomHuong = models.CharField(
-        max_length=255,
-        db_column='TenNhomHuong'
-    )
-    IconUrl = models.ImageField(upload_to='scents/', null=True, blank=True)
-
-    class Meta:
-        managed = False
-        db_table = 'NhomHuong'
-
-    def __str__(self):
-        return self.TenNhomHuong
     
 class HinhAnh(models.Model):
     id_HinhAnh = models.AutoField(primary_key=True)
 
-    url = models.ImageField(upload_to='products/')
+    url = models.ImageField(upload_to='products/', null=True, blank=True)
 
     id_SanPham = models.ForeignKey(
         SanPham,
@@ -149,6 +183,8 @@ class ThuocTinh(models.Model):
     TenThuocTinh = models.CharField(max_length=255)
 
     class Meta:
+        verbose_name = "Thuộc tính"
+        verbose_name_plural = "Thuộc tính"
         managed = False
         db_table = 'ThuocTinh'
 
@@ -167,6 +203,8 @@ class GiaTriThuocTinh(models.Model):
     GiaTri = models.CharField(max_length=255)
 
     class Meta:
+        verbose_name = "Giá trị thuộc tính"
+        verbose_name_plural = "Giá trị thuộc tính"
         managed = False
         db_table = 'GiaTriThuocTinh'
 
@@ -175,14 +213,16 @@ class GiaTriThuocTinh(models.Model):
 
 
 class BienTheThuocTinh(models.Model):
+    id = models.AutoField(primary_key=True)
+
     id_BienThe = models.ForeignKey(
-        BienThe,
+        'BienThe',
         on_delete=models.DO_NOTHING,
         db_column='id_BienThe'
     )
 
     id_GiaTriThuocTinh = models.ForeignKey(
-        GiaTriThuocTinh,
+        'GiaTriThuocTinh',
         on_delete=models.DO_NOTHING,
         db_column='id_GiaTriThuocTinh'
     )
@@ -190,10 +230,6 @@ class BienTheThuocTinh(models.Model):
     class Meta:
         managed = False
         db_table = 'BienThe_ThuocTinh'
-        unique_together = (('id_BienThe', 'id_GiaTriThuocTinh'),)
-    
-    def __str__(self):
-        return f"{self.id_BienThe} -> {self.id_GiaTriThuocTinh}"
 
 class TaiKhoan(models.Model):
     id_TaiKhoan = models.AutoField(primary_key=True)

@@ -1,7 +1,7 @@
 from django.contrib import admin
 # from django.template.response import TemplateResponse
 from django.contrib.auth.models import User, Group
-from .models import BienThe, BienTheThuocTinh, GiaTriThuocTinh, LoaiSanPham, NhomHuong, SanPham, ThuocTinh, ThuongHieu, HinhAnh
+from .models import BienThe, BienTheThuocTinh, GiaTriThuocTinh, LoaiSanPham, NhomHuong, SanPham, ThuocTinh, ThuongHieu, HinhAnh, SanPhamNhomHuong
 # from app.admin import admin_site 
 from django.utils.html import format_html
 # from .forms import ThuongHieuForm  
@@ -33,19 +33,29 @@ class BienTheThuocTinhInline(admin.TabularInline):
     extra = 1
     autocomplete_fields = ('id_GiaTriThuocTinh',)
 
-# class BienTheInline(admin.TabularInline):
-#     model = BienThe
-#     extra = 1
-#     fields = ('id_DungTich', 'GiaBan', 'SoLuong')
+class BienTheInline(admin.TabularInline):
+    model = BienThe
+    extra = 1
+    fields = ('Sku', 'GiaNhap', 'GiaBan', 'SoLuong')
+
+
+class SanPhamNhomHuongInline(admin.TabularInline):
+    model = SanPhamNhomHuong
+    extra = 1
 
 @admin.register(SanPham, site=admin_site)
 class SanPhamAdmin(admin.ModelAdmin):
-    # list_display = ('TenSanPham', 'TrangThai_SanPham', 'id_ThuongHieu')
-    # inlines = [BienTheInline]
-    list_display = ('TenSanPham', 'TrangThai_SanPham', 'id_ThuongHieu', 'id_LoaiSanPham', 'id_NhomHuong')
+
+    list_display = (
+        'TenSanPham',
+        'TrangThai_SanPham',
+        'ten_thuong_hieu',
+        'ten_loai_san_pham',
+        'get_nhom_huong'
+    )
     search_fields = ('TenSanPham',)
-    list_filter = ('TrangThai_SanPham', 'id_ThuongHieu', 'id_LoaiSanPham', 'id_NhomHuong')
-    inlines = [HinhAnhInline] 
+    list_filter = ('TrangThai_SanPham', 'id_ThuongHieu', 'id_LoaiSanPham', 'nhom_huongs',)
+    inlines = [BienTheInline, HinhAnhInline, SanPhamNhomHuongInline,] 
 
     # 👇 QUAN TRỌNG
     fieldsets = (
@@ -56,10 +66,31 @@ class SanPhamAdmin(admin.ModelAdmin):
                 'TrangThai_SanPham',
                 'id_ThuongHieu',
                 'id_LoaiSanPham',
-                'id_NhomHuong',
+                # 'id_NhomHuong',
+                # 'nhom_huongs',
             )
         }),
+        ('Biến thể & Hình ảnh', {
+            'classes': ('wide',),  # 👈 quan trọng
+            'fields': ()  # để trống để inline nằm dưới
+        }),
     )
+    def get_nhom_huong(self, obj):
+        return ", ".join([h.TenNhomHuong for h in obj.nhom_huongs.all()])
+    
+    def ten_thuong_hieu(self, obj):
+        return obj.id_ThuongHieu.TenThuongHieu
+    ten_thuong_hieu.short_description = "Thương hiệu"
+
+
+    def ten_loai_san_pham(self, obj):
+        return obj.id_LoaiSanPham.TenLoaiSanPham
+    ten_loai_san_pham.short_description = "Loại sản phẩm"
+
+    get_nhom_huong.short_description = "Nhóm hương"
+    # filter_horizontal = ('nhom_huongs',)
+
+    
 
 @admin.register(BienThe, site=admin_site)
 class BienTheAdmin(admin.ModelAdmin):
@@ -122,3 +153,4 @@ class NhomHuongAdmin(admin.ModelAdmin):
             return format_html('<img src="{}" width="50"/>', obj.IconUrl.url)
         return '-'
 admin_site.register(HinhAnh)
+

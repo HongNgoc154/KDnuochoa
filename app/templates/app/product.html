@@ -1,6 +1,6 @@
 {% extends 'app/base.html' %}
 {% load static %}
-{% block title %}Dior Sauvage Elixir — Ami Perfumery{% endblock %}
+{% block title %}{{ product_data.name|default:'Chi tiết sản phẩm' }} — Ami Perfumery{% endblock %}
 {% block body_class %}product-page{% endblock %}
 
 {% block extra_css %}
@@ -19,21 +19,15 @@
 
     <!-- Thumbnail strip (vertical, left side) -->
     <div class="pd-thumbs" id="pdThumbs">
-      <button class="pd-thumb active" data-index="0" aria-label="Ảnh 1">
-        <img src="https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=200&q=80" alt="Sauvage Elixir 1" loading="lazy">
+      {% for image_url in product_images %}
+      <button class="pd-thumb {% if forloop.first %}active{% endif %}" data-index="{{ forloop.counter0 }}" data-full="{{ image_url }}" aria-label="Ảnh {{ forloop.counter }}">
+        <img src="{{ image_url }}" alt="{{ product_data.name|default:'Sản phẩm' }} {{ forloop.counter }}" loading="lazy">
       </button>
-      <button class="pd-thumb" data-index="1" aria-label="Ảnh 2">
-        <img src="https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&w=200&q=80" alt="Sauvage Elixir 2" loading="lazy">
+      {% empty %}
+      <button class="pd-thumb active" data-index="0" data-full="https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=1200&q=90" aria-label="Ảnh 1">
+        <img src="https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=200&q=80" alt="Ảnh mặc định" loading="lazy">
       </button>
-      <button class="pd-thumb" data-index="2" aria-label="Ảnh 3">
-        <img src="https://images.unsplash.com/photo-1590736704728-f4730bb30770?auto=format&fit=crop&w=200&q=80" alt="Sauvage Elixir 3" loading="lazy">
-      </button>
-      <button class="pd-thumb" data-index="3" aria-label="Ảnh 4">
-        <img src="https://images.unsplash.com/photo-1563170351-be82bc888aa4?auto=format&fit=crop&w=200&q=80" alt="Sauvage Elixir 4" loading="lazy">
-      </button>
-      <button class="pd-thumb" data-index="4" aria-label="Ảnh 5">
-        <img src="https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?auto=format&fit=crop&w=200&q=80" alt="Sauvage Elixir 5" loading="lazy">
-      </button>
+       {% endfor %}
     </div>
 
     <!-- Main image viewer + magnifier -->
@@ -61,11 +55,11 @@
 
       <!-- Mobile: dot indicators -->
       <div class="pd-dots" id="pdDots" aria-hidden="true">
+        {% for image_url in product_images %}
+        <span class="pd-dot {% if forloop.first %}active{% endif %}"></span>
+        {% empty %}
         <span class="pd-dot active"></span>
-        <span class="pd-dot"></span>
-        <span class="pd-dot"></span>
-        <span class="pd-dot"></span>
-        <span class="pd-dot"></span>
+        {% endfor %}
       </div>
     </div>
   </section>
@@ -83,8 +77,8 @@
           <span class="pd-rating-score">{{ product_data.rating_avg|default:'0' }}</span>
           <span class="pd-rating-count">({{ product_data.rating_count|default:'0' }} đánh giá)</span>
         </div>
-        <span class="pd-status {% if product_data.stock|default:0 > 0 %}in-stock{% endif %}">
-          ● {% if product_data.stock|default:0 > 0 %}Còn hàng{% else %}Hết hàng{% endif %}
+         <span class="pd-status {% if product_data.stock|default:0 > 0 and product_data.status|lower == 'active' %}in-stock{% endif %}">
+          ● {% if product_data.stock|default:0 > 0 and product_data.status|lower == 'active' %}Còn hàng{% else %}Hết hàng{% endif %}
         </span>
       </div>
     </div>

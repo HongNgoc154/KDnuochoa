@@ -145,7 +145,7 @@
         </p>
 
         <!-- BUTTON -->
-        <a href="{% url 'category-segment' cate.TenLoaiSanPham|lower %}" class="cat-row-btn">
+        <a href="{% url 'category-segment' cate.TenLoaiSanPham|slugify %}">
           Xem bộ sưu tập
           <span class="cat-row-btn-arrow">→</span>
         </a>
