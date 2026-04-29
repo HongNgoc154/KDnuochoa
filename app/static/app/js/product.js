@@ -513,3 +513,72 @@ function initArrowCarousel(wrap, track, leftBtn, rightBtn, stepRatio = 0.75, edg
     item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
 })();
+
+/* ─── 13. PDP DATA ACTIONS ────────────────────────────────── */
+(function initPdpActions() {
+  const addBtn = document.getElementById('pdAddCart');
+  const buyBtn = document.querySelector('.pd-btn-buy');
+  const wishBtn = document.getElementById('pdWishBtn');
+  const qtyEl = document.getElementById('pdQtyVal');
+  const priceEl = document.getElementById('pdVariantPrice');
+  const metaEl = document.getElementById('pdVariantMeta');
+  const container = document.querySelector('.pd-layout');
+  if (!container) return;
+
+  const getSelectedVariant = () => {
+    const raw = (metaEl?.textContent || '').split('·')[0].trim();
+    return raw || 'SKU';
+  };
+
+  const toast = (msg) => {
+    const node = document.createElement('div');
+    node.className = 'pd-toast';
+    node.textContent = msg;
+    document.body.appendChild(node);
+    setTimeout(() => node.classList.add('show'), 20);
+    setTimeout(() => {
+      node.classList.remove('show');
+      setTimeout(() => node.remove(), 260);
+    }, 1700);
+  };
+
+  const updateCartBadge = (cart) => {
+    const total = cart.reduce((sum, i) => sum + Number(i.qty || 0), 0);
+    const icon = document.querySelector('.header-icons .icon-btn');
+    if (!icon) return;
+    let badge = icon.querySelector('.cart-badge');
+    if (!badge && total > 0) {
+      badge = document.createElement('span');
+      badge.className = 'cart-badge';
+      icon.appendChild(badge);
+    }
+    if (badge) badge.textContent = String(total);
+  };
+
+  const addToCart = () => {
+    const qty = Number(qtyEl?.textContent || 1);
+    const productId = container.dataset.productId || '0';
+    const key = `${productId}-${getSelectedVariant()}`;
+    const cart = JSON.parse(localStorage.getItem('ami_cart') || '[]');
+    const found = cart.find(i => i.key === key);
+    if (found) found.qty += qty;
+    else cart.push({ key, productId, qty, price: priceEl?.textContent || '' });
+    localStorage.setItem('ami_cart', JSON.stringify(cart));
+    updateCartBadge(cart);
+    toast('Đã thêm vào giỏ hàng');
+  };
+
+  addBtn?.addEventListener('click', addToCart);
+  buyBtn?.addEventListener('click', () => {
+    addToCart();
+    window.location.href = '/cart/';
+  });
+
+  wishBtn?.addEventListener('click', () => {
+    const productId = container.dataset.productId || '0';
+    const wl = new Set(JSON.parse(localStorage.getItem('ami_wishlist') || '[]'));
+    wl.add(productId);
+    localStorage.setItem('ami_wishlist', JSON.stringify([...wl]));
+    toast('Đã thêm vào danh sách yêu thích');
+  });
+})();

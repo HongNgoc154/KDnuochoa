@@ -12,7 +12,8 @@
      Left: Gallery | Right: Info (sticky)
      ═══════════════════════════════════════════════════════════ -->
 {% block content %}
-     <main class="pd-layout container">
+     <script id="pdVariantsData" type="application/json">{{ product_data.variants|safe|default:"[]" }}</script>
+     <main class="pd-layout container" data-product-id="{{ product_data.id|default:0 }}">
 
   <!-- ══ LEFT: GALLERY ══ -->
   <section class="pd-gallery" id="pdGallery" aria-label="Hình ảnh sản phẩm">
@@ -117,7 +118,9 @@
         <span class="pd-btn-cart-icon" id="pdCartIcon">🛒</span>
         <span>Thêm vào giỏ</span>
       </button>
-      <button class="pd-btn-buy">Mua ngay</button>
+      <a href="{% url 'cart-page' %}" class="pd-btn-buy">
+          Mua ngay
+      </a>
     </div>
 
     <!-- Wishlist + Share -->
@@ -152,10 +155,10 @@
     <div class="fragrance-items">
         {% for h in nhom_huong_list %}
             <span class="tag">
-                {% if h.Icon %}
-                    <img src="{{ h.Icon.url }}" class="icon">
+                {% if h.icon %}
+                    <img src="{{ h.icon }}" class="icon" alt="{{ h.name }}">
                 {% endif %}
-                {{ h.TenNhomHuong }}
+                {{ h.name }}
             </span>
         {% endfor %}
     </div>
@@ -348,8 +351,9 @@
 
 <!-- ─── BRAND SECTION ─── -->
 <section class="pd-brand-more reveal-section" style="background:var(--cream);">
-  <div class="container">
-    <p class="section-label">Khám phá thêm từ Dior</p>
+  <div class="container section-head-inline">
+    <p class="section-label">Khám phá thêm từ {{ product_data.brand }}</p>
+    <a class="pd-more-link" href="{% url 'brand-detail' brand_slug %}">Xem thêm</a>
   </div>
   <div class="pd-related-carousel-wrap" id="brandMoreWrap">
     <button class="carr-arrow carr-arrow--left" id="brandMoreLeft" aria-label="Xem thêm bên trái">
@@ -360,22 +364,12 @@
     </button>
     <div class="pd-related-track-outer">
       <div class="pd-related-track" id="brandMoreTrack">
-        <a href="#" class="pd-rel-card">
-          <div class="pd-rel-media"><img src="https://images.unsplash.com/photo-1541643600914-78b084683702?auto=format&fit=crop&w=600&q=80" alt="Dior Miss Dior" loading="lazy"></div>
-          <div class="pd-rel-body"><p class="pd-rel-brand">Dior</p><h3 class="pd-rel-name">Miss Dior EDP</h3><p class="pd-rel-price">3.600.000₫</p></div>
+        {% for item in related_products %}
+        <a href="{% url 'product-detail-by-id' item.id %}" class="pd-rel-card">
+          <div class="pd-rel-media"><img src="{{ item.primary_image }}" alt="{{ item.name }}" loading="lazy"></div>
+          <div class="pd-rel-body"><p class="pd-rel-brand">{{ item.brand }}</p><h3 class="pd-rel-name">{{ item.name }}</h3><p class="pd-rel-price">{{ item.price }}</p></div>
         </a>
-        <a href="#" class="pd-rel-card">
-          <div class="pd-rel-media"><img src="https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?auto=format&fit=crop&w=600&q=80" alt="Dior Fahrenheit" loading="lazy"></div>
-          <div class="pd-rel-body"><p class="pd-rel-brand">Dior</p><h3 class="pd-rel-name">Fahrenheit EDT</h3><p class="pd-rel-price">3.100.000₫</p></div>
-        </a>
-        <a href="#" class="pd-rel-card">
-          <div class="pd-rel-media"><img src="https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&w=600&q=80" alt="Dior Gris" loading="lazy"></div>
-          <div class="pd-rel-body"><p class="pd-rel-brand">Dior</p><h3 class="pd-rel-name">Gris Dior EDP</h3><p class="pd-rel-price">5.200.000₫</p></div>
-        </a>
-        <a href="#" class="pd-rel-card">
-          <div class="pd-rel-media"><img src="https://images.unsplash.com/photo-1590736969955-71cc94901144?auto=format&fit=crop&w=600&q=80" alt="Dior Homme Intense" loading="lazy"></div>
-          <div class="pd-rel-body"><p class="pd-rel-brand">Dior</p><h3 class="pd-rel-name">Homme Intense EDP</h3><p class="pd-rel-price">3.900.000₫</p></div>
-        </a>
+        {% endfor %}
       </div>
     </div>
   </div>

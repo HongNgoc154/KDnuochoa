@@ -20,12 +20,14 @@
   <section class="blog-featured section-space reveal">
     <div class="container featured-grid">
       {% for article in featured_articles %}
-      <a href="{% url 'article-detail' article.slug %}" class="feature-card">
-        <img src="{{ article.cover }}" alt="{{ article.title }}" loading="lazy">
+      <a href="{% url 'article-detail' article.id_BaiViet %}" class="feature-card">
+        {% if article.AnhDaiDien %}
+            <img src="{{ article.AnhDaiDien.url }}">
+        {% endif %}
         <div class="feature-content">
-          <span>{{ article.category }}</span>
-          <h2>{{ article.title }}</h2>
-          <p>{{ article.excerpt }}</p>
+          <span>{{ article.TacGia }}</span>
+          <h2>{{ article.TieuDe }}</h2>
+          <p>{{ article.NoiDung|truncatewords:20 }}</p>
         </div>
       </a>
       {% endfor %}
@@ -45,12 +47,12 @@
         <div>
           <div class="bento-grid" data-bento-grid>
             {% for article in bento_articles %}
-            <a href="{% url 'article-detail' article.slug %}" class="bento-card" data-category="{{ article.category }}" data-bento-item>
-              <img src="{{ article.cover }}" alt="{{ article.title }}" loading="lazy">
+            <a href="{% url 'article-detail' article.id_BaiViet %}" class="bento-card">
+              <img src="{{ article.AnhDaiDien }}">
               <div class="bento-overlay"></div>
               <div class="bento-content">
-                <span>{{ article.category }}</span>
-                <h3>{{ article.title }}</h3>
+                <span>{{ article.TacGia }}</span>
+                <h3>{{ article.TieuDe }}</h3>
               </div>
             </a>
             {% endfor %}
@@ -61,12 +63,16 @@
         <aside class="blog-sidebar">
           <h3>Bài viết nổi bật</h3>
           {% for item in popular_articles %}
-          <a href="{% url 'article-detail' item.slug %}" class="sidebar-post">
-            <img src="{{ item.cover }}" alt="{{ item.title }}" loading="lazy">
-            <div>
-              <span>{{ item.category }}</span>
-              <p>{{ item.title }}</p>
-            </div>
+          <a href="{% url 'article-detail' item.id_BaiViet %}" class="sidebar-post">
+              
+              {% if item.AnhDaiDien %}
+                  <img src="{{ item.AnhDaiDien.url }}">
+              {% endif %}
+
+              <div>
+                  <span>{{ item.TacGia }}</span>
+                  <p>{{ item.TieuDe }}</p>
+              </div>
           </a>
           {% endfor %}
         </aside>

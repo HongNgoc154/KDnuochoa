@@ -49,7 +49,7 @@
         <button type="button" class="edge-arrow edge-arrow-right" data-mini-next aria-label="Scroll phải">→</button>
         <div class="mini-track" data-mini-track>
           {% for item in related_articles %}
-          <a href="{% url 'article-detail' item.slug %}" class="mini-card">
+            <a href="{% url 'article-detail' item.id %}" class="mini-card">
             <img src="{{ item.cover }}" alt="{{ item.title }}" loading="lazy">
             <div>
               <span>{{ item.category }}</span>

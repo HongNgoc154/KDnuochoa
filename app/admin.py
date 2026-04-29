@@ -8,7 +8,7 @@ import nested_admin
 from .models import (
     BienThe, BienTheThuocTinh, GiaTriThuocTinh,
     LoaiSanPham, NhomHuong, SanPham, ThuocTinh,
-    ThuongHieu, HinhAnh, SanPhamNhomHuong
+    ThuongHieu, HinhAnh, SanPhamNhomHuong, BaiViet
 )
 
 
@@ -401,3 +401,17 @@ class NhomHuongAdmin(admin.ModelAdmin):
 
 
 admin_site.register(HinhAnh)
+
+
+# ================================BÀI VIẾT========================
+
+@admin.register(BaiViet, site=admin_site)
+class BaiVietAdmin(admin.ModelAdmin):
+    list_display = ("id_BaiViet", "TieuDe", "TacGia", "NgayTao")
+    search_fields = ("TieuDe", "TacGia")
+    list_filter = ("NgayTao",)
+
+    def preview_image(self, obj):
+        if obj.AnhDaiDien:
+            return format_html('<img src="{}" width="60"/>', obj.AnhDaiDien.url)
+        return "-"

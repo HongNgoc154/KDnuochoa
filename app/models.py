@@ -163,6 +163,7 @@ class BaiViet(models.Model):
     NoiDung = models.TextField(null=True)
     NgayTao = models.DateTimeField(null=True)
     TacGia = models.CharField(max_length=255, null=True)
+    AnhDaiDien = models.ImageField(upload_to='blog/', null=True, blank=True)
 
     class Meta:
         managed = False
@@ -241,10 +242,26 @@ class TaiKhoan(models.Model):
 class DonHang(models.Model):
     id_DonHang = models.AutoField(primary_key=True)
 
+    id_KhachHang = models.ForeignKey(
+        'KhachHang',
+        on_delete=models.DO_NOTHING,
+        db_column='id_KhachHang',
+        null=True,
+        blank=True
+    )
+
+    id_GiaoHang = models.ForeignKey(
+        'GiaoHang',
+        on_delete=models.DO_NOTHING,
+        db_column='id_GiaoHang',
+        null=True,
+        blank=True
+    )
+
     TenKhachHang = models.CharField(max_length=255, null=True)
     TongTien = models.DecimalField(max_digits=12, decimal_places=2, null=True)
     TrangThai = models.CharField(max_length=50, null=True)
-    NgayTao = models.DateTimeField(null=True)
+    ThoiGian = models.DateTimeField(null=True)
 
     class Meta:
         managed = False

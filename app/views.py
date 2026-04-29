@@ -5,6 +5,7 @@ from django.db.models import Q
 from django.shortcuts import render, redirect
 from django.utils.text import slugify
 from .models import LoaiSanPham, NhomHuong
+import json
 
 from .models import (
     BaiViet,
@@ -241,9 +242,15 @@ def product_detail(request, product_id=None):
         return render(request, "app/product.html", {"product_data": {}, "product_images": []})
 
     nhom_huongs = SanPhamNhomHuong.objects.select_related("id_NhomHuong").filter(
-    id_SanPham=product_obj
+        id_SanPham=product_obj
     )
-    nhom_huong_list = [item.id_NhomHuong for item in nhom_huongs]
+    nhom_huong_list = [
+        {
+            "name": item.id_NhomHuong.TenNhomHuong,
+            "icon": item.id_NhomHuong.IconUrl.url if item.id_NhomHuong.IconUrl else "",
+        }
+        for item in nhom_huongs
+    ]
 
     variants = _safe_list(BienThe.objects.filter(id_SanPham=product_obj).order_by("id_BienThe"))
     variant_attr_rows = _safe_list(
@@ -293,6 +300,7 @@ def product_detail(request, product_id=None):
     rating_values = [item.SoSao for item in root_reviews if item.SoSao]
     rating_avg = round(sum(rating_values) / len(rating_values), 1) if rating_values else 0
     product_data = {
+        "id": product_obj.id_SanPham,
         "name": product_obj.TenSanPham,
         "brand": product_obj.id_ThuongHieu.TenThuongHieu,
         "description": product_obj.MoTa_SanPham,
@@ -307,13 +315,29 @@ def product_detail(request, product_id=None):
         "rating_count": len(root_reviews),
         "questions": questions,
         "reviews": root_reviews,
-        "variants": variant_payload,
+        "variants": json.dumps(variant_payload, ensure_ascii=False),
         "variant_count": len(variant_payload),
         "option_groups": {k: sorted(list(v)) for k, v in option_groups.items()},
     }
     product_images = [img.url.url if hasattr(img.url, "url") else str(img.url) for img in images]
 
-    return render(request, "app/product.html", {"product_data": product_data, "product_images": product_images, "nhom_huong_list": nhom_huong_list,})
+    related_products = _build_product_cards(
+        _safe_list(
+            SanPham.objects.select_related("id_ThuongHieu", "id_LoaiSanPham")
+            .prefetch_related("nhom_huongs")
+            .filter(id_ThuongHieu=product_obj.id_ThuongHieu)
+            .exclude(id_SanPham=product_obj.id_SanPham)
+            .order_by("-id_SanPham")[:10]
+        )
+    )
+
+    return render(request, "app/product.html", {
+        "product_data": product_data,
+        "product_images": product_images,
+        "nhom_huong_list": nhom_huong_list,
+        "related_products": related_products,
+        "brand_slug": slugify(product_obj.id_ThuongHieu.TenThuongHieu),
+    })
 
 
 def brand_list(request):
@@ -372,79 +396,49 @@ def brand_detail(request, slug):
 
 
 def blog_list(request):
+
+    featured_articles = BaiViet.objects.order_by("-NgayTao")[:3]
+
+    bento_articles = BaiViet.objects.order_by("-NgayTao")[3:]
+
+    popular_articles = BaiViet.objects.order_by("-NgayTao")[:5]
+
+    context = {
+        "featured_articles": featured_articles,
+        "bento_articles": bento_articles,
+        "popular_articles": popular_articles,
+    }
+
+    return render(request, "app/blog.html", context)
+
+def article_detail(request, id):
+    article_obj = BaiViet.objects.get(id_BaiViet=id)
+
     articles_qs = BaiViet.objects.order_by("-NgayTao")
-    articles = []
-    for item in articles_qs:
-        articles.append(
-            {
-                "slug": slugify(item.TieuDe),
-                "title": item.TieuDe,
-                "category": "Blog",
-                "audience": "unisex",
-                "author": item.TacGia,
-                "published_at": item.NgayTao.strftime("%d/%m/%Y") if item.NgayTao else "",
-                "cover": FALLBACK_IMAGES["article_cover"],
-                "excerpt": (item.NoiDung or "")[:140],
-                "body": [{"type": "p", "text": item.NoiDung or "Nội dung đang được cập nhật."}],
-            }
-        )
-
-    featured_articles = articles[:2]
-    bento_articles = articles[2:]
-    popular_articles = articles[:5]
-    return render(
-        request,
-        "app/blog.html",
-        {
-            "featured_articles": featured_articles,
-            "bento_articles": bento_articles,
-            "popular_articles": popular_articles,
-        },
-    )
-
-
-def article_detail(request, slug):
-    articles_qs = list(BaiViet.objects.order_by("-NgayTao"))
-    if not articles_qs:
-        return render(request, "app/article_detail.html", {"article": {}, "related_articles": [], "suggested_products": []})
-
-
-    article_obj = next((item for item in articles_qs if slugify(item.TieuDe) == slug), articles_qs[0])
 
     article = {
-        "slug": slugify(article_obj.TieuDe),
+        "id": article_obj.id_BaiViet,
         "title": article_obj.TieuDe,
-        "category": "Blog",
         "author": article_obj.TacGia,
         "published_at": article_obj.NgayTao.strftime("%d/%m/%Y") if article_obj.NgayTao else "",
-        "cover": FALLBACK_IMAGES["article_cover"],
-        "body": [{"type": "p", "text": article_obj.NoiDung or "Nội dung đang được cập nhật."}],
+        "cover": getattr(article_obj, "AnhDaiDien", ""),
+        "body": [{"type": "p", "text": article_obj.NoiDung or ""}],
     }
+
     related_articles = [
         {
-            "slug": slugify(item.TieuDe),
+            "id": item.id_BaiViet,
             "title": item.TieuDe,
-            "category": "Blog",
-            "cover": FALLBACK_IMAGES["article_cover"],
+            "cover": getattr(item, "AnhDaiDien", ""),
         }
         for item in articles_qs
         if item.id_BaiViet != article_obj.id_BaiViet
     ][:5]
 
-    suggested_products = _build_product_cards(
-        SanPham.objects.select_related("id_ThuongHieu", "id_LoaiSanPham")\
-                        .prefetch_related("nhom_huongs").all()[:5]
-    )
-
-    return render(
-        request,
-        "app/article_detail.html",
-        {
-            "article": article,
-            "related_articles": related_articles,
-            "suggested_products": suggested_products,
-        },
-    )
+    return render(request, "app/article_detail.html", {
+        "article": article,
+        "related_articles": related_articles,
+    })
 
 
 def contact_page(request):
@@ -480,7 +474,11 @@ def contact_page(request):
 
 def cart_page(request):
     cart_items = []
-    order = _safe_first(DonHang.objects.select_related("id_KhachHang").order_by("-ThoiGian"))
+    order = _safe_first(
+    DonHang.objects
+    .select_related("id_KhachHang", "id_GiaoHang")
+    .order_by("-ThoiGian")
+)
     if order:
         details = _safe_list(
             ChiTietDonHang.objects.select_related("id_BienThe__id_SanPham").filter(id_DonHang=order)
