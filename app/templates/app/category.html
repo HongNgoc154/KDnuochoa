@@ -140,26 +140,26 @@
             <!-- BRAND -->
             <p class="product-brand">{{ item.brand }}</p>
 
-            <!-- 👇 NHÓM HƯƠNG (THÊM MỚI) -->
+            {% comment %} <!-- 👇 NHÓM HƯƠNG (THÊM MỚI) -->
             <div class="product-group">
               {% for g in item.group_list %}
                 <span class="tag">{{ g }}</span>
               {% endfor %}
-            </div>
+            </div> {% endcomment %}
 
             <!-- NAME -->
             <h3>{{ item.name }}</h3>
 
             <!-- PRICE -->
             <p class="product-price">{{ item.price }}</p>
-            {% if item.variant_count > 0 %}
+            {% comment %} {% if item.variant_count > 0 %}
             <p class="product-price">
               Có {{ item.variant_count }} biến thể
               {% if item.variant_values %}
                 · {{ item.variant_values|join:", " }}
               {% endif %}
             </p>
-            {% endif %}
+            {% endif %} {% endcomment %}
 
             <!-- ACTION -->
             <div class="product-actions">
@@ -189,24 +189,23 @@
         <button class="edge-arrow edge-arrow-left" type="button" aria-label="Scroll trái">←</button>
         <button class="edge-arrow edge-arrow-right" type="button" aria-label="Scroll phải">→</button>
         <div class="edge-track article-track" data-carousel-track>
-          <a href="#" class="article-card article-slide">
-            <div class="article-img"><div class="article-img-bg" style="background-image:url('https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&w=1000&q=80')"></div></div>
-            <div class="article-body"><p class="article-cat">For Him</p><h3 class="article-title">Top notes nam tính: bergamot, pepper và hương gỗ</h3><p class="article-desc">Gợi ý layer mùi cho phong cách business casual hiện đại.</p></div>
+          {% for article in related_articles %}
+          <a href="{% url 'article-detail' article.id_BaiViet %}" class="article-card article-slide">
+            <div class="article-img">
+              <div class="article-img-bg" style="background-image:url('{% if article.AnhDaiDien %}{{ article.AnhDaiDien.url }}{% else %}https://images.unsplash.com/photo-1588405748880-12d1d2a59a75?auto=format&fit=crop&w=1000&q=80{% endif %}')"></div>
+            </div>
+            <div class="article-body">
+              <p class="article-cat">{{ breadcrumb|default:'Nước hoa' }}</p>
+              <h3 class="article-title">{{ article.TieuDe }}</h3>
+              <p class="article-desc">{{ article.NoiDung|default:''|truncatewords:18 }}</p>
+            </div>
           </a>
-          <a href="#" class="article-card article-slide">
-            <div class="article-img"><div class="article-img-bg" style="background-image:url('https://images.unsplash.com/photo-1588405748880-12d1d2a59a75?auto=format&fit=crop&w=1000&q=80')"></div></div>
-            <div class="article-body"><p class="article-cat">Guide</p><h3 class="article-title">Cách chọn nồng độ EDT/EDP theo thời tiết Việt Nam</h3><p class="article-desc">Mẹo chọn độ tỏa hương phù hợp đi làm, đi tiệc và du lịch.</p></div>
-          </a>
-          <a href="#" class="article-card article-slide">
-            <div class="article-img"><div class="article-img-bg" style="background-image:url('https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&w=1000&q=80')"></div></div>
-            <div class="article-body"><p class="article-cat">Cinematic</p><h3 class="article-title">Hương thơm và dấu ấn cá nhân trong không gian tối giản</h3><p class="article-desc">Cân bằng giữa sự tinh gọn thị giác và chiều sâu cảm xúc.</p></div>
-          </a>
-          <a href="#" class="article-card article-slide">
-            <div class="article-img"><div class="article-img-bg" style="background-image:url('https://images.unsplash.com/photo-1608528577891-eb055944f2e7?auto=format&fit=crop&w=1000&q=80')"></div></div>
-            <div class="article-body"><p class="article-cat">Editorial</p><h3 class="article-title">Signature scent cho quý ông hiện đại: chọn sao cho đúng</h3><p class="article-desc">Nguyên tắc chọn mùi theo bối cảnh công việc và lifestyle.</p></div>
-          </a>
+          {% empty %}
+          <p>Chưa có bài viết liên quan.</p>
+          {% endfor %}
         </div>
       </div>
+      <a class="pd-more-link" href="{% url 'blog-list' %}" style="margin-top:20px;display:inline-flex;">Xem thêm</a>
     </div>
   </section>
 
@@ -215,11 +214,17 @@
       <div class="strip-header reveal"><p class="section-label">Đánh giá khách hàng</p></div>
       <div class="review-strip reveal" id="reviewStrip">
         <div class="review-track" id="reviewsGrid">
-          <article class="review-card" data-segment="men all"><div class="review-head"><strong>Minh Khang</strong><span>⭐⭐⭐⭐⭐</span></div><p>“Mùi woody rất sang, lưu hương ổn 8-10h. Đóng gói premium đúng tinh thần boutique niche.”</p></article>
-          <article class="review-card" data-segment="men all"><div class="review-head"><strong>Quốc Đạt</strong><span>⭐⭐⭐⭐⭐</span></div><p>“Được tư vấn rất kỹ theo phong cách cá nhân. Bản Dior mình chọn nhận nhiều lời khen.”</p></article>
-          <article class="review-card" data-segment="women all"><div class="review-head"><strong>Ngọc Ánh</strong><span>⭐⭐⭐⭐⭐</span></div><p>“Trang nữ cũng rất đẹp, note hoa trắng lên da rất sạch và thanh lịch.”</p></article>
-          <article class="review-card" data-segment="unisex all"><div class="review-head"><strong>Hoài Nam</strong><span>⭐⭐⭐⭐</span></div><p>“Unisex collection có nhiều mùi lạ mà dễ dùng. Layout website mượt và tối giản.”</p></article>
-          <article class="review-card" data-segment="men all"><div class="review-head"><strong>Khôi Trần</strong><span>⭐⭐⭐⭐⭐</span></div><p>“UI cực kỳ premium, card trung tâm trong slider nhìn cinematic rất thích.”</p></article>
+          {% for review in recent_reviews %}
+          <article class="review-card" data-segment="{{ breadcrumb|slugify }} all">
+            <div class="review-head">
+              <strong>{{ review.id_TaiKhoan.TenDangNhap|default:review.id_TaiKhoan.Username|default:'Khách hàng' }}</strong>
+              <span>{% for _ in "12345"|make_list %}{% if forloop.counter <= review.SoSao %}⭐{% else %}☆{% endif %}{% endfor %}</span>
+            </div>
+            <p>“{{ review.BinhLuan|default:'Khách hàng đã để lại đánh giá tích cực.' }}”</p>
+          </article>
+          {% empty %}
+          <article class="review-card" data-segment="all"><div class="review-head"><strong>Ami</strong><span>⭐⭐⭐⭐⭐</span></div><p>“Chưa có đánh giá mới. Hãy là người đầu tiên đánh giá sản phẩm.”</p></article>
+          {% endfor %}
         </div>
       </div>
     </div>

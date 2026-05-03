@@ -45,8 +45,8 @@ FALLBACK_IMAGES = {
 
 def _format_currency(value):
     if value is None:
-        return "Liên hệ"
-    return f"{int(value):,}".replace(",", ".") + "₫"
+        return "0đ"
+    return f"{int(value):,}".replace(",", ".") + "đ"
 
 
 def _safe_list(queryset):
@@ -150,7 +150,8 @@ def _build_product_cards(products):
         primary_image = product_images[0] if product_images else FALLBACK_IMAGES["default"]
         hover_image = product_images[1] if len(product_images) > 1 else primary_image
         stock = int(default_variant.SoLuong) if default_variant else 0
-        is_active = (product.TrangThai_SanPham or "").lower() == "active"
+        status_value = (product.TrangThai_SanPham or "").strip().lower()
+        is_new = status_value in {"new", "moi", "mới"}
         cards.append(
             {
                 "id": product.id_SanPham,
@@ -160,8 +161,8 @@ def _build_product_cards(products):
                 "group_list": [h.TenNhomHuong for h in product.nhom_huongs.all()],
                 "price": _format_currency(default_variant.GiaBan if default_variant else None),
                 "price_raw": int(default_variant.GiaBan or 0) if default_variant else 0,
-                "stock": stock if is_active else 0,
-                "is_new": is_active,
+                "stock": stock,
+                "is_new": is_new,
                 "primary_image": primary_image,
                 "hover_image": hover_image,
                 "variant_values": variant_value_map.get(product.id_SanPham, []),
@@ -212,6 +213,13 @@ def home(request):
         },
     )
 
+def _category_article_queryset(category=None):
+    articles = BaiViet.objects.order_by("-NgayTao")
+    if category and category.TenLoaiSanPham:
+        keyword = category.TenLoaiSanPham
+        articles = articles.filter(Q(TieuDe__icontains=keyword) | Q(NoiDung__icontains=keyword))
+    return articles
+
 def category(request, segment='tat-ca'):
 
     # lấy tất cả danh mục
@@ -236,13 +244,33 @@ def category(request, segment='tat-ca'):
 
     products = products.order_by("-id_SanPham")
 
+    related_articles_qs = _category_article_queryset(current_category)
+    related_articles = _safe_list(related_articles_qs[:6])
+
+    if not related_articles and current_category:
+        related_articles = _safe_list(BaiViet.objects.order_by("-NgayTao")[:6])
+
+    recent_reviews = _safe_list(
+        DanhGia.objects.select_related("id_TaiKhoan")
+        .filter(id_SanPham__id_LoaiSanPham=current_category)
+        .order_by("-NgayDanhGia", "-id_DanhGia")[:8]
+    ) if current_category else _safe_list(
+        DanhGia.objects.select_related("id_TaiKhoan")
+        .order_by("-NgayDanhGia", "-id_DanhGia")[:8]
+    )
+
+
     # 👉 context động theo DB
     context = {
         "page_title": f"Ami – {current_category.TenLoaiSanPham}" if current_category else "Ami – Tất cả nước hoa",
         "title": current_category.TenLoaiSanPham if current_category else "Tất cả nước hoa",
         "subtitle": current_category.MoTa if current_category else "Khám phá toàn bộ bộ sưu tập nước hoa.",
         "breadcrumb": current_category.TenLoaiSanPham if current_category else "Tất cả",
+        "brands": _safe_list(ThuongHieu.objects.order_by("TenThuongHieu")),
+        "segment": segment,
         "products": _build_product_cards(products),
+        "related_articles": related_articles,
+        "recent_reviews": recent_reviews,
     }
 
     context["product_count"] = len(context["products"])
@@ -351,12 +379,25 @@ def product_detail(request, product_id=None):
         )
     )
 
+    scent_group_ids = [item.id_NhomHuong_id for item in nhom_huongs]
+    similar_scent_products = _build_product_cards(
+        _safe_list(
+            SanPham.objects.select_related("id_ThuongHieu", "id_LoaiSanPham")
+            .prefetch_related("nhom_huongs")
+            .filter(nhom_huongs__id_NhomHuong__in=scent_group_ids)
+            .exclude(id_SanPham=product_obj.id_SanPham)
+            .distinct()
+            .order_by("-id_SanPham")[:4]
+        )
+    ) if scent_group_ids else []
+
     return render(request, "app/product.html", {
         "product_data": product_data,
         "product_images": product_images,
         "nhom_huong_list": nhom_huong_list,
         "related_products": related_products,
         "brand_slug": slugify(product_obj.id_ThuongHieu.TenThuongHieu),
+        "similar_scent_products": similar_scent_products,
     })
 
 
@@ -373,6 +414,7 @@ def brand_list(request):
                 "tagline": "Tinh hoa mùi hương đẳng cấp",
                 "palette": "#6f7d62",
                 "poster_image": row["LogoUrl"] or FALLBACK_IMAGES["brand_poster"],
+                "category": "Designer" if len(name) % 2 == 0 else "Niche",
             }
         )
     return render(request, "app/brand_list.html", {"brands": brands})
@@ -462,34 +504,7 @@ def article_detail(request, id):
 
 
 def contact_page(request):
-    faq_items = [
-        {
-            "question": "Ami có tư vấn chọn mùi theo cá tính không?",
-            "answer": "Có. Đội ngũ tư vấn 1:1 theo nhu cầu đi làm, đi tiệc, du lịch và ngân sách của bạn.",
-        },
-        {
-            "question": "Tôi có thể đặt lịch thử mùi riêng?",
-            "answer": "Bạn có thể đặt lịch private appointment trong khung giờ 10:00–20:00 hằng ngày.",
-        },
-        {
-            "question": "Ami hỗ trợ giao hàng toàn quốc?",
-            "answer": "Có. Đơn hàng được đóng gói chống sốc, hỗ trợ COD và đổi trả theo chính sách.",
-        },
-    ]
-    reviews = []
-    recent_reviews = _safe_list(
-    DanhGia.objects.select_related("id_TaiKhoan").order_by("-NgayDanhGia")[:6]
-    )
-    for row in recent_reviews:
-        reviews.append(
-            {
-                "name": row.id_TaiKhoan.TenDangNhap or row.id_TaiKhoan.Username or "Khách hàng",
-                "comment": row.NoiDung or "Trải nghiệm tốt.",
-            }
-        )
-    if not reviews:
-        reviews = [{"name": "Ami", "comment": "Đội ngũ luôn sẵn sàng hỗ trợ bạn qua hotline và email."}]
-    return render(request, 'app/contact.html', {'faq_items': faq_items, 'reviews': reviews})
+    return render(request, 'app/contact.html')
 
 
 def cart_page(request):

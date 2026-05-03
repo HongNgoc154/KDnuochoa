@@ -45,7 +45,7 @@
       <div class="spotlight-grid">
         {% for item in pinned_products %}
         <article class="spotlight-card">
-          <img src="{{ item.image }}" alt="{{ item.name }}" loading="lazy">
+          <img src="{{ item.primary_image }}" alt="{{ item.name }}" loading="lazy">
           <div>
             <h3>{{ item.name }}</h3>
             <p>{{ item.price }}</p>
@@ -62,13 +62,13 @@
       <h2>Bộ sưu tập {{ brand.name }}</h2>
       <div class="brand-products-grid">
         {% for item in products %}
-        <article class="brand-product-card">
-          <img src="{{ item.image }}" alt="{{ item.name }}" loading="lazy">
+        <a href="{% url 'product-detail-by-id' item.id %}" class="brand-product-card">
+          <img src="{{ item.primary_image }}" alt="{{ item.name }}" loading="lazy">
           <div class="product-meta">
             <h3>{{ item.name }}</h3>
             <p>{{ item.price }}</p>
           </div>
-        </article>
+        </a>
         {% endfor %}
       </div>
     </div>

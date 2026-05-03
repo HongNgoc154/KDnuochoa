@@ -62,6 +62,20 @@
         <span class="pd-dot active"></span>
         {% endfor %}
       </div>
+      <div class="pd-similar-scent">
+        <h3>Mùi hương tương tự</h3>
+        <div class="pd-similar-grid">
+          {% for item in similar_scent_products %}
+          <a href="{% url 'product-detail-by-id' item.id %}" class="pd-similar-card">
+            <img src="{{ item.primary_image }}" alt="{{ item.name }}" loading="lazy">
+            <p>{{ item.name }}</p>
+            <span>{{ item.price }}</span>
+          </a>
+          {% empty %}
+          <p>Chưa có sản phẩm tương tự.</p>
+          {% endfor %}
+        </div>
+      </div>
     </div>
   </section>
 
@@ -78,16 +92,16 @@
           <span class="pd-rating-score">{{ product_data.rating_avg|default:'0' }}</span>
           <span class="pd-rating-count">({{ product_data.rating_count|default:'0' }} đánh giá)</span>
         </div>
-         <span id="pdStockStatus" class="pd-status {% if product_data.stock|default:0 > 0 and product_data.status|lower == 'active' %}in-stock{% endif %}">
-          ● {% if product_data.stock|default:0 > 0 and product_data.status|lower == 'active' %}Còn hàng{% else %}Hết hàng{% endif %}
+         <span id="pdStockStatus" class="pd-status {% if product_data.stock|default:0 > 0 %}in-stock{% else %}out-stock{% endif %}">
+          ● {% if product_data.stock|default:0 > 0 %}Còn hàng{% else %}Hết hàng{% endif %}
         </span>
       </div>
     </div>
 
     <!-- Price -->
     <div class="pd-price-block reveal-up delay-1">
-      <span class="pd-price" id="pdVariantPrice">{{ product_data.price|default:'Liên hệ' }}</span>
-      <span class="pd-price-note" id="pdVariantMeta">Có {{ product_data.variant_count|default:'0' }} biến thể</span>
+      <span class="pd-price" id="pdVariantPrice">{{ product_data.price|default:'0đ' }}</span>
+      <span class="pd-price-note" id="pdVariantMeta">Giá áp dụng cho biến thể đang chọn</span>
     </div>
 
     <!-- Variant selector -->

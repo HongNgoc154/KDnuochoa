@@ -341,10 +341,11 @@ if (isCategoryPage) {
   document.querySelectorAll('[data-carousel]').forEach(initEdgeCarousel);
 
   /* Review auto-scroll */
+   /* Review carousel focus (no auto-scroll để tránh giật) */
   const reviewTrack = document.getElementById('reviewsGrid');
   if (reviewTrack) {
     const reviewCards = [...reviewTrack.querySelectorAll('.review-card')].filter(el => !el.hidden);
-    let autoScrollTimer;
+    // let autoScrollTimer;
     const refreshFocus = () => {
       const centerPoint = reviewTrack.getBoundingClientRect().left + reviewTrack.clientWidth / 2;
       let closest = null;
@@ -357,22 +358,22 @@ if (isCategoryPage) {
       });
       if (closest) closest.classList.add('in-focus');
     };
-    const startAutoScroll = () => {
-      stopAutoScroll();
-      autoScrollTimer = setInterval(() => {
-        reviewTrack.scrollBy({ left: 1, behavior: 'auto' });
-        if (reviewTrack.scrollLeft + reviewTrack.clientWidth >= reviewTrack.scrollWidth - 1) {
-          reviewTrack.scrollTo({ left: 0, behavior: 'smooth' });
-        }
-        refreshFocus();
-      }, 30);
-    };
-    const stopAutoScroll = () => clearInterval(autoScrollTimer);
-    reviewTrack.addEventListener('mouseenter', stopAutoScroll);
-    reviewTrack.addEventListener('mouseleave', startAutoScroll);
+    // const startAutoScroll = () => {
+    //   stopAutoScroll();
+    //   autoScrollTimer = setInterval(() => {
+    //     reviewTrack.scrollBy({ left: 1, behavior: 'auto' });
+    //     if (reviewTrack.scrollLeft + reviewTrack.clientWidth >= reviewTrack.scrollWidth - 1) {
+    //       reviewTrack.scrollTo({ left: 0, behavior: 'smooth' });
+    //     }
+    //     refreshFocus();
+    //   }, 30);
+    // };
+    // const stopAutoScroll = () => clearInterval(autoScrollTimer);
+    // reviewTrack.addEventListener('mouseenter', stopAutoScroll);
+    // reviewTrack.addEventListener('mouseleave', startAutoScroll);
     reviewTrack.addEventListener('scroll', refreshFocus, { passive: true });
     refreshFocus();
-    startAutoScroll();
+    // startAutoScroll();
   }
 
   applyFilters();
