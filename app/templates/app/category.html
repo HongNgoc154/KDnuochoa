@@ -32,10 +32,12 @@
         <button class="edge-arrow edge-arrow-right" type="button" aria-label="Scroll phải">→</button>
         <div class="edge-track brand-track" data-carousel-track>
           {% for brand in brands %}
-          <a class="brand-chip stagger-{% cycle '1' '2' %}" href="{% url 'brand-detail' brand.TenThuongHieu|slugify %}">
+          {% with brand_slug=brand.TenThuongHieu|slugify %}
+          <a class="brand-chip stagger-{% cycle '1' '2' %}" href="{% if brand_slug %}{% url 'brand-detail' brand_slug %}{% else %}{% url 'brand-list' %}{% endif %}">
             <img src="{{ brand.LogoUrl|default:'https://images.unsplash.com/photo-1610461888750-10bfc601b874?auto=format&fit=crop&w=120&q=80' }}" alt="{{ brand.TenThuongHieu }}">
             <span>{{ brand.TenThuongHieu }}</span>
           </a>
+          {% endwith %}
           {% endfor %}
         </div>
       </div>

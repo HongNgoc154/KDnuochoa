@@ -23,7 +23,7 @@
     <div class="brand-slider" data-brand-track>
       {% for brand in brands %}
       <article class="brand-poster" style="--brand-accent: {{ brand.palette }};" data-brand-card>
-        <a href="{% url 'brand-detail' brand.slug %}" class="brand-poster-link">
+         <a href="{% if brand.slug %}{% url 'brand-detail' brand.slug %}{% else %}{% url 'brand-list' %}{% endif %}" class="brand-poster-link">
           <div class="brand-poster-media">
             <img src="{{ brand.poster_image }}" alt="{{ brand.name }}" loading="lazy">
             <div class="poster-overlay"></div>

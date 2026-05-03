@@ -22,7 +22,8 @@
   <div class="brands-ticker-wrap">
     <div class="brands-ticker" id="brandsTicker">
       {% for brand in brands_home %}
-      <a href="{% url 'brand-detail' brand.TenThuongHieu|slugify %}" class="brand-item">
+      {% with brand_slug=brand.TenThuongHieu|slugify %}
+      <a href="{% if brand_slug %}{% url 'brand-detail' brand_slug %}{% else %}{% url 'brand-list' %}{% endif %}" class="brand-item">
         <div class="brand-item-logo">{% if brand.LogoUrl %}
   <img src="{{ brand.LogoUrl.url }}" alt="{{ brand.TenThuongHieu }}">
 {% else %}
@@ -30,10 +31,12 @@
 {% endif %}</div>
         <span class="brand-item-name">{{ brand.TenThuongHieu }}</span>
       </a>
+      {% endwith %}
       <div class="brand-item-sep"></div>
       {% endfor %}
       {% for brand in brands_home %}
-      <a href="{% url 'brand-detail' brand.TenThuongHieu|slugify %}" class="brand-item">
+      {% with brand_slug=brand.TenThuongHieu|slugify %}
+      <a href="{% if brand_slug %}{% url 'brand-detail' brand_slug %}{% else %}{% url 'brand-list' %}{% endif %}" class="brand-item">
         <div class="brand-item-logo">
           {% if brand.LogoUrl %}
             <img src="{{ brand.LogoUrl.url }}" alt="{{ brand.TenThuongHieu }}">
@@ -43,6 +46,7 @@
         </div>
         <span class="brand-item-name">{{ brand.TenThuongHieu }}</span>
       </a>
+      {% endwith %}
       <div class="brand-item-sep"></div>
       {% endfor %}
     </div>
@@ -145,10 +149,12 @@
         </p>
 
         <!-- BUTTON -->
-        <a href="{% url 'category-segment' cate.TenLoaiSanPham|slugify %}">
+        {% with cate_slug=cate.TenLoaiSanPham|slugify %}
+        <a href="{% if cate_slug %}{% url 'category-segment' cate_slug %}{% else %}{% url 'category-all' %}{% endif %}">
           Xem bộ sưu tập
           <span class="cat-row-btn-arrow">→</span>
         </a>
+        {% endwith %}
 
       </div>
     </div>

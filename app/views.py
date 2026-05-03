@@ -6,6 +6,10 @@ from django.shortcuts import render, redirect
 from django.utils.text import slugify
 from .models import LoaiSanPham, NhomHuong
 import json
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
 
 from .models import (
     BaiViet,
@@ -58,6 +62,22 @@ def _safe_first(queryset):
     except DatabaseError:
         return None
 
+
+def _normalize_vietnamese_text(value):
+    if not isinstance(value, str):
+        return value
+    if not value:
+        return value
+
+    # Fix common mojibake when UTF-8 bytes were interpreted as latin-1/cp1252.
+    for source_enc in ("latin-1", "cp1252"):
+        try:
+            repaired = value.encode(source_enc).decode("utf-8")
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            continue
+        if repaired != value:
+            return repaired
+    return value
 
 
 
@@ -506,15 +526,108 @@ def cart_page(request):
     return render(request, 'app/cart.html', {'cart_items': cart_items, 'suggestions': suggestions})
 
 def auth_page(request):
+    if request.session.get("account_id"):
+        return redirect('profile-page')
     return render(request, 'app/auth.html')
+@csrf_exempt
+@require_POST
+def login_api(request):
+    email = (request.POST.get("email") or "").strip()
+    password = request.POST.get("password") or ""
+    if not email or not password:
+        return JsonResponse({"ok": False, "message": "Vui lòng nhập email và mật khẩu."}, status=400)
+
+    account = TaiKhoan.objects.filter(Email__iexact=email, MatKhau=password, TrangThai_TaiKhoan__iexact='active').first()
+    if not account:
+        return JsonResponse({"ok": False, "message": "Email hoặc mật khẩu không đúng."}, status=401)
+
+    request.session["account_id"] = account.id_TaiKhoan
+    request.session["account_name"] = account.TenDangNhap or account.Username
+    return JsonResponse({"ok": True, "message": "Đăng nhập thành công."})
+
+
+@csrf_exempt
+@require_POST
+def login_api(request):
+    email = (request.POST.get("email") or "").strip()
+    password = request.POST.get("password") or ""
+    if not email or not password:
+        return JsonResponse({"ok": False, "message": "Vui lòng nhập email và mật khẩu."}, status=400)
+
+    account = TaiKhoan.objects.filter(Email__iexact=email, MatKhau=password, TrangThai_TaiKhoan__iexact='active').first()
+    if not account:
+        return JsonResponse({"ok": False, "message": "Email hoặc mật khẩu không đúng."}, status=401)
+
+    request.session["account_id"] = account.id_TaiKhoan
+    request.session["account_name"] = _normalize_vietnamese_text(account.TenDangNhap) or account.Username
+    return JsonResponse({"ok": True, "message": "Đăng nhập thành công."})
+
+
+@csrf_exempt
+@require_POST
+def register_api(request):
+    full_name = (request.POST.get("fullname") or "").strip()
+    email = (request.POST.get("email") or "").strip()
+    phone = (request.POST.get("phone") or "").strip()
+    username = (request.POST.get("username") or "").strip()
+    password = request.POST.get("password") or ""
+
+    if not all([full_name, email, phone, username, password]):
+        return JsonResponse({"ok": False, "message": "Vui lòng điền đầy đủ thông tin."}, status=400)
+
+    if TaiKhoan.objects.filter(Username__iexact=username).exists():
+        return JsonResponse({"ok": False, "message": "Tên đăng nhập đã tồn tại."}, status=409)
+    if TaiKhoan.objects.filter(Email__iexact=email).exists():
+        return JsonResponse({"ok": False, "message": "Email đã được sử dụng."}, status=409)
+
+    account = TaiKhoan.objects.create(
+        Username=username,
+        MatKhau=password,
+        TenDangNhap=_normalize_vietnamese_text(full_name),
+        Email=email,
+        SDT=phone,
+        LoaiTaiKhoan='customer',
+        TrangThai_TaiKhoan='active',
+        NgayTao=timezone.now(),
+    )
+    KhachHang.objects.create(
+        id_TaiKhoan=account,
+        TenKhachHang=_normalize_vietnamese_text(full_name),
+        DiaChi='',
+        GioiTinh='',
+    )
+    return JsonResponse({"ok": True, "message": "Đăng ký thành công."})
+
+
+@csrf_exempt
+@require_POST
+def forgot_password_api(request):
+    email = (request.POST.get("email") or "").strip()
+    username = (request.POST.get("username") or "").strip()
+    new_password = request.POST.get("new_password") or ""
+
+    if not all([email, username, new_password]):
+        return JsonResponse({"ok": False, "message": "Vui lòng nhập email, tên đăng nhập và mật khẩu mới."}, status=400)
+
+    account = TaiKhoan.objects.filter(Email__iexact=email, Username__iexact=username).first()
+    if not account:
+        return JsonResponse({"ok": False, "message": "Không tìm thấy tài khoản phù hợp."}, status=404)
+
+    account.MatKhau = new_password
+    account.save(update_fields=["MatKhau"])
+    return JsonResponse({"ok": True, "message": "Đổi mật khẩu thành công."})
 
 def profile_page(request):
-    account = _safe_first(TaiKhoan.objects.order_by("id_TaiKhoan"))
+    account_id = request.session.get("account_id")
+    if not account_id:
+        return redirect('auth-page')
+
+    account = _safe_first(TaiKhoan.objects.filter(id_TaiKhoan=account_id))
     customer = _safe_first(
         KhachHang.objects.select_related("id_TaiKhoan").filter(id_TaiKhoan=account) if account else KhachHang.objects.none()
     )
     profile = {
-        "full_name": (customer.TenKhachHang if customer else None) or (account.TenDangNhap if account else "") or "Khách hàng",
+         "full_name": _normalize_vietnamese_text((customer.TenKhachHang if customer else None) or (account.TenDangNhap if account else "") or "Khách hàng"),
         "username": (account.Username if account else "") or "guest",
         "email": (account.Email if account else "") or "",
         "phone": (account.SDT if account else "") or "",
@@ -537,6 +650,8 @@ def checkout_page(request):
 
 def logout_view(request):
     logout(request)
+    request.session.pop("account_id", None)
+    request.session.pop("account_name", None)
     return redirect('home')
 
 # ADMIN

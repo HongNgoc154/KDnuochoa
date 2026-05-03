@@ -353,7 +353,7 @@
 <section class="pd-brand-more reveal-section" style="background:var(--cream);">
   <div class="container section-head-inline">
     <p class="section-label">Khám phá thêm từ {{ product_data.brand }}</p>
-    <a class="pd-more-link" href="{% url 'brand-detail' brand_slug %}">Xem thêm</a>
+    <a class="pd-more-link" href="{% if brand_slug %}{% url 'brand-detail' brand_slug %}{% else %}{% url 'brand-list' %}{% endif %}">Xem thêm</a>
   </div>
   <div class="pd-related-carousel-wrap" id="brandMoreWrap">
     <button class="carr-arrow carr-arrow--left" id="brandMoreLeft" aria-label="Xem thêm bên trái">

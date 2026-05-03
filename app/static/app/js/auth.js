@@ -335,13 +335,19 @@ realtimeValidate(document.getElementById('rgPass2'),  (v) => {
     btn.classList.add('loading');
     btn.disabled = true;
 
-    /* Simulate API call (replace with real fetch) */
-    await fakeRequest(1400);
-
-    btn.classList.remove('loading');
-    btn.disabled = false;
-
-    showSuccess('Chào mừng trở lại!', 'Đang chuyển hướng trang chủ…');
+    try {
+      const body = new URLSearchParams({ email: emailVal, password: passVal });
+      const res = await fetch('/auth/login/', { method: 'POST', body });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setError('lgPassGroup', 'lgPassErr', data.message || 'Đăng nhập thất bại');
+        return;
+      }
+      showSuccess('Chào mừng trở lại!', 'Đăng nhập thành công, đang chuyển hướng…');
+    } finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
   });
 })();
 
@@ -379,12 +385,25 @@ realtimeValidate(document.getElementById('rgPass2'),  (v) => {
     btn.classList.add('loading');
     btn.disabled = true;
 
-    await fakeRequest(1800);
-
-    btn.classList.remove('loading');
-    btn.disabled = false;
-
-    showSuccess('Tài khoản đã được tạo!', 'Chào mừng bạn đến với Ami Perfumery…');
+    try {
+      const body = new URLSearchParams({
+        fullname: vals.name,
+        email: vals.email,
+        phone: vals.phone,
+        username: vals.user,
+        password: vals.pw,
+      });
+      const res = await fetch('/auth/register/', { method: 'POST', body });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setError('rgUserGroup', 'rgUserErr', data.message || 'Đăng ký thất bại');
+        return;
+      }
+      showSuccess('Tài khoản đã được tạo!', 'Đăng ký thành công, đang chuyển hướng…');
+    } finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
   });
 })();
 
@@ -462,4 +481,38 @@ function showSuccess(title, sub) {
   if (tab === 'register' || tab === 'login') {
     window.authSwitchTo(tab);
   }
+
+  /* ═══════════════════════════════════════════════════════════
+   11. FORGOT PASSWORD
+   ═══════════════════════════════════════════════════════════ */
+(function initForgotPassword() {
+  const link = document.querySelector('.forgot-link');
+  if (!link) return;
+
+  link.addEventListener('click', async (e) => {
+    e.preventDefault();
+
+    const email = window.prompt('Nhập email đã đăng ký:');
+    if (!email) return;
+    const username = window.prompt('Nhập tên đăng nhập:');
+    if (!username) return;
+    const newPassword = window.prompt('Nhập mật khẩu mới:');
+    if (!newPassword) return;
+
+    try {
+      const body = new URLSearchParams({ email, username, new_password: newPassword });
+      const res = await fetch('/auth/forgot-password/', { method: 'POST', body });
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        alert(data.message || 'Không thể đặt lại mật khẩu.');
+        return;
+      }
+
+      alert('Đổi mật khẩu thành công. Vui lòng đăng nhập lại.');
+    } catch (err) {
+      alert('Có lỗi xảy ra, vui lòng thử lại.');
+    }
+  });
+})();
 })();

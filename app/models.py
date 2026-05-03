@@ -386,11 +386,17 @@ class GiaoHang(models.Model):
 # ===================== KHÁCH HÀNG =====================
 class KhachHang(models.Model):
     id_KhachHang = models.AutoField(primary_key=True)
-
+    id_TaiKhoan = models.ForeignKey(
+        'TaiKhoan',
+        on_delete=models.CASCADE,
+        db_column='id_TaiKhoan',
+        null=True
+    )
     TenKhachHang = models.CharField(max_length=255, null=True)
     Email = models.CharField(max_length=255, null=True)
     SDT = models.CharField(max_length=20, null=True)
     DiaChi = models.CharField(max_length=255, null=True)
+    GioiTinh = models.CharField(max_length=10, null=True)
 
     class Meta:
         managed = False

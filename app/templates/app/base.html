@@ -39,8 +39,8 @@
             <i class="bi bi-person-circle"></i>
           </button>
           <div class="account-dropdown">
-            {% if user.is_authenticated %}
-              <a href="{% url 'profile-page' %}"><i class="bi bi-person me-2"></i>Tài khoản của bạn</a>
+            {% if is_logged_in %}
+              <a href="{% url 'profile-page' %}"><i class="bi bi-person me-2"></i>{% if current_account and current_account.TenDangNhap %}{{ current_account.TenDangNhap }}{% else %}Tài khoản của bạn{% endif %}</a>
               <a href="{% url 'logout' %}"><i class="bi bi-box-arrow-right me-2"></i>Đăng xuất</a>
             {% else %}
               <a href="{% url 'auth-page' %}?tab=login"><i class="bi bi-box-arrow-in-right me-2"></i>Đăng nhập</a>
@@ -73,7 +73,8 @@
           <p class="mega-col-title">Danh mục</p>
 
           {% for cate in nav_categories %}
-          <a href="{% url 'category-segment' cate.TenLoaiSanPham|slugify %}" class="mega-cat-item">
+          {% with cate_slug=cate.TenLoaiSanPham|slugify %}
+          <a href="{% if cate_slug %}{% url 'category-segment' cate_slug %}{% else %}{% url 'category-all' %}{% endif %}" class="mega-cat-item">
 
             <div class="mega-cat-img"
                  style="background-image:url('{% if cate.HinhanhUrl %}{{ cate.HinhanhUrl.url }}{% else %}https://via.placeholder.com/200{% endif %}')">
@@ -91,6 +92,7 @@
             </div>
 
           </a>
+          {% endwith %}
           {% empty %}
           <p style="padding:10px;">Chưa có danh mục</p>
           {% endfor %}
@@ -102,8 +104,8 @@
 
           <div class="mega-brands-grid">
             {% for brand in nav_brands %}
-            <a href="{% url 'brand-detail' brand.TenThuongHieu|slugify %}" class="mega-brand-link">
-
+            {% with brand_slug=brand.TenThuongHieu|slugify %}
+            <a href="{% if brand_slug %}{% url 'brand-detail' brand_slug %}{% else %}{% url 'brand-list' %}{% endif %}" class="mega-brand-link">
               {% if brand.LogoUrl %}
                 <img src="{{ brand.LogoUrl.url }}" alt="{{ brand.TenThuongHieu }}">
               {% else %}
@@ -112,6 +114,7 @@
 
               <span>{{ brand.TenThuongHieu }}</span>
             </a>
+            {% endwith %}
             {% empty %}
               <p>Chưa có thương hiệu</p>
             {% endfor %}
