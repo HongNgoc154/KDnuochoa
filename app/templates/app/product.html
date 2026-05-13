@@ -101,7 +101,7 @@
     <!-- Price -->
     <div class="pd-price-block reveal-up delay-1">
       <span class="pd-price" id="pdVariantPrice">{{ product_data.price|default:'0đ' }}</span>
-      <span class="pd-price-note" id="pdVariantMeta">Giá áp dụng cho biến thể đang chọn</span>
+      {% comment %} <span class="pd-price-note" id="pdVariantMeta">Giá áp dụng cho biến thể đang chọn</span> {% endcomment %}
     </div>
 
     <!-- Variant selector -->
@@ -234,13 +234,62 @@
           </ul>
         </div>
         <div class="pd-spec-table">
-          <div class="pd-spec-row"><span>Thương hiệu</span><strong>Dior</strong></div>
-          <div class="pd-spec-row"><span>Dòng</span><strong>Sauvage Collection</strong></div>
-          <div class="pd-spec-row"><span>Nồng độ</span><strong>Elixir (Extra-Parfum)</strong></div>
-          <div class="pd-spec-row"><span>Dung tích</span><strong>60ml</strong></div>
-          <div class="pd-spec-row"><span>Giới tính</span><strong>Nam</strong></div>
-          <div class="pd-spec-row"><span>Xuất xứ</span><strong>Pháp</strong></div>
-          <div class="pd-spec-row"><span>Năm ra mắt</span><strong>2021</strong></div>
+
+          <div class="pd-spec-row">
+            <span>Thương hiệu</span>
+            <strong>{{ product_data.brand|default:"Đang cập nhật" }}</strong>
+          </div>
+
+          <div class="pd-spec-row">
+            <span>Danh mục</span>
+            <strong>{{ product_data.category|default:"Đang cập nhật" }}</strong>
+          </div>
+
+          <div class="pd-spec-row">
+            <span>Nồng độ</span>
+            <strong>{{ product_data.concentration|default:"Đang cập nhật" }}</strong>
+          </div>
+
+          <div class="pd-spec-row">
+            <span>Độ lưu hương</span>
+            <strong>{{ product_data.longevity|default:"Đang cập nhật" }}</strong>
+          </div>
+
+          <div class="pd-spec-row">
+            <span>Độ tỏa hương</span>
+            <strong>{{ product_data.sillage|default:"Đang cập nhật" }}</strong>
+          </div>
+
+          <div class="pd-spec-row">
+            <span>Mùa phù hợp</span>
+            <strong>{{ product_data.season|default:"Đang cập nhật" }}</strong>
+          </div>
+
+          <div class="pd-spec-row">
+            <span>Thời điểm sử dụng</span>
+            <strong>{{ product_data.time_use|default:"Đang cập nhật" }}</strong>
+          </div>
+
+          <div class="pd-spec-row">
+            <span>Phong cách</span>
+            <strong>{{ product_data.style|default:"Đang cập nhật" }}</strong>
+          </div>
+
+          <div class="pd-spec-row">
+            <span>Độ tuổi phù hợp</span>
+            <strong>{{ product_data.age_group|default:"Đang cập nhật" }}</strong>
+          </div>
+
+          <div class="pd-spec-row">
+            <span>Năm phát hành</span>
+            <strong>{{ product_data.release_year|default:"Đang cập nhật" }}</strong>
+          </div>
+
+          <div class="pd-spec-row">
+            <span>Xuất xứ</span>
+            <strong>{{ product_data.origin|default:"Đang cập nhật" }}</strong>
+          </div>
+
         </div>
       </div>
     </div>
@@ -337,26 +386,32 @@
     <div class="pd-related-track-outer">
       <div class="pd-related-track" id="relatedTrack">
 
-        <a href="#" class="pd-rel-card">
-          <div class="pd-rel-media"><img src="https://images.unsplash.com/photo-1619994403073-2cec5a97dd6d?auto=format&fit=crop&w=600&q=80" alt="Bleu de Chanel" loading="lazy"></div>
-          <div class="pd-rel-body"><p class="pd-rel-brand">Chanel</p><h3 class="pd-rel-name">Bleu de Chanel EDP</h3><p class="pd-rel-price">3.800.000₫</p></div>
+        {% for item in related_products %}
+        <a href="{% url 'product-detail-by-id' item.id %}" class="pd-rel-card">
+
+          <div class="pd-rel-media">
+            <img src="{{ item.primary_image }}"
+                alt="{{ item.name }}"
+                loading="lazy">
+          </div>
+
+          <div class="pd-rel-body">
+            <p class="pd-rel-brand">{{ item.brand }}</p>
+
+            <h3 class="pd-rel-name">
+              {{ item.name }}
+            </h3>
+
+            <p class="pd-rel-price">
+              {{ item.price }}
+            </p>
+          </div>
+
         </a>
-        <a href="#" class="pd-rel-card">
-          <div class="pd-rel-media"><img src="https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&w=600&q=80" alt="Tom Ford Oud" loading="lazy"></div>
-          <div class="pd-rel-body"><p class="pd-rel-brand">Tom Ford</p><h3 class="pd-rel-name">Oud Wood Parfum</h3><p class="pd-rel-price">6.900.000₫</p></div>
-        </a>
-        <a href="#" class="pd-rel-card">
-          <div class="pd-rel-media"><img src="https://images.unsplash.com/photo-1588405748880-12d1d2a59a75?auto=format&fit=crop&w=600&q=80" alt="YSL Y" loading="lazy"></div>
-          <div class="pd-rel-body"><p class="pd-rel-brand">YSL</p><h3 class="pd-rel-name">Y Eau de Parfum</h3><p class="pd-rel-price">3.400.000₫</p></div>
-        </a>
-        <a href="#" class="pd-rel-card">
-          <div class="pd-rel-media"><img src="https://images.unsplash.com/photo-1587017539504-67cfbddac569?auto=format&fit=crop&w=600&q=80" alt="Versace Dylan" loading="lazy"></div>
-          <div class="pd-rel-body"><p class="pd-rel-brand">Versace</p><h3 class="pd-rel-name">Dylan Blue EDT</h3><p class="pd-rel-price">2.600.000₫</p></div>
-        </a>
-        <a href="#" class="pd-rel-card">
-          <div class="pd-rel-media"><img src="https://images.unsplash.com/photo-1563170351-be82bc888aa4?auto=format&fit=crop&w=600&q=80" alt="Dior Homme" loading="lazy"></div>
-          <div class="pd-rel-body"><p class="pd-rel-brand">Dior</p><h3 class="pd-rel-name">Dior Homme Parfum</h3><p class="pd-rel-price">4.700.000₫</p></div>
-        </a>
+
+        {% empty %}
+          <p>Chưa có sản phẩm gợi ý.</p>
+        {% endfor %}
 
       </div>
     </div>

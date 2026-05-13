@@ -174,6 +174,7 @@ class SanPhamNhomHuongInline(nested_admin.NestedStackedInline):
     model = SanPhamNhomHuong
     extra = 1
     autocomplete_fields = ('id_NhomHuong',)
+    fields = ('id_NhomHuong', 'VaiTroHuong')
     verbose_name = "Nhóm hương"
     verbose_name_plural = "🌿  Nhóm hương sản phẩm (chọn 1 hoặc nhiều)"
 
@@ -189,6 +190,9 @@ class SanPhamAdmin(nested_admin.NestedModelAdmin):
     list_display  = (
         'product_card',         # custom HTML column
         'TrangThai_badge',
+        'NongDo',
+        'DoLuuHuong',
+        'DoToaHuong',
         'ten_thuong_hieu',
         'ten_loai_san_pham',
         'get_nhom_huong',
@@ -211,6 +215,10 @@ class SanPhamAdmin(nested_admin.NestedModelAdmin):
                 'TenSanPham',
                 ('id_ThuongHieu', 'id_LoaiSanPham'),
                 'TrangThai_SanPham',
+                ('NongDo', 'NamPhatHanh', 'XuatXu'),
+                ('DoLuuHuong', 'DoToaHuong'),
+                ('MuaPhuHop', 'ThoiDiemSuDung'),
+                ('PhongCach', 'DoTuoiPhuHop'),
                 # 'nhom_huongs',
                 'MoTa_SanPham',
             ),
@@ -273,13 +281,19 @@ class SanPhamAdmin(nested_admin.NestedModelAdmin):
     ten_loai_san_pham.short_description = "Loại"
 
     def get_nhom_huong(self, obj):
-        huongs = obj.nhom_huongs.all()
+        huongs = SanPhamNhomHuong.objects.select_related('id_NhomHuong').filter(id_SanPham=obj)
 
         if not huongs.exists():
             return "-"
 
         return mark_safe("".join([
-            f'<span style="padding:4px 8px;background:#e8f5e9;border-radius:6px;margin-right:4px;">{h.TenNhomHuong}</span>'
+            (
+                '<span style="padding:4px 8px;background:#e8f5e9;'
+                'border-radius:6px;margin-right:4px;">'
+                f'{h.id_NhomHuong.TenNhomHuong}'
+                f' ({h.VaiTroHuong or "chưa chọn vai trò"})'
+                '</span>'
+            )
             for h in huongs
         ]))
     get_nhom_huong.short_description = "Nhóm hương"
@@ -384,8 +398,9 @@ class LoaiSanPhamAdmin(admin.ModelAdmin):
 
 @admin.register(NhomHuong, site=admin_site)
 class NhomHuongAdmin(admin.ModelAdmin):
-    list_display  = ('icon_preview', 'TenNhomHuong')
-    search_fields = ('TenNhomHuong',)
+    list_display  = ('icon_preview', 'TenNhomHuong', 'LoaiHuong')
+    search_fields = ('TenNhomHuong', 'LoaiHuong')
+    list_filter = ('LoaiHuong',)
 
     def icon_preview(self, obj):
         if obj.IconUrl:

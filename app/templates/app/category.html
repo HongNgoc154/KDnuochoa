@@ -34,7 +34,7 @@
           {% for brand in brands %}
           {% with brand_slug=brand.TenThuongHieu|slugify %}
           <a class="brand-chip stagger-{% cycle '1' '2' %}" href="{% if brand_slug %}{% url 'brand-detail' brand_slug %}{% else %}{% url 'brand-list' %}{% endif %}">
-            <img src="{{ brand.LogoUrl|default:'https://images.unsplash.com/photo-1610461888750-10bfc601b874?auto=format&fit=crop&w=120&q=80' }}" alt="{{ brand.TenThuongHieu }}">
+            <img src="{{ brand.LogoUrl.url }}" alt="{{ brand.TenThuongHieu }}">
             <span>{{ brand.TenThuongHieu }}</span>
           </a>
           {% endwith %}
@@ -109,7 +109,7 @@
         <h2 class="section-title">Bộ sưu tập <em>signature</em></h2>
         <p id="productResult">Hiển thị {{ product_count }} sản phẩm.</p>
       </div>
-      <p class="fav-counter reveal">Wishlist: <strong id="favoriteCount">0</strong> sản phẩm</p>
+      {% comment %} <p class="fav-counter reveal">Wishlist: <strong id="favoriteCount">0</strong> sản phẩm</p> {% endcomment %}
 
        <div class="product-grid" data-product-detail-url="{% url 'product-detail' %}">
         

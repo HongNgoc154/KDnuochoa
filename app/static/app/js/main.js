@@ -221,7 +221,7 @@ if (isCategoryPage) {
       card.hidden = !visible;
       if (visible) visibleCount++;
     });
-    if (productResult) productResult.textContent = `Hiển thị ${visibleCount} sản phẩm cao cấp.`;
+    if (productResult) productResult.textContent = `Hiển thị ${visibleCount} sản phẩm.`;
   };
 
   filterForm?.addEventListener('submit', e => {

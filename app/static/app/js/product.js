@@ -143,17 +143,30 @@
   });
 
   wrap.addEventListener('mousemove', (e) => {
-    if (!isActive) return;
-    const rect = wrap.getBoundingClientRect();
-    tx = e.clientX - rect.left;
-    ty = e.clientY - rect.top;
-  });
+  if (!isActive) return;
+
+  const rect = wrap.getBoundingClientRect();
+
+  tx = e.clientX - rect.left;
+  ty = e.clientY - rect.top;
+
+  const xPercent = (tx / rect.width) * 100;
+  const yPercent = (ty / rect.height) * 100;
+
+  img.style.transformOrigin = `${xPercent}% ${yPercent}%`;
+
+  img.style.transform = `scale(1.35)`;
+});
 
   wrap.addEventListener('mouseleave', () => {
-    isActive = false;
-    wrap.classList.remove('zoom-active');
-    cancelAnimationFrame(rafId);
-  });
+  isActive = false;
+
+  img.style.transform = 'scale(1)';
+  img.style.transformOrigin = 'center center';
+
+  wrap.classList.remove('zoom-active');
+  cancelAnimationFrame(rafId);
+});
 })();
 
 /* Helper exposed for gallery src switch */

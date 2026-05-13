@@ -6,6 +6,7 @@ class NhomHuong(models.Model):
     id_NhomHuong = models.AutoField(primary_key=True)
 
     TenNhomHuong = models.CharField(max_length=255)
+    LoaiHuong = models.CharField(max_length=50, null=True, blank=True)
     IconUrl = models.ImageField(upload_to='scents/', null=True, blank=True)
 
     class Meta:
@@ -22,6 +23,15 @@ class SanPham(models.Model):
     TenSanPham = models.CharField(max_length=255)
     MoTa_SanPham = models.TextField(null=True)
     TrangThai_SanPham = models.CharField(max_length=50, null=True, blank=True)
+    NongDo = models.CharField(max_length=50, null=True, blank=True)
+    DoLuuHuong = models.IntegerField(null=True, blank=True)
+    DoToaHuong = models.IntegerField(null=True, blank=True)
+    MuaPhuHop = models.CharField(max_length=100, null=True, blank=True)
+    ThoiDiemSuDung = models.CharField(max_length=100, null=True, blank=True)
+    PhongCach = models.CharField(max_length=255, null=True, blank=True)
+    DoTuoiPhuHop = models.CharField(max_length=100, null=True, blank=True)
+    NamPhatHanh = models.IntegerField(null=True, blank=True)
+    XuatXu = models.CharField(max_length=100, null=True, blank=True)
 
     id_ThuongHieu = models.ForeignKey(
         'ThuongHieu',
@@ -66,6 +76,7 @@ class SanPhamNhomHuong(models.Model):
         on_delete=models.DO_NOTHING,
         db_column='id_NhomHuong'
     )
+    VaiTroHuong = models.CharField(max_length=50, null=True, blank=True)
 
     class Meta:
         managed = False
