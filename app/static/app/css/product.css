@@ -1128,3 +1128,69 @@
     font-style:italic;
 }
 
+.pd-qa-card{
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255,255,255,.75),
+            rgba(255,255,255,.55)
+        );
+
+    border:1px solid rgba(255,255,255,.25);
+
+    backdrop-filter: blur(18px);
+
+    border-radius:28px;
+
+    padding:32px;
+
+    margin-bottom:24px;
+
+    box-shadow:
+        0 10px 40px rgba(0,0,0,.06);
+}
+
+.pd-qa-question{
+    display:flex;
+    gap:18px;
+}
+
+.pd-qa-avatar{
+    width:52px;
+    height:52px;
+
+    border-radius:50%;
+
+    background:#556b2f;
+
+    color:white;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    font-weight:700;
+}
+
+.pd-qa-status{
+    padding:8px 14px;
+
+    border-radius:999px;
+
+    font-size:12px;
+
+    letter-spacing:1px;
+
+    font-weight:700;
+}
+
+.pd-qa-status.pending{
+    background:#efe8d8;
+    color:#7a6a4f;
+}
+
+.pd-qa-status.answered{
+    background:#dfe7cf;
+    color:#556b2f;
+}
+

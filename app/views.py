@@ -63,21 +63,21 @@ def _safe_first(queryset):
         return None
 
 
-def _normalize_vietnamese_text(value):
-    if not isinstance(value, str):
-        return value
-    if not value:
-        return value
+# def _normalize_vietnamese_text(value):
+#     if not isinstance(value, str):
+#         return value
+#     if not value:
+#         return value
 
-    # Fix common mojibake when UTF-8 bytes were interpreted as latin-1/cp1252.
-    for source_enc in ("latin-1", "cp1252"):
-        try:
-            repaired = value.encode(source_enc).decode("utf-8")
-        except (UnicodeEncodeError, UnicodeDecodeError):
-            continue
-        if repaired != value:
-            return repaired
-    return value
+#     # Fix common mojibake when UTF-8 bytes were interpreted as latin-1/cp1252.
+#     for source_enc in ("latin-1", "cp1252"):
+#         try:
+#             repaired = value.encode(source_enc).decode("utf-8")
+#         except (UnicodeEncodeError, UnicodeDecodeError):
+#             continue
+#         if repaired != value:
+#             return repaired
+#     return value
 
 
 
@@ -693,7 +693,7 @@ def login_api(request):
         return JsonResponse({"ok": False, "message": "Email hoặc mật khẩu không đúng."}, status=401)
 
     request.session["account_id"] = account.id_TaiKhoan
-    request.session["account_name"] = _normalize_vietnamese_text(account.TenDangNhap) or account.Username
+    request.session["account_name"] = account.TenDangNhap
     return JsonResponse({"ok": True, "message": "Đăng nhập thành công."})
 
 
@@ -717,7 +717,7 @@ def register_api(request):
     account = TaiKhoan.objects.create(
         Username=username,
         MatKhau=password,
-        TenDangNhap=_normalize_vietnamese_text(full_name),
+        TenDangNhap=full_name,
         Email=email,
         SDT=phone,
         LoaiTaiKhoan='customer',
@@ -726,7 +726,7 @@ def register_api(request):
     )
     KhachHang.objects.create(
         id_TaiKhoan=account,
-        TenKhachHang=_normalize_vietnamese_text(full_name),
+        TenKhachHang=full_name,
         DiaChi='',
         GioiTinh='',
     )
@@ -761,7 +761,7 @@ def profile_page(request):
         KhachHang.objects.select_related("id_TaiKhoan").filter(id_TaiKhoan=account) if account else KhachHang.objects.none()
     )
     profile = {
-         "full_name": _normalize_vietnamese_text((customer.TenKhachHang if customer else None) or (account.TenDangNhap if account else "") or "Khách hàng"),
+        "full_name":(customer.TenKhachHang if customer else None) or (account.TenDangNhap if account else "") or "Khách hàng",
         "username": (account.Username if account else "") or "guest",
         "email": (account.Email if account else "") or "",
         "phone": (account.SDT if account else "") or "",

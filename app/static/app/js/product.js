@@ -496,36 +496,92 @@ function initArrowCarousel(wrap, track, leftBtn, rightBtn, stepRatio = 0.75, edg
 })();
 
 /* ─── QA FORM ───────────────────────────────────────────────── */
-(function initQaForm() {
-  const form  = document.getElementById('pdQaForm');
-  const input = document.getElementById('pdQaInput');
-  const list  = document.getElementById('pdQaList');
-  if (!form || !input || !list) return;
+// ===============================
+// PRODUCT Q&A AJAX
+// ===============================
 
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const text = input.value.trim();
-    if (!text) return;
+const qaForm = document.getElementById("pdQaForm");
 
-    const item = document.createElement('div');
-    item.className = 'pd-qa-item';
-    item.innerHTML = `
-      <div class="pd-qa-q">
-        <span class="pd-qa-icon">Q</span>
-        <p>${text}</p>
-      </div>
-      <div class="pd-qa-a">
-        <span class="pd-qa-icon ans">A</span>
-        <p>Cảm ơn câu hỏi của bạn. Chúng tôi sẽ phản hồi trong thời gian sớm nhất.</p>
-      </div>
-    `;
-    list.appendChild(item);
-    input.value = '';
+if (qaForm) {
 
-    /* Scroll to new item */
-    item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  });
-})();
+    qaForm.addEventListener("submit", async (e) => {
+
+        e.preventDefault();
+
+        const input =
+            document.getElementById("pdQaInput");
+
+        const content = input.value.trim();
+
+        if (!content) {
+
+            alert("Vui lòng nhập câu hỏi");
+            return;
+        }
+
+        const productId =
+            document.querySelector(".pd-layout")
+            ?.dataset?.productId;
+
+        console.log("PRODUCT ID:", productId);
+
+        const formData = new FormData();
+
+        formData.append(
+            "product_id",
+            productId
+        );
+
+        formData.append(
+            "content",
+            content
+        );
+
+        try {
+
+            const response = await fetch(
+                "/submit-question/",
+                {
+                    method: "POST",
+                    body: formData
+                }
+            );
+
+            const data = await response.json();
+
+            console.log(data);
+
+            // chưa login
+            if (data.need_login) {
+
+                window.location.href = "/auth/";
+                return;
+            }
+
+            // submit thành công
+            if (data.ok) {
+
+                alert(
+                    "Câu hỏi của bạn đã được gửi tới chuyên viên tư vấn."
+                );
+
+                input.value = "";
+
+                location.reload();
+            }
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert(
+                "Có lỗi xảy ra khi gửi câu hỏi."
+            );
+        }
+
+    });
+
+}
 
 /* ─── 13. PDP DATA ACTIONS ────────────────────────────────── */
 (function initPdpActions() {
@@ -595,3 +651,5 @@ function initArrowCarousel(wrap, track, leftBtn, rightBtn, stepRatio = 0.75, edg
     toast('Đã thêm vào danh sách yêu thích');
   });
 })();
+
+

@@ -2,7 +2,9 @@ from django.contrib import admin
 from django.contrib.auth.models import User, Group
 from django.utils.html import format_html
 from django import forms
+from django.core.exceptions import ValidationError
 from django.utils.safestring import mark_safe
+from django.utils import timezone
 import nested_admin
 
 from .models import (
@@ -433,9 +435,33 @@ class BaiVietAdmin(admin.ModelAdmin):
 
 
 # ======================= HỎI ĐÁP ======================
+class HoiDapAdminForm(forms.ModelForm):
+    tra_loi_noi_dung = forms.CharField(
+        required=False,
+        label="Nội dung trả lời",
+        widget=forms.Textarea(attrs={"rows": 4, "placeholder": "Nhập câu trả lời cho khách hàng..."})
+    )
+
+    class Meta:
+        model = HoiDap
+        fields = '__all__'
+
+    def clean(self):
+        cleaned_data = super().clean()
+        obj = self.instance
+        reply_content = (cleaned_data.get('tra_loi_noi_dung') or '').strip()
+
+        if obj and obj.pk and not obj.parent_id and reply_content:
+            has_answer = HoiDap.objects.filter(parent_id=obj.id_HoiDap).exclude(TrangThai='hidden').exists()
+            if has_answer:
+                raise ValidationError('Câu hỏi này đã có trả lời. Bạn có thể sửa câu trả lời cũ thay vì tạo mới.')
+
+        return cleaned_data
 
 @admin.register(HoiDap, site=admin_site)
 class HoiDapAdmin(admin.ModelAdmin):
+
+    form = HoiDapAdminForm
 
     list_display = (
         'id_HoiDap',
@@ -460,12 +486,15 @@ class HoiDapAdmin(admin.ModelAdmin):
         'NgayTao',
     )
 
+    list_select_related = ('id_SanPham', 'id_TaiKhoan')
+
     fields = (
         'id_SanPham',
         'id_TaiKhoan',
         'NoiDung',
         'parent_id',
         'TrangThai',
+        'tra_loi_noi_dung',
         'NgayTao',
     )
 
@@ -488,11 +517,11 @@ class HoiDapAdmin(admin.ModelAdmin):
     def loai_hoi_dap(self, obj):
 
         if obj.parent_id:
-            return format_html(
+            return mark_safe(
                 '<span style="color:#2e7d32;font-weight:600;">TRẢ LỜI</span>'
             )
 
-        return format_html(
+        return mark_safe(
             '<span style="color:#8d6e63;font-weight:600;">CÂU HỎI</span>'
         )
 
@@ -508,15 +537,26 @@ class HoiDapAdmin(admin.ModelAdmin):
         if obj.parent_id:
 
             try:
-                question = HoiDap.objects.get(
-                    id_HoiDap=obj.parent_id
-                )
-
+                question = HoiDap.objects.get(id_HoiDap=obj.parent_id)
                 question.TrangThai = 'answered'
                 question.save(update_fields=['TrangThai'])
 
-            except:
+            except HoiDap.DoesNotExist:
                 pass
+            return
+
+        reply_content = (form.cleaned_data.get('tra_loi_noi_dung') or '').strip()
+        if reply_content:
+            HoiDap.objects.create(
+                id_SanPham=obj.id_SanPham,
+                id_TaiKhoan=request.user and TaiKhoan.objects.filter(Username=request.user.username).first() or obj.id_TaiKhoan,
+                NoiDung=reply_content,
+                NgayTao=timezone.now(),
+                parent_id=obj.id_HoiDap,
+                TrangThai='answered'
+            )
+            obj.TrangThai = 'answered'
+            obj.save(update_fields=['TrangThai'])
 
     class Media:
         css = {

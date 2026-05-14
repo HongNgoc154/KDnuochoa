@@ -319,7 +319,7 @@
             <div class="pd-qa-question">
 
                 <div class="pd-qa-avatar">
-                    {{ item.question.id_TaiKhoan.TenDangNhap|slice:":1"|upper }}
+                    {{ item.question.id_TaiKhoan.TenDangNhap|default:"K"|slice:":1"|upper }}
                 </div>
 
                 <div class="pd-qa-content">
@@ -328,7 +328,7 @@
 
                         <div>
                             <h4>
-                                {{ item.question.id_TaiKhoan.TenDangNhap }}
+                                {{ item.question.id_TaiKhoan.TenDangNhap|default:"Khách hàng" }}
                             </h4>
 
                             <span class="pd-qa-date">
