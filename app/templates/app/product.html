@@ -182,13 +182,25 @@
         <div class="pd-longevity reveal-up delay-7">
           <div class="pd-longevity-row">
             <span class="pd-lon-label">Độ lưu hương</span>
-            <div class="pd-lon-bar-wrap"><div class="pd-lon-bar" data-fill="85"></div></div>
-            <span class="pd-lon-val">8–10h</span>
+            <div class="pd-lon-bar-wrap">
+              <div class="pd-lon-bar"
+                  data-fill="{{ product_data.longevity_percent }}">
+              </div>
+            </div>
+            <span class="pd-lon-val">
+                {{ product_data.longevity_text|default:"Đang cập nhật" }}
+            </span>
           </div>
           <div class="pd-longevity-row">
             <span class="pd-lon-label">Độ tỏa hương</span>
-            <div class="pd-lon-bar-wrap"><div class="pd-lon-bar" data-fill="70"></div></div>
-            <span class="pd-lon-val">Vừa phải</span>
+            <div class="pd-lon-bar-wrap">
+              <div class="pd-lon-bar"
+                  data-fill="{{ product_data.sillage_percent }}">
+              </div>
+            </div>
+            <span class="pd-lon-val">
+                {{ product_data.sillage_text|default:"Đang cập nhật" }}
+            </span>
           </div>
         </div>
 
@@ -220,10 +232,12 @@
     <!-- TAB 1: Detail -->
     <div class="pd-tab-panel active" id="tab-detail" role="tabpanel">
       <div class="pd-detail-grid">
-        <div>
+        <div class="pd-detail-left">
           <h3 class="pd-tab-heading">Mô tả sản phẩm</h3>
-          <p class="pd-tab-body">{{ product_data.description|default:'Thông tin sản phẩm đang được cập nhật.' }}</p>
-          <p class="pd-tab-body">Nhóm hương: {{ product_data.scent_group|default:'Đang cập nhật' }} · Danh mục: {{ product_data.category|default:'Đang cập nhật' }}.</p>
+          <div class="pd-tab-body pd-rich-content">
+            {{ product_data.description|safe|default:'Thông tin sản phẩm đang được cập nhật.' }}
+          </div>
+          {% comment %} <p class="pd-tab-body">Nhóm hương: {{ product_data.scent_group|default:'Đang cập nhật' }} · Danh mục: {{ product_data.category|default:'Đang cập nhật' }}.</p>
           <h3 class="pd-tab-heading" style="margin-top:32px">Thành phần chính</h3>
           <ul class="pd-ingredients">
             <li>Bergamot Calabrian (Italy)</li>
@@ -231,7 +245,7 @@
             <li>Geranium Grasse</li>
             <li>Ambroxan &amp; Vetiver</li>
             <li>Sandalwood từ New Caledonia</li>
-          </ul>
+          </ul> {% endcomment %}
         </div>
         <div class="pd-spec-table">
 
@@ -297,14 +311,101 @@
     <!-- TAB 2: Q&A -->
     <div class="pd-tab-panel" id="tab-qa" role="tabpanel" hidden>
       <div class="pd-qa-list" id="pdQaList">
-        <div class="pd-qa-item">
-          <div class="pd-qa-q"><span class="pd-qa-icon">Q</span><p>Sauvage Elixir có phù hợp để đi làm không?</p></div>
-          <div class="pd-qa-a"><span class="pd-qa-icon ans">A</span><p>Sauvage Elixir có projection khá mạnh, phù hợp hơn cho buổi tối hoặc sự kiện. Nếu đi làm môi trường văn phòng kín, bạn nên xịt 1 nhát và giữ khoảng cách vừa phải.</p></div>
+        {% for item in product_data.qa_items %}
+
+        <div class="pd-qa-card">
+
+            <!-- QUESTION -->
+            <div class="pd-qa-question">
+
+                <div class="pd-qa-avatar">
+                    {{ item.question.id_TaiKhoan.TenDangNhap|slice:":1"|upper }}
+                </div>
+
+                <div class="pd-qa-content">
+
+                    <div class="pd-qa-top">
+
+                        <div>
+                            <h4>
+                                {{ item.question.id_TaiKhoan.TenDangNhap }}
+                            </h4>
+
+                            <span class="pd-qa-date">
+                                {{ item.question.NgayTao|date:"d/m/Y H:i" }}
+                            </span>
+                        </div>
+
+                        <span class="pd-qa-status
+                            {% if item.answer %}
+                                answered
+                            {% else %}
+                                pending
+                            {% endif %}
+                        ">
+
+                            {% if item.answer %}
+                                ĐÃ TRẢ LỜI
+                            {% else %}
+                                ĐANG CHỜ
+                            {% endif %}
+
+                        </span>
+
+                    </div>
+
+                    <p class="pd-qa-text">
+                        {{ item.question.NoiDung }}
+                    </p>
+
+                </div>
+
+            </div>
+
+            <!-- ANSWER -->
+            {% if item.answer %}
+
+            <div class="pd-qa-answer">
+
+                <div class="pd-qa-avatar answer">
+                    A
+                </div>
+
+                <div class="pd-qa-content">
+
+                    <div class="pd-qa-top">
+
+                        <div class="pd-qa-admin">
+
+                            <h4>
+                                {{ item.answer.id_TaiKhoan.TenDangNhap }}
+                            </h4>
+
+                            <span class="pd-expert-badge">
+                                AMI EXPERT
+                            </span>
+
+                        </div>
+
+                        <span class="pd-qa-date">
+                            {{ item.answer.NgayTao|date:"d/m/Y H:i" }}
+                        </span>
+
+                    </div>
+
+                    <div class="pd-answer-bubble">
+                        {{ item.answer.NoiDung }}
+                    </div>
+
+                </div>
+
+            </div>
+
+            {% endif %}
+
         </div>
-        <div class="pd-qa-item">
-          <div class="pd-qa-q"><span class="pd-qa-icon">Q</span><p>Sản phẩm có seal chính hãng không?</p></div>
-          <div class="pd-qa-a"><span class="pd-qa-icon ans">A</span><p>100% có seal nguyên vẹn từ nhà máy Dior, kèm certificate of authenticity từ Ami Perfumery. Bạn có thể quét QR code trên hộp để xác thực.</p></div>
-        </div>
+
+        {% endfor %}
       </div>
       <form class="pd-qa-form" id="pdQaForm">
         <h3 class="pd-tab-heading">Đặt câu hỏi</h3>

@@ -8,7 +8,7 @@ import nested_admin
 from .models import (
     BienThe, BienTheThuocTinh, GiaTriThuocTinh,
     LoaiSanPham, NhomHuong, SanPham, ThuocTinh,
-    ThuongHieu, HinhAnh, SanPhamNhomHuong, BaiViet
+    ThuongHieu, HinhAnh, SanPhamNhomHuong, BaiViet, HoiDap, TaiKhoan
 )
 
 
@@ -430,3 +430,95 @@ class BaiVietAdmin(admin.ModelAdmin):
         if obj.AnhDaiDien:
             return format_html('<img src="{}" width="60"/>', obj.AnhDaiDien.url)
         return "-"
+
+
+# ======================= HỎI ĐÁP ======================
+
+@admin.register(HoiDap, site=admin_site)
+class HoiDapAdmin(admin.ModelAdmin):
+
+    list_display = (
+        'id_HoiDap',
+        'san_pham',
+        'nguoi_gui',
+        'loai_hoi_dap',
+        'TrangThai',
+        'NgayTao',
+    )
+
+    search_fields = (
+        'NoiDung',
+        'id_SanPham__TenSanPham',
+        'id_TaiKhoan__TenDangNhap',
+    )
+
+    list_filter = (
+        'TrangThai',
+    )
+
+    readonly_fields = (
+        'NgayTao',
+    )
+
+    fields = (
+        'id_SanPham',
+        'id_TaiKhoan',
+        'NoiDung',
+        'parent_id',
+        'TrangThai',
+        'NgayTao',
+    )
+
+    def san_pham(self, obj):
+        try:
+            return obj.id_SanPham.TenSanPham
+        except:
+            return "-"
+
+    san_pham.short_description = "Sản phẩm"
+
+    def nguoi_gui(self, obj):
+        try:
+            return obj.id_TaiKhoan.TenDangNhap
+        except:
+            return "-"
+
+    nguoi_gui.short_description = "Người gửi"
+
+    def loai_hoi_dap(self, obj):
+
+        if obj.parent_id:
+            return format_html(
+                '<span style="color:#2e7d32;font-weight:600;">TRẢ LỜI</span>'
+            )
+
+        return format_html(
+            '<span style="color:#8d6e63;font-weight:600;">CÂU HỎI</span>'
+        )
+
+    loai_hoi_dap.short_description = "Loại"
+
+    def save_model(self, request, obj, form, change):
+
+        if obj.parent_id:
+            obj.TrangThai = 'answered'
+
+        super().save_model(request, obj, form, change)
+
+        if obj.parent_id:
+
+            try:
+                question = HoiDap.objects.get(
+                    id_HoiDap=obj.parent_id
+                )
+
+                question.TrangThai = 'answered'
+                question.save(update_fields=['TrangThai'])
+
+            except:
+                pass
+
+    class Media:
+        css = {
+            'all': ('admin/css/ami_admin.css',)
+        }

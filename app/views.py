@@ -277,6 +277,21 @@ def category(request, segment='tat-ca'):
 
     return render(request, "app/category.html", context)
 
+def get_sillage_label(value):
+    if value >= 8:
+        return "Tỏa xa"
+    elif value >= 5:
+        return "Vừa phải"
+    return "Nhẹ"
+
+def get_longevity_label(value):
+    if value >= 9:
+        return "Trên 10 giờ"
+    elif value >= 7:
+        return "8-10 giờ"
+    elif value >= 5:
+        return "5-7 giờ"
+    return "Dưới 5 giờ"
 
 def product_detail(request, product_id=None):
     product_queryset = SanPham.objects.select_related("id_ThuongHieu", "id_LoaiSanPham")\
@@ -318,11 +333,32 @@ def product_detail(request, product_id=None):
     .filter(id_SanPham=product_obj)
         .order_by("-NgayDanhGia")[:5]
     )
-    questions = _safe_list(
-    HoiDap.objects.select_related("id_TaiKhoan")
-    .filter(id_SanPham=product_obj)
-        .order_by("-NgayTao")[:5]
-    )
+    qa_items = []
+
+    questions = HoiDap.objects.select_related(
+        "id_TaiKhoan"
+    ).filter(
+        id_SanPham=product_obj,
+        parent_id__isnull=True
+    ).exclude(
+        TrangThai='hidden'
+    ).order_by('-NgayTao')
+
+    for q in questions:
+
+        answer = HoiDap.objects.select_related(
+            "id_TaiKhoan"
+        ).exclude(
+            TrangThai='hidden'
+        ).filter(
+            parent_id=q.id_HoiDap
+        ).order_by('-NgayTao').first()
+
+        qa_items.append({
+            "question": q,
+            "answer": answer
+        })
+
     top_variant = variants[0] if variants else None
     variant_attr_map = {}
     option_groups = {}
@@ -347,12 +383,33 @@ def product_detail(request, product_id=None):
         )
     rating_values = [item.SoSao for item in root_reviews if item.SoSao]
     rating_avg = round(sum(rating_values) / len(rating_values), 1) if rating_values else 0
+    # print("ID:", product_obj.id_SanPham)
+    # print("NongDo:", product_obj.NongDo)
+    # print("XuatXu:", product_obj.XuatXu)
+    # print("PhongCach:", product_obj.PhongCach)
     product_data = {
+        
         "id": product_obj.id_SanPham,
         "name": product_obj.TenSanPham,
         "brand": product_obj.id_ThuongHieu.TenThuongHieu,
         "description": product_obj.MoTa_SanPham,
         "category": product_obj.id_LoaiSanPham.TenLoaiSanPham,
+        "concentration": product_obj.NongDo,
+        "longevity": product_obj.DoLuuHuong,
+        "sillage": product_obj.DoToaHuong,
+
+        "longevity_percent": min((product_obj.DoLuuHuong or 0) * 10, 100),
+        "sillage_percent": min((product_obj.DoToaHuong or 0) * 10, 100),
+
+        "longevity_text": get_longevity_label(product_obj.DoLuuHuong),
+        "sillage_text": get_sillage_label(product_obj.DoToaHuong),
+
+        "season": product_obj.MuaPhuHop,
+        "time_use": product_obj.ThoiDiemSuDung,
+        "style": product_obj.PhongCach,
+        "age_group": product_obj.DoTuoiPhuHop,
+        "release_year": product_obj.NamPhatHanh,
+        "origin": product_obj.XuatXu,
         "scent_group": ", ".join([
                 h.TenNhomHuong for h in product_obj.nhom_huongs.all()
             ]),
@@ -366,7 +423,10 @@ def product_detail(request, product_id=None):
         "variants": json.dumps(variant_payload, ensure_ascii=False),
         "variant_count": len(variant_payload),
         "option_groups": {k: sorted(list(v)) for k, v in option_groups.items()},
+        "qa_items": qa_items,
     }
+
+    
     product_images = [img.url.url if hasattr(img.url, "url") else str(img.url) for img in images]
 
     related_products = _build_product_cards(
@@ -544,22 +604,81 @@ def auth_page(request):
     if request.session.get("account_id"):
         return redirect('profile-page')
     return render(request, 'app/auth.html')
+# @csrf_exempt
+# @require_POST
+# def login_api(request):
+#     email = (request.POST.get("email") or "").strip()
+#     password = request.POST.get("password") or ""
+#     if not email or not password:
+#         return JsonResponse({"ok": False, "message": "Vui lòng nhập email và mật khẩu."}, status=400)
+
+#     account = TaiKhoan.objects.filter(Email__iexact=email, MatKhau=password, TrangThai_TaiKhoan__iexact='active').first()
+#     if not account:
+#         return JsonResponse({"ok": False, "message": "Email hoặc mật khẩu không đúng."}, status=401)
+
+#     request.session["account_id"] = account.id_TaiKhoan
+#     request.session["account_name"] = account.TenDangNhap or account.Username
+#     return JsonResponse({"ok": True, "message": "Đăng nhập thành công."})
+
+
 @csrf_exempt
 @require_POST
-def login_api(request):
-    email = (request.POST.get("email") or "").strip()
-    password = request.POST.get("password") or ""
-    if not email or not password:
-        return JsonResponse({"ok": False, "message": "Vui lòng nhập email và mật khẩu."}, status=400)
+def submit_question(request):
+    print("=== SUBMIT QUESTION CALLED ===")
+    print("POST:", request.POST)
 
-    account = TaiKhoan.objects.filter(Email__iexact=email, MatKhau=password, TrangThai_TaiKhoan__iexact='active').first()
-    if not account:
-        return JsonResponse({"ok": False, "message": "Email hoặc mật khẩu không đúng."}, status=401)
+    account_id = request.session.get("account_id")
 
-    request.session["account_id"] = account.id_TaiKhoan
-    request.session["account_name"] = account.TenDangNhap or account.Username
-    return JsonResponse({"ok": True, "message": "Đăng nhập thành công."})
+    if not account_id:
+        return JsonResponse({
+            "ok": False,
+            "need_login": True
+        })
 
+    product_id = request.POST.get("product_id")
+    content = (request.POST.get("content") or "").strip()
+
+    if not content:
+        return JsonResponse({
+            "ok": False,
+            "message": "Vui lòng nhập câu hỏi."
+        })
+
+    account = TaiKhoan.objects.get(
+        id_TaiKhoan=account_id
+    )
+
+    product = SanPham.objects.get(
+        id_SanPham=product_id
+    )
+
+    # HoiDap.objects.create(
+    #     id_SanPham=product,
+    #     id_TaiKhoan=account,
+    #     NoiDung=content,
+    #     TrangThai='pending',
+    #     parent_id=None,
+    #     NgayTao=timezone.now()
+    # )
+
+    question = HoiDap.objects.create(
+    id_SanPham=product,
+    id_TaiKhoan=account,
+    NoiDung=content,
+    TrangThai='pending',
+    parent_id=None,
+    NgayTao=timezone.now()
+)
+
+    return JsonResponse({
+        "ok": True,
+        "question": {
+            "id": question.id_HoiDap,
+            "name": account.TenDangNhap,
+            "content": question.NoiDung,
+            "created_at": question.NgayTao.strftime("%d/%m/%Y %H:%M"),
+        }
+    })
 
 @csrf_exempt
 @require_POST

@@ -1,4 +1,5 @@
 from django.db import models
+from ckeditor_uploader.fields import RichTextUploadingField
 
 
 # ===================== NHÓM HƯƠNG =====================
@@ -21,7 +22,7 @@ class NhomHuong(models.Model):
 class SanPham(models.Model):
     id_SanPham = models.AutoField(primary_key=True)
     TenSanPham = models.CharField(max_length=255)
-    MoTa_SanPham = models.TextField(null=True)
+    MoTa_SanPham = RichTextUploadingField()
     TrangThai_SanPham = models.CharField(max_length=50, null=True, blank=True)
     NongDo = models.CharField(max_length=50, null=True, blank=True)
     DoLuuHuong = models.IntegerField(null=True, blank=True)
@@ -344,6 +345,13 @@ class DanhGia(models.Model):
 
 # ===================== HỎI ĐÁP =====================
 class HoiDap(models.Model):
+
+    STATUS_CHOICES = (
+        ('pending', 'Đang chờ'),
+        ('answered', 'Đã trả lời'),
+        ('hidden', 'Ẩn'),
+    )
+
     id_HoiDap = models.AutoField(primary_key=True)
 
     id_SanPham = models.ForeignKey(
@@ -353,6 +361,7 @@ class HoiDap(models.Model):
         null=True,
         blank=True
     )
+
     id_TaiKhoan = models.ForeignKey(
         'TaiKhoan',
         on_delete=models.DO_NOTHING,
@@ -363,10 +372,15 @@ class HoiDap(models.Model):
 
     NoiDung = models.TextField(null=True)
 
-    # ✅ thêm parent giống DB
+    NgayTao = models.DateTimeField(null=True)
+
     parent_id = models.IntegerField(null=True, blank=True)
 
-    NgayTao = models.DateTimeField(null=True)
+    TrangThai = models.CharField(
+        max_length=50,
+        choices=STATUS_CHOICES,
+        default='pending'
+    )
 
     class Meta:
         managed = False

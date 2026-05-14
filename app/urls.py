@@ -22,6 +22,11 @@ urlpatterns = [
     path('tai-khoan/', views.profile_page, name='profile-page'),
     path('thanh-toan/', views.checkout_page, name='checkout-page'),
     path('logout/', views.logout_view, name='logout'),
+    path(
+        'submit-question/',
+        views.submit_question,
+        name='submit-question'
+    ),
     # path('admin-dashboard/', views.admin_dashboard, name='admin-dashboard'),
     # path('admin/', views.admin_redirect),
     # path('admin/', admin_site.urls),

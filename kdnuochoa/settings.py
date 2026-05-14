@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'app',
     'nested_admin',
+    'ckeditor',
+    'ckeditor_uploader',
 ]
 
 MIDDLEWARE = [
@@ -111,6 +113,8 @@ JAZZMIN_SETTINGS = {
 
     "navigation_expanded": True,
 }
+
+CKEDITOR_UPLOAD_PATH = "uploads/"
 
 WSGI_APPLICATION = 'kdnuochoa.wsgi.application'
 
