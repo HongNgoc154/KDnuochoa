@@ -333,8 +333,16 @@ def product_detail(request, product_id=None):
     .filter(id_SanPham=product_obj)
         .order_by("-NgayDanhGia")[:5]
     )
-    qa_items = []
+    # ═══════════════════════════════════════════════════════════════
+# THAY TOÀN BỘ đoạn này trong hàm product_detail (views.py)
+#
+# Tìm dòng:    qa_items = []
+# Đến hết:     qa_items.append({"question": q, "answer": answer})
+# Thay bằng đoạn dưới đây:
+# ═══════════════════════════════════════════════════════════════
 
+    qa_items = []
+ 
     questions = HoiDap.objects.select_related(
         "id_TaiKhoan"
     ).filter(
@@ -343,20 +351,36 @@ def product_detail(request, product_id=None):
     ).exclude(
         TrangThai='hidden'
     ).order_by('-NgayTao')
+ 
+    # Thêm tạm vào cuối vòng for q in questions (trong views.py)
+# để debug xem admin_answer có được tìm thấy không
 
     for q in questions:
 
-        answer = HoiDap.objects.select_related(
-            "id_TaiKhoan"
-        ).exclude(
-            TrangThai='hidden'
-        ).filter(
-            parent_id=q.id_HoiDap
-        ).order_by('-NgayTao').first()
+        admin_answer = HoiDap.objects.select_related("id_TaiKhoan") \
+            .exclude(TrangThai='hidden') \
+            .filter(
+                parent_id=q.id_HoiDap,
+                id_TaiKhoan__LoaiTaiKhoan__in=['admin', 'staff']
+            ).order_by('NgayTao').first()
+
+        follow_ups = list(
+            HoiDap.objects.select_related("id_TaiKhoan")
+            .exclude(TrangThai='hidden')
+            .filter(parent_id=q.id_HoiDap)
+            .exclude(id_TaiKhoan__LoaiTaiKhoan__in=['admin', 'staff'])
+            .order_by('NgayTao')
+        )
+
+        # DEBUG — xóa sau khi xác nhận hoạt động
+        print(f"[QA DEBUG] q.id={q.id_HoiDap} nội_dung='{q.NoiDung[:20]}' "
+              f"admin_answer={admin_answer.id_HoiDap if admin_answer else None} "
+              f"follow_ups={[f.id_HoiDap for f in follow_ups]}")
 
         qa_items.append({
-            "question": q,
-            "answer": answer
+            "question":   q,
+            "answer":     admin_answer,
+            "follow_ups": follow_ups,
         })
 
     top_variant = variants[0] if variants else None
@@ -621,6 +645,11 @@ def auth_page(request):
 #     return JsonResponse({"ok": True, "message": "Đăng nhập thành công."})
 
 
+# ═══════════════════════════════════════════════════════
+# views.py — Thay thế hàm submit_question hiện tại
+# Thêm xử lý parent_id để khách phản hồi sau câu trả lời admin
+# ═══════════════════════════════════════════════════════
+
 @csrf_exempt
 @require_POST
 def submit_question(request):
@@ -637,6 +666,7 @@ def submit_question(request):
 
     product_id = request.POST.get("product_id")
     content = (request.POST.get("content") or "").strip()
+    parent_id = request.POST.get("parent_id")  # <-- nhận parent_id từ form phản hồi
 
     if not content:
         return JsonResponse({
@@ -644,31 +674,27 @@ def submit_question(request):
             "message": "Vui lòng nhập câu hỏi."
         })
 
-    account = TaiKhoan.objects.get(
-        id_TaiKhoan=account_id
-    )
+    try:
+        account = TaiKhoan.objects.get(id_TaiKhoan=account_id)
+        product = SanPham.objects.get(id_SanPham=product_id)
+    except (TaiKhoan.DoesNotExist, SanPham.DoesNotExist):
+        return JsonResponse({
+            "ok": False,
+            "message": "Không tìm thấy dữ liệu."
+        })
 
-    product = SanPham.objects.get(
-        id_SanPham=product_id
-    )
-
-    # HoiDap.objects.create(
-    #     id_SanPham=product,
-    #     id_TaiKhoan=account,
-    #     NoiDung=content,
-    #     TrangThai='pending',
-    #     parent_id=None,
-    #     NgayTao=timezone.now()
-    # )
+    # Nếu có parent_id → đây là câu hỏi tiếp theo sau khi admin trả lời
+    # Nếu không có → đây là câu hỏi mới hoàn toàn
+    resolved_parent_id = int(parent_id) if parent_id else None
 
     question = HoiDap.objects.create(
-    id_SanPham=product,
-    id_TaiKhoan=account,
-    NoiDung=content,
-    TrangThai='pending',
-    parent_id=None,
-    NgayTao=timezone.now()
-)
+        id_SanPham=product,
+        id_TaiKhoan=account,
+        NoiDung=content,
+        TrangThai='pending',
+        parent_id=resolved_parent_id,
+        NgayTao=timezone.now()
+    )
 
     return JsonResponse({
         "ok": True,
@@ -677,6 +703,7 @@ def submit_question(request):
             "name": account.TenDangNhap,
             "content": question.NoiDung,
             "created_at": question.NgayTao.strftime("%d/%m/%Y %H:%M"),
+            "is_reply": resolved_parent_id is not None,  # để JS biết đây là reply hay câu hỏi mới
         }
     })
 

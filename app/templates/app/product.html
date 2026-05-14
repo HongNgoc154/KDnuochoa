@@ -308,111 +308,171 @@
       </div>
     </div>
 
-    <!-- TAB 2: Q&A -->
+     <!-- ══════════════════ TAB 2: HỎI & ĐÁP ══════════════════ -->
     <div class="pd-tab-panel" id="tab-qa" role="tabpanel" hidden>
-      <div class="pd-qa-list" id="pdQaList">
-        {% for item in product_data.qa_items %}
-
-        <div class="pd-qa-card">
-
-            <!-- QUESTION -->
-            <div class="pd-qa-question">
-
-                <div class="pd-qa-avatar">
-                    {{ item.question.id_TaiKhoan.TenDangNhap|default:"K"|slice:":1"|upper }}
-                </div>
-
-                <div class="pd-qa-content">
-
-                    <div class="pd-qa-top">
-
-                        <div>
-                            <h4>
-                                {{ item.question.id_TaiKhoan.TenDangNhap|default:"Khách hàng" }}
-                            </h4>
-
-                            <span class="pd-qa-date">
-                                {{ item.question.NgayTao|date:"d/m/Y H:i" }}
-                            </span>
-                        </div>
-
-                        <span class="pd-qa-status
-                            {% if item.answer %}
-                                answered
-                            {% else %}
-                                pending
-                            {% endif %}
-                        ">
-
-                            {% if item.answer %}
-                                ĐÃ TRẢ LỜI
-                            {% else %}
-                                ĐANG CHỜ
-                            {% endif %}
-
-                        </span>
-
-                    </div>
-
-                    <p class="pd-qa-text">
-                        {{ item.question.NoiDung }}
-                    </p>
-
-                </div>
-
-            </div>
-
-            <!-- ANSWER -->
-            {% if item.answer %}
-
-            <div class="pd-qa-answer">
-
-                <div class="pd-qa-avatar answer">
-                    A
-                </div>
-
-                <div class="pd-qa-content">
-
-                    <div class="pd-qa-top">
-
-                        <div class="pd-qa-admin">
-
-                            <h4>
-                                {{ item.answer.id_TaiKhoan.TenDangNhap }}
-                            </h4>
-
-                            <span class="pd-expert-badge">
-                                AMI EXPERT
-                            </span>
-
-                        </div>
-
-                        <span class="pd-qa-date">
-                            {{ item.answer.NgayTao|date:"d/m/Y H:i" }}
-                        </span>
-
-                    </div>
-
-                    <div class="pd-answer-bubble">
-                        {{ item.answer.NoiDung }}
-                    </div>
-
-                </div>
-
-            </div>
-
-            {% endif %}
-
+ 
+      <!-- Header bar -->
+      <div class="qa-header-bar">
+        <div class="qa-header-left">
+          <h3 class="pd-tab-heading">Hỏi &amp; Đáp</h3>
+          <span class="qa-count-badge" id="qaBadge">{{ product_data.qa_items|length }} câu hỏi</span>
         </div>
-
-        {% endfor %}
+        <button class="qa-ask-btn" id="qaAskToggleBtn" onclick="toggleAskForm()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Đặt câu hỏi
+        </button>
       </div>
-      <form class="pd-qa-form" id="pdQaForm">
-        <h3 class="pd-tab-heading">Đặt câu hỏi</h3>
-        <textarea class="pd-qa-textarea" id="pdQaInput" placeholder="Nhập câu hỏi của bạn về sản phẩm..." rows="4"></textarea>
-        <button type="submit" class="pd-qa-submit">Gửi câu hỏi</button>
-      </form>
-    </div>
+ 
+      <!-- Form đặt câu hỏi (collapsible) -->
+      <div class="qa-ask-box" id="qaAskBox">
+        <div class="qa-ask-inner">
+          <div class="qa-ask-icon">?</div>
+          <div class="qa-ask-fields">
+            <p class="qa-ask-label">Bạn muốn hỏi gì về sản phẩm này?</p>
+            <form id="pdQaForm">
+              <textarea class="pd-qa-textarea" id="pdQaInput"
+                placeholder="Nhập câu hỏi của bạn về mùi hương, dung tích, độ bền…"
+                rows="3"></textarea>
+              <div class="qa-ask-actions">
+                <button type="button" class="qa-cancel-btn" onclick="toggleAskForm()">Hủy</button>
+                <button type="submit" class="pd-qa-submit">Gửi câu hỏi</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+ 
+      <!-- Danh sách Q&A -->
+      <div class="pd-qa-list" id="pdQaList">
+ 
+        {% for item in product_data.qa_items %}
+        <div class="pd-qa-card" id="qa-card-{{ item.question.id_HoiDap }}">
+ 
+          <!-- Câu hỏi gốc -->
+          <div class="pd-qa-question">
+            <div class="pd-qa-avatar q-avatar">
+              {{ item.question.id_TaiKhoan.TenDangNhap|default:"K"|slice:":1"|upper }}
+            </div>
+            <div class="pd-qa-content">
+              <div class="pd-qa-top">
+                <div class="qa-user-info">
+                  <span class="qa-username">{{ item.question.id_TaiKhoan.TenDangNhap|default:"Khách hàng" }}</span>
+                  <span class="pd-qa-date">{{ item.question.NgayTao|date:"d/m/Y H:i" }}</span>
+                </div>
+                <span class="pd-qa-status {% if item.answer %}answered{% else %}pending{% endif %}">
+                  {% if item.answer %}
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Đã trả lời
+                  {% else %}
+                    <span class="pending-dot"></span> Đang chờ
+                  {% endif %}
+                </span>
+              </div>
+              <p class="pd-qa-text">{{ item.question.NoiDung }}</p>
+            </div>
+          </div>
+ 
+          <!-- Câu trả lời của Admin -->
+          {% if item.answer %}
+          <div class="pd-qa-answer">
+            <div class="pd-qa-connector"></div>
+            <div class="pd-qa-answer-inner">
+              <div class="pd-qa-avatar a-avatar">A</div>
+              <div class="pd-qa-content">
+                <div class="pd-qa-top">
+                  <div class="qa-admin-info">
+                    <span class="qa-admin-name">{{ item.answer.id_TaiKhoan.TenDangNhap|default:"Quản trị viên" }}</span>
+                    <span class="pd-expert-badge">
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
+                      AMI EXPERT
+                    </span>
+                    <span class="pd-qa-date">{{ item.answer.NgayTao|date:"d/m/Y H:i" }}</span>
+                  </div>
+                </div>
+                <div class="pd-answer-bubble">{{ item.answer.NoiDung }}</div>
+                <button class="qa-reply-toggle-btn" onclick="toggleReplyForm('{{ item.question.id_HoiDap }}')">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+                  Phản hồi
+                </button>
+              </div>
+            </div>
+          </div>
+          {% else %}
+          <div class="qa-no-answer-hint">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+            Câu hỏi đang chờ phản hồi từ chuyên viên tư vấn.
+          </div>
+          {% endif %}
+ 
+          <!-- Follow-up của khách -->
+          {% for fu in item.follow_ups %}
+          <div class="qa-followup-block">
+            <div class="qa-followup-connector"></div>
+            <div class="pd-qa-question qa-followup-question">
+              <div class="pd-qa-avatar q-avatar">
+                {{ fu.id_TaiKhoan.TenDangNhap|default:"K"|slice:":1"|upper }}
+              </div>
+              <div class="pd-qa-content">
+                <div class="pd-qa-top">
+                  <div class="qa-user-info">
+                    <span class="qa-username">{{ fu.id_TaiKhoan.TenDangNhap|default:"Khách hàng" }}</span>
+                    <span class="pd-qa-date">{{ fu.NgayTao|date:"d/m/Y H:i" }}</span>
+                    <span class="qa-followup-label">Câu hỏi tiếp theo</span>
+                  </div>
+                  <span class="pd-qa-status {% if fu.TrangThai == 'answered' %}answered{% else %}pending{% endif %}">
+                    {% if fu.TrangThai == 'answered' %}
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                      Đã trả lời
+                    {% else %}
+                      <span class="pending-dot"></span> Đang chờ
+                    {% endif %}
+                  </span>
+                </div>
+                <p class="pd-qa-text">{{ fu.NoiDung }}</p>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+ 
+          <!-- Form phản hồi inline (chỉ hiện khi có answer) -->
+          {% if item.answer %}
+          <div class="qa-reply-form" id="qa-reply-{{ item.question.id_HoiDap }}" hidden>
+            <div class="qa-reply-form-inner">
+              <div class="pd-qa-avatar q-avatar reply-mini-avatar"></div>
+              <div class="qa-reply-field-wrap">
+                <textarea class="qa-reply-textarea"
+                  id="qa-reply-input-{{ item.question.id_HoiDap }}"
+                  placeholder="Nhập câu hỏi tiếp theo của bạn…"
+                  rows="2"></textarea>
+                <div class="qa-reply-actions">
+                  <button class="qa-cancel-btn" onclick="toggleReplyForm('{{ item.question.id_HoiDap }}')">Hủy</button>
+                  <button class="qa-reply-submit-btn" onclick="submitReply('{{ item.question.id_HoiDap }}')">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="22" y1="2" x2="11" y2="13"/>
+                      <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                    </svg>
+                    Gửi
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+ 
+        </div><!-- /pd-qa-card -->
+        {% empty %}
+        <div class="qa-empty-state">
+          <div class="qa-empty-icon">💬</div>
+          <p class="qa-empty-title">Chưa có câu hỏi nào</p>
+          <p class="qa-empty-sub">Hãy là người đầu tiên đặt câu hỏi về sản phẩm này.</p>
+        </div>
+        {% endfor %}
+ 
+      </div><!-- /pd-qa-list -->
+ 
+    </div><!-- /tab-qa -->
 
     <!-- TAB 3: Reviews -->
     <div class="pd-tab-panel" id="tab-reviews" role="tabpanel" hidden>

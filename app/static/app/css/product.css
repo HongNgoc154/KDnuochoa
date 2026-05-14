@@ -692,23 +692,395 @@
 .pd-spec-row strong { color: var(--text); font-weight: 500; text-align: right; }
 
 /* ── Tab 2: Q&A ── */
-.pd-qa-list { display: flex; flex-direction: column; gap: 24px; margin-bottom: 40px; }
-.pd-qa-item { padding: 24px; background: var(--beige); border-radius: 12px; display: flex; flex-direction: column; gap: 16px; }
-.pd-qa-q, .pd-qa-a { display: flex; gap: 14px; align-items: flex-start; }
-.pd-qa-icon {
-  width: 28px; height: 28px;
+/* ═══════════════════════════════════════════════════════
+   TAB 2: Q&A — Redesign (thay thế phần cũ trong product.css)
+   Tìm "Tab 2: Q&A" và thay thế đến hết "Tab 3: Reviews"
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Q&A Header bar ── */
+.qa-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--beige-dark);
+}
+.qa-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.qa-header-left .pd-tab-heading { margin-bottom: 0; }
+.qa-count-badge {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  background: var(--beige);
+  color: var(--olive);
+  border: 1px solid var(--olive-light, #b5c98a);
+  border-radius: 40px;
+  padding: 4px 12px;
+}
+.qa-ask-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--olive);
+  color: var(--white);
+  border: none;
+  border-radius: 40px;
+  padding: 10px 22px;
+  font-family: 'Jost', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .25s, transform .2s;
+}
+.qa-ask-btn:hover { background: #3a5222; transform: translateY(-1px); }
+
+/* ── Ask box (collapsible) ── */
+.qa-ask-box {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height .4s cubic-bezier(.4,0,.2,1), opacity .3s ease, margin .3s;
+  margin-bottom: 0;
+}
+.qa-ask-box.open {
+  max-height: 280px;
+  opacity: 1;
+  margin-bottom: 32px;
+}
+.qa-ask-inner {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  background: linear-gradient(135deg, var(--beige) 0%, #f0f5e8 100%);
+  border: 1px solid var(--olive-light, #c4d99a);
+  border-radius: 16px;
+  padding: 22px 24px;
+}
+.qa-ask-icon {
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: var(--olive);
   color: var(--white);
-  font-size: 11px;
+  font-size: 18px;
   font-weight: 700;
   display: grid;
   place-items: center;
   flex-shrink: 0;
+  font-family: 'Cormorant Garamond', serif;
 }
-.pd-qa-icon.ans { background: var(--beige-deep); color: var(--text); }
-.pd-qa-q p, .pd-qa-a p { font-size: 14px; line-height: 1.75; color: var(--text); padding-top: 4px; }
-.pd-qa-form { max-width: 640px; }
+.qa-ask-fields { flex: 1; }
+.qa-ask-label {
+  font-size: 13px;
+  color: var(--text-light);
+  margin-bottom: 10px;
+  font-style: italic;
+}
+.qa-ask-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+}
+.qa-cancel-btn {
+  background: none;
+  border: 1px solid var(--beige-dark);
+  color: var(--text-light);
+  border-radius: 40px;
+  padding: 8px 18px;
+  font-family: 'Jost', sans-serif;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color .2s, color .2s;
+}
+.qa-cancel-btn:hover { border-color: var(--olive); color: var(--olive); }
+
+/* ── Q&A List ── */
+.pd-qa-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 40px;
+}
+
+/* ── Q&A Card ── */
+.pd-qa-card {
+  border: 1px solid var(--beige-dark);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--white);
+  transition: box-shadow .25s;
+}
+.pd-qa-card:hover { box-shadow: 0 4px 20px rgba(75,103,45,.08); }
+
+/* ── Question row ── */
+.pd-qa-question {
+  display: flex;
+  gap: 14px;
+  padding: 20px 22px;
+  align-items: flex-start;
+}
+
+/* ── Answer section ── */
+.pd-qa-answer {
+  background: linear-gradient(135deg, #f4f8ed 0%, #eef5e0 100%);
+  border-top: 1px solid var(--beige-dark);
+  padding: 0 22px 18px;
+}
+.pd-qa-connector {
+  width: 2px;
+  height: 18px;
+  background: linear-gradient(to bottom, var(--beige-dark), var(--olive-light, #b5c98a));
+  margin-left: 34px;
+}
+.pd-qa-answer-inner {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+/* ── Avatar ── */
+.pd-qa-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-family: 'Jost', sans-serif;
+}
+.q-avatar {
+  background: var(--olive);
+  color: var(--white);
+  letter-spacing: .5px;
+}
+.a-avatar {
+  background: linear-gradient(135deg, #3a5222, var(--olive));
+  color: var(--white);
+}
+
+/* ── Content wrapper ── */
+.pd-qa-content { flex: 1; min-width: 0; }
+
+/* ── Top row (user info + status) ── */
+.pd-qa-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.qa-user-info, .qa-admin-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.qa-username {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  font-family: 'Jost', sans-serif;
+}
+.qa-admin-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--olive);
+  font-family: 'Jost', sans-serif;
+}
+.pd-qa-date {
+  font-size: 11px;
+  color: var(--text-light);
+  letter-spacing: .3px;
+}
+.pd-expert-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--olive);
+  color: var(--white);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+
+/* ── Status badge ── */
+.pd-qa-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+.pd-qa-status.answered {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #a5d6a7;
+}
+.pd-qa-status.pending {
+  background: #fff8e1;
+  color: #f57f17;
+  border: 1px solid #ffe082;
+}
+.pending-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f57f17;
+  animation: pendingPulse 1.5s ease-in-out infinite;
+}
+@keyframes pendingPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .5; transform: scale(.7); }
+}
+
+/* ── Q&A Text ── */
+.pd-qa-text {
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--text);
+}
+
+/* ── Answer bubble ── */
+.pd-answer-bubble {
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--text);
+  background: rgba(75,103,45,.06);
+  border-left: 3px solid var(--olive);
+  border-radius: 0 10px 10px 0;
+  padding: 12px 16px;
+  margin-top: 4px;
+}
+
+/* ── Reply toggle button ── */
+.qa-reply-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  background: none;
+  border: none;
+  color: var(--olive);
+  font-family: 'Jost', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity .2s;
+  text-transform: uppercase;
+}
+.qa-reply-toggle-btn:hover { opacity: .7; }
+.qa-reply-toggle-btn svg { flex-shrink: 0; }
+
+/* ── Inline reply form ── */
+.qa-reply-form {
+  border-top: 1px dashed var(--beige-dark);
+  padding: 16px 22px;
+  background: #f9fbf5;
+}
+.qa-reply-form[hidden] { display: none; }
+.qa-reply-form-inner {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.reply-mini-avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 11px;
+}
+.qa-reply-field-wrap { flex: 1; }
+.qa-reply-textarea {
+  width: 100%;
+  border: 1px solid var(--beige-dark);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-family: 'Jost', sans-serif;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--white);
+  resize: none;
+  outline: none;
+  transition: border-color .25s;
+  display: block;
+}
+.qa-reply-textarea:focus { border-color: var(--olive); }
+.qa-reply-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  justify-content: flex-end;
+}
+.qa-reply-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--olive);
+  color: var(--white);
+  border: none;
+  border-radius: 40px;
+  padding: 8px 18px;
+  font-family: 'Jost', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .25s;
+}
+.qa-reply-submit-btn:hover { background: #3a5222; }
+
+/* ── No answer hint ── */
+.qa-no-answer-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-light);
+  font-style: italic;
+  padding: 12px 22px 16px 74px;
+  background: var(--beige);
+  border-top: 1px solid var(--beige-dark);
+}
+
+/* ── Empty state ── */
+.qa-empty-state {
+  text-align: center;
+  padding: 60px 40px;
+  color: var(--text-light);
+}
+.qa-empty-icon { font-size: 40px; margin-bottom: 16px; }
+.qa-empty-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.qa-empty-sub { font-size: 13px; line-height: 1.6; }
+
+/* ── Q&A Form (standalone) ── */
 .pd-qa-textarea {
   width: 100%;
   border: 1px solid var(--beige-dark);
@@ -721,25 +1093,64 @@
   resize: vertical;
   outline: none;
   transition: border-color .3s;
-  margin-bottom: 14px;
   display: block;
 }
 .pd-qa-textarea:focus { border-color: var(--olive); }
 .pd-qa-submit {
   border: 1.5px solid var(--olive);
-  background: transparent;
-  color: var(--olive);
+  background: var(--olive);
+  color: var(--white);
   font-family: 'Jost', sans-serif;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 2.5px;
   text-transform: uppercase;
-  padding: 13px 32px;
+  padding: 12px 28px;
   border-radius: 40px;
   cursor: pointer;
-  transition: background .3s, color .3s;
+  transition: background .3s, color .3s, transform .2s;
 }
-.pd-qa-submit:hover { background: var(--olive); color: var(--white); }
+.pd-qa-submit:hover { background: #3a5222; transform: translateY(-1px); }
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .qa-header-bar { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .qa-ask-inner { flex-direction: column; }
+  .pd-qa-question { padding: 16px; }
+  .qa-no-answer-hint { padding-left: 16px; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   Thêm vào cuối phần Q&A trong product.css
+   CSS cho câu hỏi tiếp theo (follow-up) sau answer admin
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Follow-up block (câu hỏi tiếp theo của khách) ── */
+.qa-followup-block {
+  border-top: 1px dashed var(--beige-dark);
+  background: #fafcf7;
+}
+.qa-followup-connector {
+  width: 2px;
+  height: 14px;
+  background: linear-gradient(to bottom, #b5c98a, var(--beige-dark));
+  margin-left: 34px;
+}
+.qa-followup-question {
+  padding: 14px 22px 16px !important;
+  background: transparent;
+}
+.qa-followup-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--olive);
+  background: #eef5e0;
+  border: 1px solid #c4d99a;
+  border-radius: 20px;
+  padding: 2px 8px;
+}
 
 /* ── Tab 3: Reviews ── */
 .pd-review-summary {

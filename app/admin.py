@@ -39,65 +39,6 @@ admin_site.register(Group)
 
 
 # ═══════════════════════════════════════
-#  FORM tùy chỉnh cho SanPham
-# ═══════════════════════════════════════
-# class SanPhamForm(forms.ModelForm):
-#     """
-#     Thêm widget checkbox đẹp cho nhom_huongs thay vì
-#     SelectMultiple mặc định.
-#     """
-#     nhom_huongs = forms.ModelMultipleChoiceField(
-#         queryset=NhomHuong.objects.all(),
-#         required=False,
-#         widget=forms.CheckboxSelectMultiple(attrs={'class': 'nhom-huong-checks'}),
-#         label="Nhóm hương",
-#     )
-
-#     class Meta:
-#         model  = SanPham
-#         fields = '__all__'
-#         # exclude = ('nhom_huongs',)
-#         widgets = {
-#             'TenSanPham': forms.TextInput(attrs={
-#                 'class': 'ami-input',
-#                 'placeholder': 'Nhập tên sản phẩm...',
-#             }),
-#             'MoTa_SanPham': forms.Textarea(attrs={
-#                 'class': 'ami-textarea',
-#                 'rows': 5,
-#                 'placeholder': 'Mô tả chi tiết về sản phẩm...',
-#             }),
-#             'TrangThai_SanPham': forms.Select(
-#                 choices=[
-#                     ('', '— Chọn trạng thái —'),
-#                     ('active',   'Đang bán'),
-#                     ('inactive', 'Ngừng bán'),
-#                     ('draft',    'Nháp'),
-#                 ],
-#                 attrs={'class': 'ami-select'},
-#             ),
-#             'id_ThuongHieu': forms.Select(attrs={'class': 'ami-select'}),
-#             'id_LoaiSanPham': forms.Select(attrs={'class': 'ami-select'}),
-#         }
-
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-
-#         if self.instance and self.instance.pk:
-#             self.fields['nhom_huongs'].initial = self.instance.nhom_huongs.all()
-
-#     def save(self, commit=True):
-#         instance = super().save(commit=commit)
-
-#         if commit and instance.pk:
-#             instance.nhom_huongs.set(self.cleaned_data.get('nhom_huongs'))
-
-#         return instance
-
-
-
-
-# ═══════════════════════════════════════
 #  INLINES
 # ═══════════════════════════════════════
 class HinhAnhInline(nested_admin.NestedTabularInline):
@@ -117,7 +58,6 @@ class HinhAnhInline(nested_admin.NestedTabularInline):
             )
         return "—"
     image_thumb.short_description = "Xem trước"
-
 
     def get_formset(self, request, obj=None, **kwargs):
         formset = super().get_formset(request, obj, **kwargs)
@@ -141,13 +81,9 @@ class BienTheThuocTinhInline(nested_admin.NestedTabularInline):
 
 
 class BienTheInline(nested_admin.NestedStackedInline):
-    """
-    Dùng StackedInline để mỗi biến thể hiển thị rộng rãi hơn,
-    dễ nhìn hơn TabularInline khi có nhiều trường.
-    """
     model               = BienThe
     extra               = 1
-    inlines = [BienTheThuocTinhInline]
+    inlines             = [BienTheThuocTinhInline]
     fieldsets = (
         ("Thông tin biến thể", {
             "fields": ("Sku", "GiaBan", "SoLuong"),
@@ -173,24 +109,22 @@ class BienTheInline(nested_admin.NestedStackedInline):
 
 
 class SanPhamNhomHuongInline(nested_admin.NestedStackedInline):
-    model = SanPhamNhomHuong
-    extra = 1
+    model               = SanPhamNhomHuong
+    extra               = 1
     autocomplete_fields = ('id_NhomHuong',)
-    fields = ('id_NhomHuong', 'VaiTroHuong')
-    verbose_name = "Nhóm hương"
+    fields              = ('id_NhomHuong', 'VaiTroHuong')
+    verbose_name        = "Nhóm hương"
     verbose_name_plural = "🌿  Nhóm hương sản phẩm (chọn 1 hoặc nhiều)"
+
 
 # ═══════════════════════════════════════
 #  SanPham ADMIN
 # ═══════════════════════════════════════
 @admin.register(SanPham, site=admin_site)
 class SanPhamAdmin(nested_admin.NestedModelAdmin):
-    # form          = SanPhamForm
     change_form_template = "admin/sanpham_change_form.html"
-
-    # Danh sách
     list_display  = (
-        'product_card',         # custom HTML column
+        'product_card',
         'TrangThai_badge',
         'NongDo',
         'DoLuuHuong',
@@ -202,15 +136,8 @@ class SanPhamAdmin(nested_admin.NestedModelAdmin):
     )
     list_display_links = ('product_card',)
     search_fields = ('TenSanPham',)
-    list_filter   = (
-        'TrangThai_SanPham',
-        'id_ThuongHieu',
-        'id_LoaiSanPham',
-        'nhom_huongs',
-    )
+    list_filter   = ('TrangThai_SanPham', 'id_ThuongHieu', 'id_LoaiSanPham', 'nhom_huongs')
     list_per_page = 20
-
-    # Form thêm/sửa — một khối duy nhất, không chia tab
     fieldsets = (
         (None, {
             'fields': (
@@ -221,19 +148,12 @@ class SanPhamAdmin(nested_admin.NestedModelAdmin):
                 ('DoLuuHuong', 'DoToaHuong'),
                 ('MuaPhuHop', 'ThoiDiemSuDung'),
                 ('PhongCach', 'DoTuoiPhuHop'),
-                # 'nhom_huongs',
                 'MoTa_SanPham',
             ),
         }),
     )
-    # filter_horizontal = ('nhom_huongs',)
-    inlines = [
-    SanPhamNhomHuongInline,   # 👈 QUAN TRỌNG NHẤT
-    BienTheInline,
-    HinhAnhInline
-]
+    inlines = [SanPhamNhomHuongInline, BienTheInline, HinhAnhInline]
 
-    # ── Custom list_display columns ──────────────────────────
     def product_card(self, obj):
         img = "—"
         first_img = HinhAnh.objects.filter(id_SanPham=obj).first()
@@ -244,10 +164,7 @@ class SanPhamAdmin(nested_admin.NestedModelAdmin):
                 'border:1px solid #e0d9cc;"/>',
                 first_img.url.url,
             )
-        return format_html(
-            '{}<strong style="vertical-align:middle;">{}</strong>',
-            img, obj.TenSanPham,
-        )
+        return format_html('{}<strong style="vertical-align:middle;">{}</strong>', img, obj.TenSanPham)
     product_card.short_description = "Sản phẩm"
     product_card.allow_tags = True
 
@@ -269,33 +186,22 @@ class SanPhamAdmin(nested_admin.NestedModelAdmin):
     TrangThai_badge.short_description = "Trạng thái"
 
     def ten_thuong_hieu(self, obj):
-        try:
-            return obj.id_ThuongHieu.TenThuongHieu
-        except Exception:
-            return "—"
+        try: return obj.id_ThuongHieu.TenThuongHieu
+        except: return "—"
     ten_thuong_hieu.short_description = "Thương hiệu"
 
     def ten_loai_san_pham(self, obj):
-        try:
-            return obj.id_LoaiSanPham.TenLoaiSanPham
-        except Exception:
-            return "—"
+        try: return obj.id_LoaiSanPham.TenLoaiSanPham
+        except: return "—"
     ten_loai_san_pham.short_description = "Loại"
 
     def get_nhom_huong(self, obj):
         huongs = SanPhamNhomHuong.objects.select_related('id_NhomHuong').filter(id_SanPham=obj)
-
         if not huongs.exists():
             return "-"
-
         return mark_safe("".join([
-            (
-                '<span style="padding:4px 8px;background:#e8f5e9;'
-                'border-radius:6px;margin-right:4px;">'
-                f'{h.id_NhomHuong.TenNhomHuong}'
-                f' ({h.VaiTroHuong or "chưa chọn vai trò"})'
-                '</span>'
-            )
+            f'<span style="padding:4px 8px;background:#e8f5e9;border-radius:6px;margin-right:4px;">'
+            f'{h.id_NhomHuong.TenNhomHuong} ({h.VaiTroHuong or "chưa chọn vai trò"})</span>'
             for h in huongs
         ]))
     get_nhom_huong.short_description = "Nhóm hương"
@@ -303,15 +209,12 @@ class SanPhamAdmin(nested_admin.NestedModelAdmin):
     def so_bien_the(self, obj):
         count = BienThe.objects.filter(id_SanPham=obj).count()
         color = "#2e7d32" if count > 0 else "#9e9e9e"
-        return format_html(
-            '<span style="color:{};font-weight:600;">{} biến thể</span>',
-            color, count,
-        )
+        return format_html('<span style="color:{};font-weight:600;">{} biến thể</span>', color, count)
     so_bien_the.short_description = "Biến thể"
 
     class Media:
-        css  = {'all': ('admin/css/ami_admin.css',)}
-        js   = ('admin/js/ami_admin.js',)
+        css = {'all': ('admin/css/ami_admin.css',)}
+        js  = ('admin/js/ami_admin.js',)
 
 
 # ═══════════════════════════════════════
@@ -402,7 +305,7 @@ class LoaiSanPhamAdmin(admin.ModelAdmin):
 class NhomHuongAdmin(admin.ModelAdmin):
     list_display  = ('icon_preview', 'TenNhomHuong', 'LoaiHuong')
     search_fields = ('TenNhomHuong', 'LoaiHuong')
-    list_filter = ('LoaiHuong',)
+    list_filter   = ('LoaiHuong',)
 
     def icon_preview(self, obj):
         if obj.IconUrl:
@@ -420,13 +323,12 @@ class NhomHuongAdmin(admin.ModelAdmin):
 admin_site.register(HinhAnh)
 
 
-# ================================BÀI VIẾT========================
-
+# ================================ BÀI VIẾT ========================
 @admin.register(BaiViet, site=admin_site)
 class BaiVietAdmin(admin.ModelAdmin):
-    list_display = ("id_BaiViet", "TieuDe", "TacGia", "NgayTao")
+    list_display  = ("id_BaiViet", "TieuDe", "TacGia", "NgayTao")
     search_fields = ("TieuDe", "TacGia")
-    list_filter = ("NgayTao",)
+    list_filter   = ("NgayTao",)
 
     def preview_image(self, obj):
         if obj.AnhDaiDien:
@@ -434,31 +336,40 @@ class BaiVietAdmin(admin.ModelAdmin):
         return "-"
 
 
-# ======================= HỎI ĐÁP ======================
+# ================================ HỎI ĐÁP ========================
 class HoiDapAdminForm(forms.ModelForm):
     tra_loi_noi_dung = forms.CharField(
         required=False,
         label="Nội dung trả lời",
-        widget=forms.Textarea(attrs={"rows": 4, "placeholder": "Nhập câu trả lời cho khách hàng..."})
+        widget=forms.Textarea(attrs={
+            "rows": 4,
+            "placeholder": "Nhập câu trả lời cho khách hàng..."
+        })
     )
 
     class Meta:
-        model = HoiDap
+        model  = HoiDap
         fields = '__all__'
 
-    def clean(self):
-        cleaned_data = super().clean()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         obj = self.instance
-        reply_content = (cleaned_data.get('tra_loi_noi_dung') or '').strip()
+        if obj and obj.pk and not obj.parent_id:
+            existing = HoiDap.objects.filter(
+                parent_id=obj.id_HoiDap,
+                id_TaiKhoan__LoaiTaiKhoan__in=['admin', 'staff']
+            ).order_by('NgayTao').first()
+            if existing:
+                self.fields['tra_loi_noi_dung'].initial = existing.NoiDung
+                self.fields['tra_loi_noi_dung'].help_text = (
+                    '⚠️ Đã có câu trả lời. Sửa ở đây sẽ CẬP NHẬT câu trả lời cũ.'
+                )
 
-        if obj and obj.pk and not obj.parent_id and reply_content:
-            has_answer = HoiDap.objects.filter(parent_id=obj.id_HoiDap).exclude(TrangThai='hidden').exists()
-            if has_answer:
-                raise ValidationError('Câu hỏi này đã có trả lời. Bạn có thể sửa câu trả lời cũ thay vì tạo mới.')
+    def clean(self):
+        return super().clean()
 
-        return cleaned_data
 
-@admin.register(HoiDap, site=admin_site)
+@admin.register(HoiDap, site=admin_site)   # ← CHỈ 1 LẦN DUY NHẤT
 class HoiDapAdmin(admin.ModelAdmin):
 
     form = HoiDapAdminForm
@@ -478,14 +389,8 @@ class HoiDapAdmin(admin.ModelAdmin):
         'id_TaiKhoan__TenDangNhap',
     )
 
-    list_filter = (
-        'TrangThai',
-    )
-
-    readonly_fields = (
-        'NgayTao',
-    )
-
+    list_filter         = ('TrangThai',)
+    readonly_fields     = ('NgayTao',)
     list_select_related = ('id_SanPham', 'id_TaiKhoan')
 
     fields = (
@@ -499,66 +404,82 @@ class HoiDapAdmin(admin.ModelAdmin):
     )
 
     def san_pham(self, obj):
-        try:
-            return obj.id_SanPham.TenSanPham
-        except:
-            return "-"
-
+        try: return obj.id_SanPham.TenSanPham
+        except: return "-"
     san_pham.short_description = "Sản phẩm"
 
     def nguoi_gui(self, obj):
-        try:
-            return obj.id_TaiKhoan.TenDangNhap
-        except:
-            return "-"
-
+        try: return obj.id_TaiKhoan.TenDangNhap
+        except: return "-"
     nguoi_gui.short_description = "Người gửi"
 
     def loai_hoi_dap(self, obj):
-
         if obj.parent_id:
-            return mark_safe(
-                '<span style="color:#2e7d32;font-weight:600;">TRẢ LỜI</span>'
-            )
-
-        return mark_safe(
-            '<span style="color:#8d6e63;font-weight:600;">CÂU HỎI</span>'
-        )
-
+            return mark_safe('<span style="color:#2e7d32;font-weight:600;">TRẢ LỜI</span>')
+        return mark_safe('<span style="color:#8d6e63;font-weight:600;">CÂU HỎI</span>')
     loai_hoi_dap.short_description = "Loại"
 
     def save_model(self, request, obj, form, change):
 
+        # Nếu là reply (có parent_id) → lưu + cập nhật câu hỏi gốc
         if obj.parent_id:
             obj.TrangThai = 'answered'
-
-        super().save_model(request, obj, form, change)
-
-        if obj.parent_id:
-
+            super().save_model(request, obj, form, change)
             try:
-                question = HoiDap.objects.get(id_HoiDap=obj.parent_id)
-                question.TrangThai = 'answered'
-                question.save(update_fields=['TrangThai'])
-
+                q = HoiDap.objects.get(id_HoiDap=obj.parent_id)
+                q.TrangThai = 'answered'
+                q.save(update_fields=['TrangThai'])
             except HoiDap.DoesNotExist:
                 pass
             return
 
+        super().save_model(request, obj, form, change)
+
         reply_content = (form.cleaned_data.get('tra_loi_noi_dung') or '').strip()
-        if reply_content:
-            HoiDap.objects.create(
-                id_SanPham=obj.id_SanPham,
-                id_TaiKhoan=request.user and TaiKhoan.objects.filter(Username=request.user.username).first() or obj.id_TaiKhoan,
-                NoiDung=reply_content,
+        if not reply_content:
+            return
+
+        # Tìm tài khoản admin
+        admin_account = (
+            TaiKhoan.objects.filter(Username=request.user.username).first()
+            or (TaiKhoan.objects.filter(Email__iexact=request.user.email).first()
+                if request.user.email else None)
+            or TaiKhoan.objects.filter(LoaiTaiKhoan__in=['admin', 'staff']).first()
+        )
+
+        if not admin_account:
+            admin_account = TaiKhoan.objects.create(
+                Username=request.user.username,
+                TenDangNhap='Quản trị viên',
+                Email=request.user.email or '',
+                LoaiTaiKhoan='admin',
+                TrangThai_TaiKhoan='active',
                 NgayTao=timezone.now(),
-                parent_id=obj.id_HoiDap,
-                TrangThai='answered'
             )
-            obj.TrangThai = 'answered'
-            obj.save(update_fields=['TrangThai'])
+
+        # Cập nhật reply cũ hoặc tạo mới
+        existing = HoiDap.objects.filter(
+            parent_id=obj.id_HoiDap,
+            id_TaiKhoan__LoaiTaiKhoan__in=['admin', 'staff']
+        ).first()
+
+        if existing:
+            existing.NoiDung   = reply_content
+            existing.NgayTao   = timezone.now()
+            existing.TrangThai = 'answered'
+            existing.save(update_fields=['NoiDung', 'NgayTao', 'TrangThai'])
+        else:
+            HoiDap.objects.create(
+                id_SanPham  = obj.id_SanPham,
+                id_TaiKhoan = admin_account,
+                NoiDung     = reply_content,
+                NgayTao     = timezone.now(),
+                parent_id   = obj.id_HoiDap,
+                TrangThai   = 'answered',
+            )
+
+        obj.TrangThai = 'answered'
+        obj.save(update_fields=['TrangThai'])
 
     class Media:
-        css = {
-            'all': ('admin/css/ami_admin.css',)
-        }
+        css = {'all': ('admin/css/ami_admin.css',)}

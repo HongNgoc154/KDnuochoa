@@ -496,91 +496,269 @@ function initArrowCarousel(wrap, track, leftBtn, rightBtn, stepRatio = 0.75, edg
 })();
 
 /* ─── QA FORM ───────────────────────────────────────────────── */
-// ===============================
-// PRODUCT Q&A AJAX
-// ===============================
+/* ═══════════════════════════════════════════════════════
+   Q&A JavaScript — Thêm vào product.js
+   (Thay thế phần "QA FORM" cũ)
+   ═══════════════════════════════════════════════════════ */
 
+/* ─── Toggle form đặt câu hỏi ─────────────────────── */
+function toggleAskForm() {
+    const box = document.getElementById("qaAskBox");
+    const btn = document.getElementById("qaAskToggleBtn");
+    if (!box) return;
+    const isOpen = box.classList.contains("open");
+    box.classList.toggle("open", !isOpen);
+    if (btn) {
+        btn.innerHTML = isOpen
+            ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Đặt câu hỏi`
+            : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Đóng`;
+    }
+    if (!isOpen) {
+        setTimeout(() => document.getElementById("pdQaInput")?.focus(), 300);
+    }
+}
+
+/* ─── Toggle form reply inline ─────────────────────── */
+function toggleReplyForm(qid) {
+    const form = document.getElementById(`qa-reply-${qid}`);
+    if (!form) return;
+    const hidden = form.hasAttribute("hidden");
+    form.toggleAttribute("hidden", !hidden);
+    if (hidden) {
+        setTimeout(() => document.getElementById(`qa-reply-input-${qid}`)?.focus(), 50);
+        // Điền initials người dùng vào avatar
+        const miniAvatar = form.querySelector(".reply-mini-avatar");
+        if (miniAvatar) {
+            const accountName = document.body.dataset.accountName || "?";
+            miniAvatar.textContent = accountName.slice(0, 1).toUpperCase();
+        }
+    }
+}
+
+/* ─── Submit câu hỏi mới ───────────────────────────── */
 const qaForm = document.getElementById("pdQaForm");
-
 if (qaForm) {
-
     qaForm.addEventListener("submit", async (e) => {
-
         e.preventDefault();
+        const input = document.getElementById("pdQaInput");
+        const content = (input?.value || "").trim();
+        if (!content) { showQaToast("Vui lòng nhập câu hỏi", "warn"); return; }
 
-        const input =
-            document.getElementById("pdQaInput");
+        const productId = document.querySelector(".pd-layout")?.dataset?.productId;
+        const submitBtn = qaForm.querySelector(".pd-qa-submit");
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Đang gửi…"; }
 
-        const content = input.value.trim();
+        const formData = new FormData();
+        formData.append("product_id", productId);
+        formData.append("content", content);
 
-        if (!content) {
+        try {
+            const res = await fetch("/submit-question/", { method: "POST", body: formData });
+            const data = await res.json();
+            if (data.need_login) { window.location.href = "/auth/"; return; }
+            if (data.ok) {
+                showQaToast("Câu hỏi đã được gửi. Chuyên viên sẽ phản hồi sớm nhất!", "success");
+                input.value = "";
+                toggleAskForm();
+                // Thêm card mới vào đầu list
+                prependQuestionCard(data.question);
+                // Cập nhật số đếm
+                updateQaCount(1);
+            }
+        } catch (err) {
+            showQaToast("Có lỗi xảy ra. Vui lòng thử lại.", "error");
+        } finally {
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Gửi câu hỏi"; }
+        }
+    });
+}
 
-            alert("Vui lòng nhập câu hỏi");
+/* ─── Submit reply (phản hồi sau câu trả lời admin) ── */
+/* ═══════════════════════════════════════════════════════
+   Hàm submitReply — thay thế trong qa_script.js
+   Gửi parent_id lên /submit-question/ để lưu câu hỏi tiếp
+   ═══════════════════════════════════════════════════════ */
+
+async function submitReply(qid) {
+    const textarea = document.getElementById(`qa-reply-input-${qid}`);
+    const content = (textarea?.value || "").trim();
+    if (!content) {
+        showQaToast("Vui lòng nhập nội dung phản hồi", "warn");
+        return;
+    }
+
+    const productId = document.querySelector(".pd-layout")?.dataset?.productId;
+    const submitBtn = document.querySelector(`#qa-reply-${qid} .qa-reply-submit-btn`);
+
+    // Hiện trạng thái loading
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span style="opacity:.6">Đang gửi…</span>`;
+    }
+
+    const formData = new FormData();
+    formData.append("product_id", productId);
+    formData.append("content", content);
+    formData.append("parent_id", qid);   // <-- gửi parent_id là id của câu hỏi gốc
+
+    try {
+        const res = await fetch("/submit-question/", {
+            method: "POST",
+            body: formData
+        });
+        const data = await res.json();
+
+        if (data.need_login) {
+            window.location.href = "/auth/";
             return;
         }
 
-        const productId =
-            document.querySelector(".pd-layout")
-            ?.dataset?.productId;
+        if (data.ok) {
+            // Đóng form reply
+            toggleReplyForm(qid);
+            textarea.value = "";
 
-        console.log("PRODUCT ID:", productId);
+            // Hiển thị phản hồi vừa gửi ngay dưới answer của admin
+            appendFollowUpReply(qid, data.question);
 
-        const formData = new FormData();
-
-        formData.append(
-            "product_id",
-            productId
-        );
-
-        formData.append(
-            "content",
-            content
-        );
-
-        try {
-
-            const response = await fetch(
-                "/submit-question/",
-                {
-                    method: "POST",
-                    body: formData
-                }
-            );
-
-            const data = await response.json();
-
-            console.log(data);
-
-            // chưa login
-            if (data.need_login) {
-
-                window.location.href = "/auth/";
-                return;
-            }
-
-            // submit thành công
-            if (data.ok) {
-
-                alert(
-                    "Câu hỏi của bạn đã được gửi tới chuyên viên tư vấn."
-                );
-
-                input.value = "";
-
-                location.reload();
-            }
-
-        } catch (error) {
-
-            console.error(error);
-
-            alert(
-                "Có lỗi xảy ra khi gửi câu hỏi."
-            );
+            showQaToast("Phản hồi đã được gửi. Chuyên viên sẽ xem xét sớm nhất!", "success");
+        } else {
+            showQaToast(data.message || "Có lỗi xảy ra.", "error");
         }
 
-    });
+    } catch (err) {
+        console.error(err);
+        showQaToast("Có lỗi xảy ra. Vui lòng thử lại.", "error");
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="22" y1="2" x2="11" y2="13"/>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+                Gửi`;
+        }
+    }
+}
 
+
+/* ─── Hiển thị câu hỏi tiếp theo ngay dưới answer của admin ── */
+function appendFollowUpReply(qid, q) {
+    const card = document.getElementById(`qa-card-${qid}`);
+    if (!card) return;
+
+    const initial = (q.name || "K").slice(0, 1).toUpperCase();
+
+    // Tạo block follow-up
+    const block = document.createElement("div");
+    block.className = "qa-followup-block";
+    block.style.animation = "tabFadeIn .35s ease";
+    block.innerHTML = `
+      <div class="qa-followup-connector"></div>
+      <div class="pd-qa-question qa-followup-question">
+        <div class="pd-qa-avatar q-avatar">${initial}</div>
+        <div class="pd-qa-content">
+          <div class="pd-qa-top">
+            <div class="qa-user-info">
+              <span class="qa-username">${q.name}</span>
+              <span class="pd-qa-date">${q.created_at}</span>
+              <span class="qa-followup-label">Câu hỏi tiếp theo</span>
+            </div>
+            <span class="pd-qa-status pending">
+              <span class="pending-dot"></span> Đang chờ
+            </span>
+          </div>
+          <p class="pd-qa-text">${q.content}</p>
+        </div>
+      </div>
+    `;
+
+    // Chèn trước form reply (hoặc cuối card)
+    const replyForm = document.getElementById(`qa-reply-${qid}`);
+    if (replyForm) {
+        card.insertBefore(block, replyForm);
+    } else {
+        card.appendChild(block);
+    }
+}
+
+/* ─── Thêm card câu hỏi mới vào DOM ───────────────── */
+function prependQuestionCard(q) {
+    const list = document.getElementById("pdQaList");
+    if (!list) return;
+    // Xóa empty state nếu có
+    const empty = list.querySelector(".qa-empty-state");
+    if (empty) empty.remove();
+
+    const initial = (q.name || "K").slice(0, 1).toUpperCase();
+    const card = document.createElement("div");
+    card.className = "pd-qa-card";
+    card.id = `qa-card-${q.id}`;
+    card.style.animation = "tabFadeIn .4s ease";
+    card.innerHTML = `
+      <div class="pd-qa-question">
+        <div class="pd-qa-avatar q-avatar">${initial}</div>
+        <div class="pd-qa-content">
+          <div class="pd-qa-top">
+            <div class="qa-user-info">
+              <span class="qa-username">${q.name}</span>
+              <span class="pd-qa-date">${q.created_at}</span>
+            </div>
+            <span class="pd-qa-status pending">
+              <span class="pending-dot"></span> Đang chờ
+            </span>
+          </div>
+          <p class="pd-qa-text">${q.content}</p>
+        </div>
+      </div>
+      <div class="qa-no-answer-hint">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+        Câu hỏi đang chờ phản hồi từ chuyên viên tư vấn.
+      </div>
+    `;
+    list.prepend(card);
+}
+
+/* ─── Cập nhật số đếm badge ────────────────────────── */
+function updateQaCount(delta) {
+    const badge = document.querySelector(".qa-count-badge");
+    if (!badge) return;
+    const match = badge.textContent.match(/\d+/);
+    const current = match ? parseInt(match[0]) : 0;
+    badge.textContent = `${current + delta} câu hỏi`;
+}
+
+/* ─── Toast notification ───────────────────────────── */
+function showQaToast(msg, type = "success") {
+    const existing = document.getElementById("qaToast");
+    if (existing) existing.remove();
+    const colors = {
+        success: { bg: "#4B672D", text: "#fff" },
+        warn:    { bg: "#f57f17", text: "#fff" },
+        error:   { bg: "#c62828", text: "#fff" },
+    };
+    const c = colors[type] || colors.success;
+    const toast = document.createElement("div");
+    toast.id = "qaToast";
+    toast.style.cssText = `
+        position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(20px);
+        background:${c.bg}; color:${c.text}; padding:12px 24px; border-radius:40px;
+        font-family:'Jost',sans-serif; font-size:13px; font-weight:500; letter-spacing:.5px;
+        box-shadow:0 8px 28px rgba(0,0,0,.18); z-index:9999;
+        opacity:0; transition:opacity .3s, transform .3s;
+    `;
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => {
+        toast.style.opacity = "1";
+        toast.style.transform = "translateX(-50%) translateY(0)";
+    });
+    setTimeout(() => {
+        toast.style.opacity = "0";
+        toast.style.transform = "translateX(-50%) translateY(10px)";
+        setTimeout(() => toast.remove(), 350);
+    }, 3200);
 }
 
 /* ─── 13. PDP DATA ACTIONS ────────────────────────────────── */
