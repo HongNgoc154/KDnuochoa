@@ -313,6 +313,12 @@ class ChiTietDonHang(models.Model):
 
 
 # ===================== ĐÁNH GIÁ =====================
+# ═══════════════════════════════════════════════════════════════
+# Trong models.py — tìm class DanhGia và thay bằng đoạn dưới
+# Xóa NgayTao vì bảng DB không có cột này
+# ═══════════════════════════════════════════════════════════════
+
+# ===================== ĐÁNH GIÁ =====================
 class DanhGia(models.Model):
     id_DanhGia = models.AutoField(primary_key=True)
 
@@ -331,12 +337,14 @@ class DanhGia(models.Model):
         null=True,
         blank=True
     )
+
     parent_id = models.IntegerField(null=True, blank=True)
 
-    NgayDanhGia = models.DateTimeField(null=True, blank=True)
-    NoiDung = models.TextField(null=True)
     SoSao = models.IntegerField(null=True)
-    # NgayTao = models.DateTimeField(null=True)
+    NoiDung = models.TextField(null=True)
+
+    NgayDanhGia = models.DateTimeField(null=True, blank=True)
+    # NgayTao đã bị xóa — bảng DanhGia trong DB không có cột này
 
     class Meta:
         managed = False
@@ -418,8 +426,8 @@ class KhachHang(models.Model):
         null=True
     )
     TenKhachHang = models.CharField(max_length=255, null=True)
-    Email = models.CharField(max_length=255, null=True)
-    SDT = models.CharField(max_length=20, null=True)
+    # Email = models.CharField(max_length=255, null=True)
+    # SDT = models.CharField(max_length=20, null=True)
     DiaChi = models.CharField(max_length=255, null=True)
     GioiTinh = models.CharField(max_length=10, null=True)
 

@@ -163,7 +163,9 @@
 
             <!-- ACTION -->
             <div class="product-actions">
-              <button class="action-icon favorite-btn" aria-pressed="false">
+              <button class="action-icon favorite-btn"
+                aria-pressed="false"
+                data-product-id="{{ item.id }}">
                 <span class="heart-core">♡</span>
               </button>
 
@@ -233,4 +235,6 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'app/js/main.js' %}"></script>
+<script src="{% static 'app/js/wishlist.js' %}"></script>
 {% endblock %}

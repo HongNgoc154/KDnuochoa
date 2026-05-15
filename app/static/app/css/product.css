@@ -1614,3 +1614,23 @@
 .pd-review-reply{margin-top:12px;padding:12px 14px;border-left:3px solid #9aad62;background:#f8f6ef;border-radius:12px}
 .pd-lux-toast{position:fixed;right:20px;bottom:22px;background:#2e2a24;color:#f7f1e5;padding:12px 16px;border-radius:14px;opacity:0;transform:translateY(12px);transition:.3s;z-index:9999}
 .pd-lux-toast.show{opacity:1;transform:translateY(0)}
+
+/* Card sản phẩm — trái tim đỏ khi liked */
+.favorite-btn.is-liked .heart-core {
+  color: #c0392b !important;
+}
+.favorite-btn.is-liked {
+  border-color: #d8a9b2 !important;
+  background: #fff0f2 !important;
+}
+ 
+/* Product detail — #pdWishBtn khi liked */
+#pdWishBtn.is-liked #pdWishHeart {
+  color: #c0392b !important;
+}
+#pdWishBtn.is-liked {
+  color: #c0392b !important;
+}
+#pdWishBtn.is-liked .pd-wish-label {
+  color: #c0392b !important;
+}

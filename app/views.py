@@ -792,6 +792,129 @@ def submit_review(request):
         }
     })
 
+# ═══════════════════════════════════════════════════════
+# Thêm 2 hàm này vào views.py (sau hàm submit_review)
+# Và thêm 2 URL vào urls.py
+# ═══════════════════════════════════════════════════════
+
+@csrf_exempt
+@require_POST
+def delete_review(request):
+    account_id = request.session.get("account_id")
+    if not account_id:
+        return JsonResponse({"ok": False, "need_login": True})
+
+    review_id = request.POST.get("review_id")
+    try:
+        review = DanhGia.objects.get(
+            id_DanhGia=review_id,
+            id_TaiKhoan_id=account_id  # chỉ cho xóa review của chính mình
+        )
+        review.delete()
+        return JsonResponse({"ok": True})
+    except DanhGia.DoesNotExist:
+        return JsonResponse({"ok": False, "message": "Không tìm thấy đánh giá."}, status=404)
+
+
+@csrf_exempt
+@require_POST
+def edit_review(request):
+    account_id = request.session.get("account_id")
+    if not account_id:
+        return JsonResponse({"ok": False, "need_login": True})
+
+    review_id = request.POST.get("review_id")
+    content   = escape((request.POST.get("content") or "").strip())
+    try:
+        rating = int(request.POST.get("rating") or 0)
+    except ValueError:
+        rating = 0
+
+    if rating < 1 or rating > 5:
+        return JsonResponse({"ok": False, "message": "Số sao phải từ 1 đến 5."})
+    if not content:
+        return JsonResponse({"ok": False, "message": "Vui lòng nhập nội dung."})
+    if len(content) > 800:
+        return JsonResponse({"ok": False, "message": "Tối đa 800 ký tự."})
+
+    try:
+        review = DanhGia.objects.get(
+            id_DanhGia=review_id,
+            id_TaiKhoan_id=account_id
+        )
+        review.SoSao   = rating
+        review.NoiDung = content
+        review.save(update_fields=["SoSao", "NoiDung"])
+        return JsonResponse({"ok": True})
+    except DanhGia.DoesNotExist:
+        return JsonResponse({"ok": False, "message": "Không tìm thấy đánh giá."}, status=404)
+    
+
+# ═══════════════════════════════════════════════════════
+# Thêm vào views.py sau hàm edit_review
+# ═══════════════════════════════════════════════════════
+
+@csrf_exempt
+@require_POST
+def toggle_wishlist(request):
+    """Toggle thêm/xóa sản phẩm khỏi danh sách yêu thích."""
+    account_id = request.session.get("account_id")
+    if not account_id:
+        return JsonResponse({"ok": False, "need_login": True})
+
+    product_id = request.POST.get("product_id")
+    if not product_id:
+        return JsonResponse({"ok": False, "message": "Thiếu product_id."})
+
+    try:
+        account  = TaiKhoan.objects.get(id_TaiKhoan=account_id)
+        product  = SanPham.objects.get(id_SanPham=product_id)
+        customer = KhachHang.objects.filter(id_TaiKhoan=account).first()
+    except (TaiKhoan.DoesNotExist, SanPham.DoesNotExist):
+        return JsonResponse({"ok": False, "message": "Không tìm thấy dữ liệu."})
+
+    if not customer:
+        return JsonResponse({"ok": False, "message": "Không tìm thấy thông tin khách hàng."})
+
+    # Kiểm tra đã yêu thích chưa
+    existing = YeuThich.objects.filter(
+        id_KhachHang=customer,
+        id_SanPham=product
+    ).first()
+
+    if existing:
+        # Đã yêu thích → xóa
+        existing.delete()
+        return JsonResponse({"ok": True, "action": "removed", "message": "Đã xóa khỏi danh sách yêu thích."})
+    else:
+        # Chưa yêu thích → thêm
+        YeuThich.objects.create(
+            id_KhachHang=customer,
+            id_SanPham=product,
+            NgayTao=timezone.now(),
+        )
+        return JsonResponse({"ok": True, "action": "added", "message": "Đã thêm vào danh sách yêu thích."})
+
+
+def get_wishlist_status(request, product_id):
+    """Kiểm tra sản phẩm có trong wishlist không — dùng khi load trang."""
+    account_id = request.session.get("account_id")
+    if not account_id:
+        return JsonResponse({"liked": False})
+
+    try:
+        account  = TaiKhoan.objects.get(id_TaiKhoan=account_id)
+        customer = KhachHang.objects.filter(id_TaiKhoan=account).first()
+        if not customer:
+            return JsonResponse({"liked": False})
+        liked = YeuThich.objects.filter(
+            id_KhachHang=customer,
+            id_SanPham_id=product_id
+        ).exists()
+        return JsonResponse({"liked": liked})
+    except TaiKhoan.DoesNotExist:
+        return JsonResponse({"liked": False})
+
 
 @csrf_exempt
 @require_POST
@@ -864,6 +987,17 @@ def forgot_password_api(request):
     account.save(update_fields=["MatKhau"])
     return JsonResponse({"ok": True, "message": "Đổi mật khẩu thành công."})
 
+# ═══════════════════════════════════════════════════════════════
+# Trong views.py — thay hàm profile_page
+# FIX: query DanhGia dùng đúng field NgayDanhGia (không có NgayTao)
+#       filter chỉ parent_id__isnull=True (bỏ Q(parent_id=0))
+# ═══════════════════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════════
+# Thay hàm profile_page trong views.py
+# Thêm phần lấy wishlist_data từ DB
+# ═══════════════════════════════════════════════════════
+
 def profile_page(request):
     account_id = request.session.get("account_id")
     if not account_id:
@@ -871,75 +1005,87 @@ def profile_page(request):
 
     account = _safe_first(TaiKhoan.objects.filter(id_TaiKhoan=account_id))
     customer = _safe_first(
-        KhachHang.objects.select_related("id_TaiKhoan").filter(id_TaiKhoan=account) if account else KhachHang.objects.none()
-    )
-    user_reviews = (
-        DanhGia.objects
-        .select_related(
-            "id_SanPham",
-            "id_SanPham__id_ThuongHieu"
-        )
-        .filter(
-            id_TaiKhoan_id=account_id,
-            parent_id__isnull=True
-        )
-        .order_by("-NgayDanhGia")
+        KhachHang.objects.select_related("id_TaiKhoan").filter(id_TaiKhoan=account)
+        if account else KhachHang.objects.none()
     )
 
-    review_product_ids = [
-        rv.id_SanPham_id
-        for rv in user_reviews
-        if rv.id_SanPham
-    ]
-
-    review_image_map = _product_image_map(review_product_ids)
-
+    # ── Đánh giá ──────────────────────────────────────────────
     review_data = []
+    try:
+        user_reviews = list(
+            DanhGia.objects
+            .select_related("id_SanPham", "id_SanPham__id_ThuongHieu")
+            .filter(id_TaiKhoan_id=account_id, parent_id__isnull=True)
+            .order_by("-NgayDanhGia")
+        )
+        review_product_ids = [rv.id_SanPham_id for rv in user_reviews if rv.id_SanPham_id]
+        review_image_map = _product_image_map(review_product_ids) if review_product_ids else {}
 
-    for rv in user_reviews:
+        for rv in user_reviews:
+            product = rv.id_SanPham
+            if not product:
+                continue
+            images = review_image_map.get(product.id_SanPham, [])
+            review_data.append({
+                "id":           rv.id_DanhGia,
+                "product_id":   product.id_SanPham,
+                "product_name": product.TenSanPham,
+                "brand":        product.id_ThuongHieu.TenThuongHieu if product.id_ThuongHieu else "",
+                "image":        images[0] if images else FALLBACK_IMAGES["default"],
+                "rating":       int(rv.SoSao or 0),
+                "label":        _rating_label(int(rv.SoSao or 0)),
+                "content":      rv.NoiDung or "",
+                "created_at":   rv.NgayDanhGia.strftime("%d/%m/%Y") if rv.NgayDanhGia else "",
+            })
+    except Exception as e:
+        import traceback; traceback.print_exc()
 
-        product = rv.id_SanPham
+    # ── Yêu thích ─────────────────────────────────────────────
+    wishlist_data = []
+    if customer:
+        try:
+            wish_rows = list(
+                YeuThich.objects
+                .select_related("id_SanPham", "id_SanPham__id_ThuongHieu")
+                .filter(id_KhachHang=customer)
+                .order_by("-NgayTao")
+            )
+            wish_product_ids = [w.id_SanPham_id for w in wish_rows if w.id_SanPham_id]
+            wish_image_map = _product_image_map(wish_product_ids) if wish_product_ids else {}
 
-        images = review_image_map.get(product.id_SanPham, [])
+            for w in wish_rows:
+                product = w.id_SanPham
+                if not product:
+                    continue
+                images = wish_image_map.get(product.id_SanPham, [])
+                # Lấy giá từ biến thể đầu tiên
+                first_variant = BienThe.objects.filter(id_SanPham=product).order_by("id_BienThe").first()
+                wishlist_data.append({
+                    "id":           w.id_YeuThich,
+                    "product_id":   product.id_SanPham,
+                    "product_name": product.TenSanPham,
+                    "brand":        product.id_ThuongHieu.TenThuongHieu if product.id_ThuongHieu else "",
+                    "image":        images[0] if images else FALLBACK_IMAGES["default"],
+                    "price":        _format_currency(first_variant.GiaBan if first_variant else None),
+                    "added_at":     w.NgayTao.strftime("%d/%m/%Y") if w.NgayTao else "",
+                })
+        except Exception as e:
+            import traceback; traceback.print_exc()
 
-        review_data.append({
-            "id": rv.id_DanhGia,
-
-            "product_id": product.id_SanPham,
-
-            "product_name": product.TenSanPham,
-
-            "brand": (
-                product.id_ThuongHieu.TenThuongHieu
-                if product.id_ThuongHieu else ""
-            ),
-
-            "image": (
-                images[0]
-                if images else FALLBACK_IMAGES["default"]
-            ),
-
-            "rating": int(rv.SoSao or 0),
-
-            "content": rv.NoiDung or "",
-
-            "created_at": (
-                rv.NgayDanhGia.strftime("%d/%m/%Y")
-                if rv.NgayDanhGia else ""
-            ),
-        })
     profile = {
-        "full_name":(customer.TenKhachHang if customer else None) or (account.TenDangNhap if account else "") or "Khách hàng",
-        "username": (account.Username if account else "") or "guest",
-        "email": (account.Email if account else "") or "",
-        "phone": (account.SDT if account else "") or "",
-        "address": (customer.DiaChi if customer else "") or "",
-        "gender": (customer.GioiTinh if customer else "") or "",
+        "full_name": (customer.TenKhachHang if customer else None)
+                     or (account.TenDangNhap if account else "") or "Khách hàng",
+        "username":  (account.Username if account else "") or "guest",
+        "email":     (account.Email if account else "") or "",
+        "phone":     (account.SDT if account else "") or "",
+        "address":   (customer.DiaChi if customer else "") or "",
+        "gender":    (customer.GioiTinh if customer else "") or "",
     }
-    print(review_data)
+
     return render(request, 'app/profile.html', {
-        "profile": profile,
-        "review_data": review_data,
+        "profile":       profile,
+        "review_data":   review_data,
+        "wishlist_data": wishlist_data,
     })
 
 

@@ -194,35 +194,94 @@ document.getElementById('confirmCancel')?.addEventListener('click', () => {
 });
 
 /* ─── RENDER WISHLIST ─── */
-(function renderWishlist() {
+// (function renderWishlist() {
+//   const grid = document.getElementById('wishlistGrid');
+//   if (!grid) return;
+
+//   WISHLIST.forEach(item => {
+//     const card = document.createElement('div');
+//     card.className = 'wish-card';
+//     card.dataset.id = item.id;
+//     card.innerHTML = `
+//       <div class="wish-media">
+//         <img src="${item.img}" alt="${item.name}" loading="lazy">
+//         <div class="wish-actions">
+//           <button class="wish-action-btn" title="Xem chi tiết">🔍</button>
+//           <button class="wish-action-btn" title="Thêm vào giỏ">🛒</button>
+//         </div>
+//         <button class="wish-remove" title="Bỏ yêu thích">♥</button>
+//       </div>
+//       <div class="wish-body">
+//         <p class="wish-brand">${item.brand}</p>
+//         <h3 class="wish-name">${item.name}</h3>
+//         <p class="wish-price">${item.price}</p>
+//       </div>
+//     `;
+//     card.querySelector('.wish-remove').addEventListener('click', () => {
+//       card.classList.add('removing');
+//       card.addEventListener('animationend', () => card.remove(), { once: true });
+//       showToast('Đã xóa khỏi danh sách yêu thích.');
+//     });
+//     grid.appendChild(card);
+//   });
+// })();
+
+/* ─── WISHLIST từ DB — thêm vào cuối profile.js ─── */
+/* Thay thế hàm renderWishlist() cũ (đang dùng data tĩnh) */
+
+(function initWishlistFromDB() {
   const grid = document.getElementById('wishlistGrid');
   if (!grid) return;
 
-  WISHLIST.forEach(item => {
-    const card = document.createElement('div');
-    card.className = 'wish-card';
-    card.dataset.id = item.id;
-    card.innerHTML = `
-      <div class="wish-media">
-        <img src="${item.img}" alt="${item.name}" loading="lazy">
-        <div class="wish-actions">
-          <button class="wish-action-btn" title="Xem chi tiết">🔍</button>
-          <button class="wish-action-btn" title="Thêm vào giỏ">🛒</button>
-        </div>
-        <button class="wish-remove" title="Bỏ yêu thích">♥</button>
-      </div>
-      <div class="wish-body">
-        <p class="wish-brand">${item.brand}</p>
-        <h3 class="wish-name">${item.name}</h3>
-        <p class="wish-price">${item.price}</p>
-      </div>
-    `;
-    card.querySelector('.wish-remove').addEventListener('click', () => {
-      card.classList.add('removing');
-      card.addEventListener('animationend', () => card.remove(), { once: true });
-      showToast('Đã xóa khỏi danh sách yêu thích.');
-    });
-    grid.appendChild(card);
+  // Xử lý nút bỏ yêu thích
+  grid.addEventListener('click', async (e) => {
+    const removeBtn = e.target.closest('.wish-remove');
+    if (!removeBtn) return;
+
+    const card      = removeBtn.closest('.wish-card');
+    const productId = removeBtn.dataset.productId;
+    if (!productId) return;
+
+    try {
+      const fd = new FormData();
+      fd.append('product_id', productId);
+      const res  = await fetch('/toggle-wishlist/', { method: 'POST', body: fd });
+      const data = await res.json();
+
+      if (data.need_login) {
+        window.location.href = '/auth/';
+        return;
+      }
+
+      if (data.ok && data.action === 'removed') {
+        // Animation xóa card
+        card.style.transition = 'opacity .3s, transform .3s';
+        card.style.opacity = '0';
+        card.style.transform = 'scale(.92)';
+        setTimeout(() => {
+          card.remove();
+          // Nếu không còn card nào → hiện empty state
+          const remaining = grid.querySelectorAll('.wish-card');
+          if (remaining.length === 0) {
+            grid.innerHTML = `
+              <div style="grid-column:1/-1;text-align:center;padding:72px 40px;color:var(--text-muted);">
+                <div style="font-size:48px;margin-bottom:20px;">♡</div>
+                <p style="font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--text-light);margin-bottom:10px;">Chưa có sản phẩm yêu thích</p>
+                <p style="font-size:13px;">Nhấn vào biểu tượng ♡ trên trang sản phẩm để lưu lại những mùi hương bạn yêu thích.</p>
+              </div>`;
+          }
+          // Cập nhật số đếm trong subtitle
+          const sub = document.querySelector('#tab-wishlist .panel-sub');
+          if (sub) {
+            const count = grid.querySelectorAll('.wish-card').length;
+            sub.textContent = `Những mùi hương bạn đã lưu lại — ${count} sản phẩm.`;
+          }
+        }, 320);
+        showToast('Đã xóa khỏi danh sách yêu thích.');
+      }
+    } catch (err) {
+      showToast('Có lỗi xảy ra. Vui lòng thử lại.');
+    }
   });
 })();
 
@@ -470,3 +529,136 @@ function showToast(msg) {
 }
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+
+/* ── Thêm vào cuối profile.js — xử lý edit/delete review từ DB ── */
+
+(function initReviewActions() {
+  const list = document.getElementById('reviewsList');
+  if (!list) return;
+
+  /* ── DELETE ── */
+  list.addEventListener('click', async (e) => {
+    const deleteBtn = e.target.closest('.btn-review-delete');
+    const editBtn   = e.target.closest('.btn-review-edit');
+
+    if (deleteBtn) {
+      const id = deleteBtn.dataset.id;
+      if (!confirm('Bạn có chắc muốn xóa đánh giá này không?')) return;
+
+      try {
+        const fd = new FormData();
+        fd.append('review_id', id);
+        const res = await fetch('/delete-review/', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.ok) {
+          const card = list.querySelector(`.review-card[data-id="${id}"]`);
+          if (card) {
+            card.style.transition = 'opacity .3s, transform .3s';
+            card.style.opacity = '0';
+            card.style.transform = 'scale(.96)';
+            setTimeout(() => card.remove(), 320);
+          }
+          showToast('Đã xóa đánh giá.');
+        } else {
+          showToast(data.message || 'Có lỗi xảy ra.');
+        }
+      } catch {
+        showToast('Có lỗi xảy ra. Vui lòng thử lại.');
+      }
+    }
+
+    if (editBtn) {
+      const id      = editBtn.dataset.id;
+      const rating  = parseInt(editBtn.dataset.rating || 5);
+      const content = editBtn.dataset.content || '';
+
+      document.getElementById('reviewEditText').value = content;
+      renderStarEditor(rating);
+
+      const modal = document.getElementById('reviewModal');
+      modal.dataset.reviewId = id;
+      modal.hidden = false;
+    }
+  });
+
+  /* ── SAVE EDIT ── */
+  document.getElementById('saveReview')?.addEventListener('click', async () => {
+    const modal    = document.getElementById('reviewModal');
+    const id       = modal.dataset.reviewId;
+    const content  = document.getElementById('reviewEditText')?.value?.trim();
+    const rating   = parseInt(document.getElementById('starEditor')?.dataset.rating || 5);
+    const btn      = document.getElementById('saveReview');
+
+    if (!content) { showToast('Vui lòng nhập nội dung đánh giá.'); return; }
+
+    btn.classList.add('loading'); btn.disabled = true;
+
+    try {
+      const fd = new FormData();
+      fd.append('review_id', id);
+      fd.append('rating', rating);
+      fd.append('content', content);
+      const res = await fetch('/edit-review/', { method: 'POST', body: fd });
+      const data = await res.json();
+
+      if (data.ok) {
+        // Cập nhật UI ngay
+        const card = list.querySelector(`.review-card[data-id="${id}"]`);
+        if (card) {
+          // Cập nhật sao
+          const starsEl = card.querySelector('.review-stars-display');
+          if (starsEl) {
+            starsEl.innerHTML = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+            const labelMap = {5:'Tuyệt vời · Highly Recommended',4:'Rất tốt',3:'Tốt',2:'Chưa phù hợp',1:'Không hài lòng'};
+            if (labelMap[rating]) {
+              starsEl.innerHTML += `<span class="review-label-text">${labelMap[rating]}</span>`;
+            }
+          }
+          // Cập nhật nội dung
+          const textEl = card.querySelector('.review-text-display');
+          if (textEl) textEl.textContent = content;
+          // Cập nhật data attributes
+          const editBtn = card.querySelector('.btn-review-edit');
+          if (editBtn) { editBtn.dataset.rating = rating; editBtn.dataset.content = content; }
+        }
+        modal.hidden = true;
+        showToast('Đánh giá đã được cập nhật ✓');
+      } else {
+        showToast(data.message || 'Có lỗi xảy ra.');
+      }
+    } catch {
+      showToast('Có lỗi xảy ra. Vui lòng thử lại.');
+    } finally {
+      btn.classList.remove('loading'); btn.disabled = false;
+    }
+  });
+
+  /* ── Star editor ── */
+  function renderStarEditor(selected = 5) {
+    const editor = document.getElementById('starEditor');
+    if (!editor) return;
+    editor.innerHTML = '';
+    let current = selected;
+
+    for (let i = 1; i <= 5; i++) {
+      const star = document.createElement('span');
+      star.className = `star-editor-star ${i <= current ? 'lit' : ''}`;
+      star.textContent = '★';
+      star.dataset.val = i;
+      star.addEventListener('click', () => {
+        current = i;
+        renderStarEditor(current);
+        editor.dataset.rating = current;
+      });
+      editor.appendChild(star);
+    }
+    editor.dataset.rating = current;
+  }
+
+  /* Expose để modal close buttons dùng được */
+  window._renderStarEditor = renderStarEditor;
+
+  document.getElementById('reviewModalClose')?.addEventListener('click',  () => { document.getElementById('reviewModal').hidden = true; });
+  document.getElementById('reviewModalClose2')?.addEventListener('click', () => { document.getElementById('reviewModal').hidden = true; });
+})();

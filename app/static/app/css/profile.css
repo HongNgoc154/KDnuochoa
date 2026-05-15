@@ -662,6 +662,45 @@ body {
 }
 .btn-review-delete:hover { background: rgba(192,57,43,.08); }
 
+
+
+/* ── Thêm vào cuối phần REVIEWS trong profile.css ── */
+
+/* Label mô tả số sao */
+.review-label-text {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--olive);
+  margin-left: 10px;
+  vertical-align: middle;
+}
+
+/* Empty state */
+.review-empty {
+  text-align: center;
+  padding: 72px 40px;
+  color: var(--text-muted);
+}
+.review-empty-icon {
+  font-size: 32px;
+  color: var(--beige-deep);
+  margin-bottom: 20px;
+  display: block;
+}
+.review-empty-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 24px;
+  font-weight: 400;
+  color: var(--text-light);
+  margin-bottom: 10px;
+}
+.review-empty-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
 /* ═══════════════════════════════════════════════════════════
    SETTINGS
    ═══════════════════════════════════════════════════════════ */
@@ -829,4 +868,94 @@ body {
   .wishlist-grid, .vouchers-list { grid-template-columns: 1fr; }
   .site-header { padding: 0 20px; }
   .site-nav { display: none; }
+}
+
+/* ── Thêm vào cuối profile.css — fix review card bị mờ ── */
+
+/* Override toàn bộ opacity/filter của review card */
+.reviews-list .review-card {
+  opacity: 1 !important;
+  filter: none !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(87, 98, 56, 0.1) !important;
+  border-radius: 20px !important;
+  padding: 28px !important;
+  margin-bottom: 20px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
+  transition: transform 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+.reviews-list .review-card:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 8px 32px rgba(87, 98, 56, 0.12) !important;
+}
+
+/* Ảnh sản phẩm trong review card */
+.review-product-img {
+  opacity: 1 !important;
+  filter: none !important;
+  width: 90px !important;
+  height: 90px !important;
+  object-fit: cover !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  flex-shrink: 0 !important;
+}
+
+/* Tên sản phẩm */
+.review-product-name {
+  opacity: 1 !important;
+  color: var(--text) !important;
+  font-family: 'Cormorant Garamond', serif !important;
+  font-size: 18px !important;
+  font-weight: 400 !important;
+  margin-bottom: 4px !important;
+}
+
+/* Thương hiệu */
+.review-product-brand {
+  opacity: 1 !important;
+  color: var(--olive) !important;
+  font-size: 10px !important;
+  letter-spacing: 2px !important;
+  text-transform: uppercase !important;
+  font-weight: 600 !important;
+}
+
+/* Ngày */
+.review-created-date {
+  opacity: 1 !important;
+  color: var(--text-muted) !important;
+  font-size: 12px !important;
+  margin-top: 4px !important;
+}
+
+/* Sao */
+.review-stars-display {
+  opacity: 1 !important;
+  color: #c9a96e !important;
+  font-size: 18px !important;
+  letter-spacing: 2px !important;
+  margin-bottom: 12px !important;
+}
+
+/* Nội dung */
+.review-text-display {
+  opacity: 1 !important;
+  color: var(--text-light) !important;
+  font-size: 14px !important;
+  line-height: 1.8 !important;
+  margin-bottom: 20px !important;
+}
+
+/* Label sao */
+.review-label-text {
+  opacity: 1 !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 1.5px !important;
+  text-transform: uppercase !important;
+  color: var(--olive) !important;
+  margin-left: 10px !important;
+  vertical-align: middle !important;
 }
