@@ -34,7 +34,11 @@ urlpatterns = [
     path('edit-review/',   views.edit_review,   name='edit-review'),
     # Thêm vào app/urls.py trong urlpatterns:
 
-    path('toggle-wishlist/',        views.toggle_wishlist,      name='toggle-wishlist'),
+    path(
+        "toggle-favorite/",
+        views.toggle_favorite,
+        name="toggle-favorite"
+    ),
     path('wishlist-status/<int:product_id>/', views.get_wishlist_status, name='wishlist-status'),
     path('submit-review/', views.submit_review, name='submit-review'),
     # path('admin-dashboard/', views.admin_dashboard, name='admin-dashboard'),

@@ -1,75 +1,80 @@
 /* =============================================================
-   WISHLIST — wishlist.js
-   Dùng chung cho tất cả trang: product detail, category, home
-   Include file này sau main.js / product.js
+   Ami Perfumery — wishlist.js  (PHIÊN BẢN HOÀN CHỈNH)
+   Include sau product.js / main.js trên mọi trang
    ============================================================= */
 
 (function WishlistSystem() {
   'use strict';
 
-  const TOGGLE_URL  = '/toggle-wishlist/';
-  const STATUS_URL  = (id) => `/wishlist-status/${id}/`;
-  const AUTH_URL    = '/auth/';
+  const TOGGLE_URL = '/toggle-favorite/';
+  const STATUS_URL = (id) => `/wishlist-status/${id}/`;
+  const AUTH_URL   = '/auth/';
 
-  /* ── Kiểm tra đã đăng nhập chưa ── */
   function isLoggedIn() {
     return (document.body.dataset.accountName || '').trim() !== '';
   }
 
-  /* ── Redirect đến trang đăng nhập, sau khi login quay lại ── */
   function redirectToLogin() {
     window.location.href = `${AUTH_URL}?next=${encodeURIComponent(window.location.href)}`;
   }
 
-  /* ── Toast nhẹ ── */
-  function showWishToast(msg, liked) {
-    const old = document.getElementById('_wishToast');
+  function getCSRF() {
+    return document.cookie.split('; ')
+      .find(r => r.startsWith('csrftoken='))?.split('=')[1] || '';
+  }
+
+  /* ── Toast ── */
+  function toast(msg, liked) {
+    const old = document.getElementById('_wt');
     if (old) old.remove();
-    const t = document.createElement('div');
-    t.id = '_wishToast';
-    t.style.cssText = `
+    const el = document.createElement('div');
+    el.id = '_wt';
+    el.style.cssText = `
       position:fixed;bottom:28px;left:50%;
-      transform:translateX(-50%) translateY(16px);
-      background:${liked ? '#4B672D' : '#5a5a5a'};
-      color:#fff;padding:11px 22px;border-radius:40px;
+      transform:translateX(-50%) translateY(12px);
+      background:${liked ? '#4B672D' : '#555'};
+      color:#fff;padding:11px 24px;border-radius:40px;
       font-family:'Jost',sans-serif;font-size:13px;font-weight:500;
-      box-shadow:0 8px 28px rgba(0,0,0,.18);z-index:9999;
-      opacity:0;transition:opacity .28s,transform .28s;pointer-events:none;
+      box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:9999;
+      opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;
     `;
-    t.textContent = msg;
-    document.body.appendChild(t);
+    el.textContent = msg;
+    document.body.appendChild(el);
     requestAnimationFrame(() => {
-      t.style.opacity = '1';
-      t.style.transform = 'translateX(-50%) translateY(0)';
+      el.style.opacity = '1';
+      el.style.transform = 'translateX(-50%) translateY(0)';
     });
     setTimeout(() => {
-      t.style.opacity = '0';
-      t.style.transform = 'translateX(-50%) translateY(10px)';
-      setTimeout(() => t.remove(), 300);
+      el.style.opacity = '0';
+      el.style.transform = 'translateX(-50%) translateY(8px)';
+      setTimeout(() => el.remove(), 280);
     }, 2600);
   }
 
-  /* ── Cập nhật badge "Yêu thích" trong sidebar profile ── */
-  function updateWishBadge(delta) {
-    const badge = document.querySelector('.nav-item[data-tab="wishlist"] .nav-badge');
-    if (!badge) return;
-    const current = parseInt(badge.textContent) || 0;
-    const next = Math.max(0, current + delta);
-    badge.textContent = String(next);
+  /* ── Cập nhật badge ── */
+  function setBadge(count) {
+    const n = Math.max(0, count);
+    const sb = document.querySelector('.nav-item[data-tab="wishlist"] .nav-badge');
+    if (sb) sb.textContent = String(n);
+    document.querySelectorAll('[data-wishlist-badge]').forEach(b => b.textContent = String(n));
   }
 
-  /* ── Gọi API toggle ── */
+  /* ── Gọi API ── */
   async function callToggle(productId) {
     const fd = new FormData();
     fd.append('product_id', productId);
-    const res  = await fetch(TOGGLE_URL, { method: 'POST', body: fd });
+    const res = await fetch(TOGGLE_URL, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCSRF() },
+      body: fd,
+    });
     return res.json();
   }
 
   /* ════════════════════════════════════════════════
-     1. PRODUCT DETAIL PAGE — #pdWishBtn
-     ════════════════════════════════════════════════ */
-  function initProductDetailWishlist() {
+     1. PRODUCT DETAIL — #pdWishBtn
+  ════════════════════════════════════════════════ */
+  function initDetailWishlist() {
     const btn   = document.getElementById('pdWishBtn');
     const heart = document.getElementById('pdWishHeart');
     const label = btn?.querySelector('.pd-wish-label');
@@ -78,30 +83,33 @@
     const productId = document.querySelector('.pd-layout')?.dataset?.productId;
     if (!productId) return;
 
-    /* Set trạng thái ban đầu */
     function setLiked(liked) {
       btn.classList.toggle('is-liked', liked);
       btn.setAttribute('aria-pressed', String(liked));
-      heart.textContent  = liked ? '♥' : '♡';
-      heart.style.color  = liked ? '#c0392b' : '';
+      heart.textContent = liked ? '♥' : '♡';
+      heart.style.color = liked ? '#c0392b' : '';
       if (label) label.textContent = liked ? 'Đã yêu thích' : 'Yêu thích';
     }
 
-    /* Load trạng thái từ server */
+    // Load trạng thái ban đầu từ server
     if (isLoggedIn()) {
       fetch(STATUS_URL(productId))
         .then(r => r.json())
-        .then(d => setLiked(d.liked))
+        .then(d => setLiked(!!d.liked))
         .catch(() => {});
     }
 
-    /* Click */
     btn.addEventListener('click', async () => {
       if (!isLoggedIn()) { redirectToLogin(); return; }
 
-      /* Optimistic UI */
       const wasLiked = btn.classList.contains('is-liked');
-      setLiked(!wasLiked);
+      setLiked(!wasLiked); // Optimistic UI
+
+      // Animation
+      btn.classList.remove('bursting', 'bounce');
+      void btn.offsetWidth;
+      btn.classList.add('bursting', 'bounce');
+      setTimeout(() => btn.classList.remove('bursting', 'bounce'), 580);
 
       try {
         const data = await callToggle(productId);
@@ -109,49 +117,46 @@
         if (data.ok) {
           const liked = data.action === 'added';
           setLiked(liked);
-          updateWishBadge(liked ? 1 : -1);
-          showWishToast(data.message, liked);
+          if (data.wishlist_count !== undefined) setBadge(data.wishlist_count);
+          toast(data.message, liked);
         } else {
-          setLiked(wasLiked); /* rollback */
+          setLiked(wasLiked); // rollback
+          toast(data.message || 'Có lỗi xảy ra.', false);
         }
       } catch {
-        setLiked(wasLiked); /* rollback */
+        setLiked(wasLiked); // rollback
       }
     });
   }
 
   /* ════════════════════════════════════════════════
-     2. CARD SẢN PHẨM — .favorite-btn trên category/home
-        Mỗi card có data-product-id="{{ item.id }}"
-     ════════════════════════════════════════════════ */
+     2. CARD SẢN PHẨM — .favorite-btn[data-product-id]
+  ════════════════════════════════════════════════ */
   function initCardWishlists() {
     const grid = document.querySelector('.product-grid');
     if (!grid) return;
 
-    /* Load trạng thái tất cả card nếu đã đăng nhập */
+    // Load trạng thái tất cả card
     if (isLoggedIn()) {
       grid.querySelectorAll('.favorite-btn[data-product-id]').forEach(btn => {
-        const pid = btn.dataset.productId;
-        fetch(STATUS_URL(pid))
+        fetch(STATUS_URL(btn.dataset.productId))
           .then(r => r.json())
           .then(d => { if (d.liked) setCardLiked(btn, true); })
           .catch(() => {});
       });
     }
 
-    /* Delegate click */
+    // Click delegate
     grid.addEventListener('click', async (e) => {
-      const btn = e.target.closest('.favorite-btn');
+      const btn = e.target.closest('.favorite-btn[data-product-id]');
       if (!btn) return;
-      e.stopPropagation(); /* không trigger card click */
+      e.stopPropagation();
 
       if (!isLoggedIn()) { redirectToLogin(); return; }
 
       const productId = btn.dataset.productId;
-      if (!productId) return;
-
-      const wasLiked = btn.classList.contains('is-liked');
-      setCardLiked(btn, !wasLiked); /* Optimistic */
+      const wasLiked  = btn.classList.contains('is-liked');
+      setCardLiked(btn, !wasLiked); // Optimistic
 
       try {
         const data = await callToggle(productId);
@@ -159,10 +164,10 @@
         if (data.ok) {
           const liked = data.action === 'added';
           setCardLiked(btn, liked);
-          updateWishBadge(liked ? 1 : -1);
-          showWishToast(data.message, liked);
+          if (data.wishlist_count !== undefined) setBadge(data.wishlist_count);
+          toast(data.message, liked);
         } else {
-          setCardLiked(btn, wasLiked); /* rollback */
+          setCardLiked(btn, wasLiked); // rollback
         }
       } catch {
         setCardLiked(btn, wasLiked);
@@ -178,7 +183,6 @@
       core.textContent = liked ? '♥' : '♡';
       core.style.color = liked ? '#c0392b' : '';
     }
-    /* Animation */
     btn.classList.remove('bursting', 'bounce');
     void btn.offsetWidth;
     btn.classList.add('bursting', 'bounce');
@@ -186,14 +190,13 @@
   }
 
   /* ── Bootstrap ── */
-  document.addEventListener('DOMContentLoaded', () => {
-    initProductDetailWishlist();
-    initCardWishlists();
-  });
-
-  /* Nếu DOM đã sẵn sàng (script load sau DOMContentLoaded) */
-  if (document.readyState !== 'loading') {
-    initProductDetailWishlist();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      initDetailWishlist();
+      initCardWishlists();
+    });
+  } else {
+    initDetailWishlist();
     initCardWishlists();
   }
 

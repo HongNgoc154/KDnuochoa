@@ -303,6 +303,7 @@ def get_longevity_label(value):
     return "Dưới 5 giờ"
 
 def product_detail(request, product_id=None):
+    
     product_queryset = SanPham.objects.select_related("id_ThuongHieu", "id_LoaiSanPham")\
                                         .prefetch_related("nhom_huongs")
 
@@ -312,6 +313,22 @@ def product_detail(request, product_id=None):
         product_obj = _safe_first(product_queryset.order_by("id_SanPham"))
     if not product_obj:
         return render(request, "app/product.html", {"product_data": {}, "product_images": []})
+    is_favorite = False
+
+    account_id = request.session.get("account_id")
+
+    if account_id:
+
+        account = TaiKhoan.objects.filter(
+            id_TaiKhoan=account_id
+        ).first()
+
+        if account:
+
+            is_favorite = YeuThich.objects.filter(
+                id_TaiKhoan=account,
+                id_SanPham=product_obj
+            ).exists()
 
     nhom_huongs = SanPhamNhomHuong.objects.select_related("id_NhomHuong").filter(
         id_SanPham=product_obj
@@ -479,6 +496,7 @@ def product_detail(request, product_id=None):
         "variant_count": len(variant_payload),
         "option_groups": {k: sorted(list(v)) for k, v in option_groups.items()},
         "qa_items": qa_items,
+        # "is_favorite": is_favorite,
     }
 
     
@@ -513,6 +531,7 @@ def product_detail(request, product_id=None):
         "related_products": related_products,
         "brand_slug": slugify(product_obj.id_ThuongHieu.TenThuongHieu),
         "similar_scent_products": similar_scent_products,
+        "is_favorite": is_favorite,
     })
 
 
@@ -897,18 +916,13 @@ def toggle_wishlist(request):
 
 
 def get_wishlist_status(request, product_id):
-    """Kiểm tra sản phẩm có trong wishlist không — dùng khi load trang."""
     account_id = request.session.get("account_id")
     if not account_id:
         return JsonResponse({"liked": False})
-
     try:
-        account  = TaiKhoan.objects.get(id_TaiKhoan=account_id)
-        customer = KhachHang.objects.filter(id_TaiKhoan=account).first()
-        if not customer:
-            return JsonResponse({"liked": False})
+        account = TaiKhoan.objects.get(id_TaiKhoan=account_id)
         liked = YeuThich.objects.filter(
-            id_KhachHang=customer,
+            id_TaiKhoan=account,
             id_SanPham_id=product_id
         ).exists()
         return JsonResponse({"liked": liked})
@@ -1005,8 +1019,9 @@ def profile_page(request):
 
     account = _safe_first(TaiKhoan.objects.filter(id_TaiKhoan=account_id))
     customer = _safe_first(
-        KhachHang.objects.select_related("id_TaiKhoan").filter(id_TaiKhoan=account)
-        if account else KhachHang.objects.none()
+        KhachHang.objects
+        .select_related("id_TaiKhoan")
+        .filter(id_TaiKhoan_id=account_id)
     )
 
     # ── Đánh giá ──────────────────────────────────────────────
@@ -1042,35 +1057,31 @@ def profile_page(request):
 
     # ── Yêu thích ─────────────────────────────────────────────
     wishlist_data = []
-    if customer:
-        try:
-            wish_rows = list(
-                YeuThich.objects
-                .select_related("id_SanPham", "id_SanPham__id_ThuongHieu")
-                .filter(id_KhachHang=customer)
-                .order_by("-NgayTao")
-            )
-            wish_product_ids = [w.id_SanPham_id for w in wish_rows if w.id_SanPham_id]
-            wish_image_map = _product_image_map(wish_product_ids) if wish_product_ids else {}
-
-            for w in wish_rows:
-                product = w.id_SanPham
-                if not product:
-                    continue
-                images = wish_image_map.get(product.id_SanPham, [])
-                # Lấy giá từ biến thể đầu tiên
-                first_variant = BienThe.objects.filter(id_SanPham=product).order_by("id_BienThe").first()
-                wishlist_data.append({
-                    "id":           w.id_YeuThich,
-                    "product_id":   product.id_SanPham,
-                    "product_name": product.TenSanPham,
-                    "brand":        product.id_ThuongHieu.TenThuongHieu if product.id_ThuongHieu else "",
-                    "image":        images[0] if images else FALLBACK_IMAGES["default"],
-                    "price":        _format_currency(first_variant.GiaBan if first_variant else None),
-                    "added_at":     w.NgayTao.strftime("%d/%m/%Y") if w.NgayTao else "",
-                })
-        except Exception as e:
-            import traceback; traceback.print_exc()
+    try:
+        wish_rows = list(
+            YeuThich.objects
+            .select_related("id_SanPham", "id_SanPham__id_ThuongHieu")
+            .filter(id_TaiKhoan_id=account_id)
+        )
+        wish_product_ids = [w.id_SanPham_id for w in wish_rows if w.id_SanPham_id]
+        wish_image_map   = _product_image_map(wish_product_ids) if wish_product_ids else {}
+ 
+        for w in wish_rows:
+            product = w.id_SanPham
+            if not product:
+                continue
+            images        = wish_image_map.get(product.id_SanPham, [])
+            first_variant = BienThe.objects.filter(id_SanPham=product).order_by("id_BienThe").first()
+            wishlist_data.append({
+                "id":           w.id_YeuThich,
+                "product_id":   product.id_SanPham,
+                "product_name": product.TenSanPham,
+                "brand":        product.id_ThuongHieu.TenThuongHieu if product.id_ThuongHieu else "",
+                "image":        images[0] if images else FALLBACK_IMAGES["default"],
+                "price":        _format_currency(first_variant.GiaBan if first_variant else None),
+            })
+    except Exception:
+        import traceback; traceback.print_exc()
 
     profile = {
         "full_name": (customer.TenKhachHang if customer else None)
@@ -1082,6 +1093,7 @@ def profile_page(request):
         "gender":    (customer.GioiTinh if customer else "") or "",
     }
 
+    print("WISHLIST DATA:", wishlist_data)
     return render(request, 'app/profile.html', {
         "profile":       profile,
         "review_data":   review_data,
@@ -1105,6 +1117,51 @@ def logout_view(request):
     request.session.pop("account_id", None)
     request.session.pop("account_name", None)
     return redirect('home')
+
+
+@csrf_exempt
+@require_POST
+def toggle_favorite(request):
+    account_id = request.session.get("account_id")
+    if not account_id:
+        return JsonResponse({"ok": False, "need_login": True})
+ 
+    product_id = request.POST.get("product_id")
+    if not product_id:
+        return JsonResponse({"ok": False, "message": "Thiếu product_id."})
+ 
+    try:
+        account = TaiKhoan.objects.get(id_TaiKhoan=account_id)
+        product = SanPham.objects.get(id_SanPham=product_id)
+    except (TaiKhoan.DoesNotExist, SanPham.DoesNotExist):
+        return JsonResponse({"ok": False, "message": "Không tìm thấy dữ liệu."})
+ 
+    existing = YeuThich.objects.filter(
+        id_TaiKhoan=account,
+        id_SanPham=product
+    ).first()
+ 
+    if existing:
+        existing.delete()
+        count = YeuThich.objects.filter(id_TaiKhoan=account).count()
+        return JsonResponse({
+            "ok":             True,
+            "action":         "removed",
+            "message":        "Đã xóa khỏi danh sách yêu thích.",
+            "wishlist_count": count,
+        })
+    else:
+        YeuThich.objects.create(
+            id_TaiKhoan=account,
+            id_SanPham=product,
+        )
+        count = YeuThich.objects.filter(id_TaiKhoan=account).count()
+        return JsonResponse({
+            "ok":             True,
+            "action":         "added",
+            "message":        "Đã thêm vào danh sách yêu thích.",
+            "wishlist_count": count,
+        })
 
 # ADMIN
 def admin_dashboard(request):

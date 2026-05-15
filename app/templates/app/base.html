@@ -26,12 +26,14 @@
         <span class="search-icon"><i class="bi bi-search"></i></span>
       </div>
       <div class="header-icons">
+        <a href="{% url 'profile-page' %}#tab-wishlist" class="icon-btn" title="Yêu thích">
+          <i class="bi bi-heart"></i>
+          <span class="cart-badge" data-wishlist-badge {% if not wishlist_count %}hidden{% endif %}>{{ wishlist_count|default:0 }}</span>
+        </a>
         <!-- GIỎ HÀNG -->
-        <a href="{% url 'cart-page' %}" class="icon-btn" title="Giỏ hàng">
+        <a href="{% url 'cart-page' %}" class="icon-btn" title="Giỏ hàng" style="position:relative;">
           <i class="bi bi-bag"></i>
-          {% if cart_count %}
-          <span class="cart-badge">{{ cart_count }}</span>
-          {% endif %}
+          <span class="cart-badge" data-cart-badge style="display:none;">0</span>
         </a>
         <!-- ACCOUNT -->
         <div class="account-menu" data-account-menu>
@@ -196,6 +198,7 @@
 </div>
 
 <script src="{% static 'app/js/main.js' %}"></script>
+<script src="{% static 'app/js/cart.js' %}"></script>
 {% block extra_js %}{% endblock %}
 </body>
 </html>

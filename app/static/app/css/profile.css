@@ -511,7 +511,20 @@ body {
 .wish-brand { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--olive); font-weight: 600; margin-bottom: 4px; }
 .wish-name { font-family: 'Cormorant Garamond', serif; font-size: 18px; font-weight: 400; margin-bottom: 8px; }
 .wish-price { font-size: 15px; font-weight: 500; color: var(--text); }
-
+.wish-cta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+.wish-cta {
+  border: 1px solid rgba(87,98,56,.25);
+  border-radius: 999px;
+  padding: 8px 10px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--olive-dark);
+  background: rgba(255,255,255,.65);
+}
+.wish-cta:hover { box-shadow: 0 8px 20px rgba(78,92,49,.18); transform: translateY(-1px); }
+.wish-cta-primary { background: linear-gradient(135deg, var(--olive-dark), var(--olive)); color: #fff; }
 /* Heart remove button */
 .wish-remove {
   position: absolute; top: 10px; right: 10px; z-index: 5;

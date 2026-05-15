@@ -440,28 +440,26 @@ class KhachHang(models.Model):
     
 
 
-# ===================== YÊU THÍCH =====================
+# ═══════════════════════════════════════════════════════════════
+# 1. models.py — thay class YeuThich
+# ═══════════════════════════════════════════════════════════════
+
 class YeuThich(models.Model):
     id_YeuThich = models.AutoField(primary_key=True)
 
-    id_KhachHang = models.ForeignKey(
-        'KhachHang',
-        on_delete=models.DO_NOTHING,
-        db_column='id_KhachHang',
-        null=True,
-        blank=True
+    id_TaiKhoan = models.ForeignKey(
+        'TaiKhoan',
+        on_delete=models.CASCADE,
+        db_column='id_TaiKhoan'
     )
 
     id_SanPham = models.ForeignKey(
         'SanPham',
-        on_delete=models.DO_NOTHING,
-        db_column='id_SanPham',
-        null=True,
-        blank=True
+        on_delete=models.CASCADE,
+        db_column='id_SanPham'
     )
 
-    NgayTao = models.DateTimeField(null=True, blank=True)
-
     class Meta:
-        managed = False
-        db_table = 'YeuThich'
+        managed         = False
+        db_table        = 'YeuThich'
+        unique_together = [('id_TaiKhoan', 'id_SanPham')]

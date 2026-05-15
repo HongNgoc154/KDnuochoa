@@ -10,14 +10,14 @@ const ORDERS = [
   { id: 'AMI-2025-015', date: '20/04/2025', status: 'processing',product: 'Y EDP YSL', brand: 'YSL', img: 'https://images.unsplash.com/photo-1588405748880-12d1d2a59a75?auto=format&fit=crop&w=200&q=80', total: '3.400.000₫', qty: 2, progress: 1 },
   { id: 'AMI-2025-020', date: '21/04/2025', status: 'cancelled', product: 'Tom Ford Oud Wood', brand: 'Tom Ford', img: 'https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&w=200&q=80', total: '6.900.000₫', qty: 1, progress: 0 },
 ];
-const WISHLIST = [
-  { id: 1, name: 'Chanel No.5 EDP', brand: 'Chanel', price: '4.500.000₫', img: 'https://images.unsplash.com/photo-1608528577891-eb055944f2e7?auto=format&fit=crop&w=600&q=80' },
-  { id: 2, name: 'Hermès Terre d\'Hermès', brand: 'Hermès', price: '4.100.000₫', img: 'https://images.unsplash.com/photo-1563170351-be82bc888aa4?auto=format&fit=crop&w=600&q=80' },
-  { id: 3, name: 'Gucci Guilty EDT', brand: 'Gucci', price: '3.200.000₫', img: 'https://images.unsplash.com/photo-1547887538-e3a2f32cb1cc?auto=format&fit=crop&w=600&q=80' },
-  { id: 4, name: 'Versace Dylan Blue', brand: 'Versace', price: '2.600.000₫', img: 'https://images.unsplash.com/photo-1587017539504-67cfbddac569?auto=format&fit=crop&w=600&q=80' },
-  { id: 5, name: 'Lancôme La Vie est Belle', brand: 'Lancôme', price: '3.700.000₫', img: 'https://images.unsplash.com/photo-1541643600914-78b084683702?auto=format&fit=crop&w=600&q=80' },
-  { id: 6, name: 'Dior Miss Dior', brand: 'Dior', price: '3.600.000₫', img: 'https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?auto=format&fit=crop&w=600&q=80' },
-];
+// const WISHLIST = [
+//   { id: 1, name: 'Chanel No.5 EDP', brand: 'Chanel', price: '4.500.000₫', img: 'https://images.unsplash.com/photo-1608528577891-eb055944f2e7?auto=format&fit=crop&w=600&q=80' },
+//   { id: 2, name: 'Hermès Terre d\'Hermès', brand: 'Hermès', price: '4.100.000₫', img: 'https://images.unsplash.com/photo-1563170351-be82bc888aa4?auto=format&fit=crop&w=600&q=80' },
+//   { id: 3, name: 'Gucci Guilty EDT', brand: 'Gucci', price: '3.200.000₫', img: 'https://images.unsplash.com/photo-1547887538-e3a2f32cb1cc?auto=format&fit=crop&w=600&q=80' },
+//   { id: 4, name: 'Versace Dylan Blue', brand: 'Versace', price: '2.600.000₫', img: 'https://images.unsplash.com/photo-1587017539504-67cfbddac569?auto=format&fit=crop&w=600&q=80' },
+//   { id: 5, name: 'Lancôme La Vie est Belle', brand: 'Lancôme', price: '3.700.000₫', img: 'https://images.unsplash.com/photo-1541643600914-78b084683702?auto=format&fit=crop&w=600&q=80' },
+//   { id: 6, name: 'Dior Miss Dior', brand: 'Dior', price: '3.600.000₫', img: 'https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?auto=format&fit=crop&w=600&q=80' },
+// ];
 const VOUCHERS = [
   { code: 'WELCOME20', value: 'Giảm 20% toàn bộ đơn hàng', expiry: '30/06/2025', expiring: false },
   { code: 'VIP50K',    value: 'Giảm 50.000₫ đơn từ 500K', expiry: '15/05/2025', expiring: true },
@@ -235,7 +235,18 @@ document.getElementById('confirmCancel')?.addEventListener('click', () => {
 
   // Xử lý nút bỏ yêu thích
   grid.addEventListener('click', async (e) => {
-    const removeBtn = e.target.closest('.wish-remove');
+    const removeBtn = e.target.closest('.wish-remove, .js-wish-remove');
+    const addCartBtn = e.target.closest('.js-wish-add-cart');
+    if (addCartBtn) {
+      const card = addCartBtn.closest('.wish-card');
+      card?.classList.add('pulse');
+      setTimeout(() => card?.classList.remove('pulse'), 320);
+      const badge = document.querySelector('[data-cart-badge]');
+      const current = parseInt(badge?.textContent || '0', 10) || 0;
+      if (badge) badge.textContent = String(current + 1);
+      showToast('Đã thêm vào giỏ hàng.');
+      return;
+    }
     if (!removeBtn) return;
 
     const card      = removeBtn.closest('.wish-card');
@@ -277,7 +288,14 @@ document.getElementById('confirmCancel')?.addEventListener('click', () => {
             sub.textContent = `Những mùi hương bạn đã lưu lại — ${count} sản phẩm.`;
           }
         }, 320);
-        showToast('Đã xóa khỏi danh sách yêu thích.');
+        const headerBadge = document.querySelector('[data-wishlist-badge]');
+        if (headerBadge) {
+          const current = parseInt(headerBadge.textContent || '0', 10) || 0;
+          const next = Math.max(0, current - 1);
+          headerBadge.textContent = String(next);
+          headerBadge.hidden = next <= 0;
+        }
+        showToast('Đã bỏ khỏi danh sách yêu thích.');
       }
     } catch (err) {
       showToast('Có lỗi xảy ra. Vui lòng thử lại.');

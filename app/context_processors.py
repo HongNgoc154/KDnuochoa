@@ -1,4 +1,4 @@
-from .models import LoaiSanPham, TaiKhoan, ThuongHieu
+from .models import KhachHang, LoaiSanPham, TaiKhoan, ThuongHieu, YeuThich
 
 
 def _normalize_vietnamese_text(value):
@@ -21,9 +21,17 @@ def global_data(request):
         account = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first()
         if account and account.TenDangNhap:
             account.TenDangNhap = _normalize_vietnamese_text(account.TenDangNhap)
+    wishlist_count = 0
+    if account:
+        customer = KhachHang.objects.filter(id_TaiKhoan=account).first()
+        if customer:
+            wishlist_count = YeuThich.objects.filter(
+                id_TaiKhoan=account
+            ).count()
     return {
         "nav_categories": LoaiSanPham.objects.all(),
         "nav_brands": ThuongHieu.objects.all()[:6],
         "current_account": account,
         "is_logged_in": bool(account),
+        "wishlist_count": wishlist_count,
     }

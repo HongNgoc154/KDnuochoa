@@ -120,6 +120,10 @@
           data-price="{{ item.price_raw }}"
           data-concentration="edp"
           data-detail-url="{% url 'product-detail-by-id' item.id %}"
+          data-product-id="{{ item.id }}"
+          data-product-name="{{ item.name }}"
+          data-product-price="{{ item.price_raw }}"
+          data-product-image="{{ item.primary_image }}"
           tabindex="0"
           role="link"
           aria-label="Xem chi tiết {{ item.name }}">
@@ -162,15 +166,22 @@
             {% endif %} {% endcomment %}
 
             <!-- ACTION -->
+            <!-- ACTION -->
             <div class="product-actions">
               <button class="action-icon favorite-btn"
                 aria-pressed="false"
-                data-product-id="{{ item.id }}">
+                data-product-id="{{ item.id }}"
+                title="Yêu thích">
                 <span class="heart-core">♡</span>
               </button>
-
+ 
               <button class="action-icon add-cart-btn"
-                {% if item.stock <= 0 %}disabled{% endif %}>
+                data-product-id="{{ item.id }}"
+                data-product-name="{{ item.name }}"
+                data-product-price="{{ item.price_raw }}"
+                data-product-image="{{ item.primary_image }}"
+                {% if item.stock <= 0 %}disabled{% endif %}
+                title="Thêm vào giỏ">
                 🛒
               </button>
             </div>

@@ -16,62 +16,36 @@
     <section>
       <h1>Giỏ hàng của bạn</h1>
 
-      {% if cart_items %}
-      <div class="cart-items" data-cart-items>
+      <!-- CART ITEMS — luôn render, JS sẽ inject sản phẩm từ localStorage -->
+      <div class="cart-items" data-cart-items hidden></div>
 
-        {% for item in cart_items %}
-        <article class="cart-item"
-                 data-price="{{ item.price }}"
-                 data-qty="{{ item.quantity }}">
-
-          <!-- IMAGE -->
-          <img src="{{ item.image }}" alt="{{ item.name }}">
-
-          <!-- INFO -->
-          <div class="cart-item-meta">
-            <h3>{{ item.name }}</h3>
-            <p class="unit-price">{{ item.price|floatformat:0 }}₫</p>
-
-            <!-- QTY (JS xử lý) -->
-            <div class="qty-control">
-              <button type="button" class="qty-btn" data-action="minus">−</button>
-              <input type="number" value="{{ item.quantity }}">
-              <button type="button" class="qty-btn" data-action="plus">+</button>
-            </div>
-          </div>
-
-          <!-- TOTAL -->
-          <div class="line-total" data-line-total></div>
-
-          <!-- REMOVE -->
-          <button type="button" class="remove-btn" data-remove>🗑</button>
-
-        </article>
-        {% endfor %}
-
-      </div>
-
-      {% else %}
-      <!-- EMPTY -->
-      <div class="empty-state">
+      <!-- EMPTY STATE — luôn render, JS toggle hidden -->
+      <div class="empty-state" data-empty-state>
         <h2>Giỏ hàng của bạn đang trống</h2>
         <p>Hãy khám phá bộ sưu tập nước hoa cao cấp của Ami.</p>
         <a href="{% url 'category-all' %}" class="btn-primary">Khám phá sản phẩm</a>
       </div>
-      {% endif %}
 
       <!-- SUGGESTIONS -->
       <section class="cart-suggestions">
         <div class="suggestions-head">
           <h2>Có thể bạn cũng thích</h2>
         </div>
-
-        <div class="suggestions-track">
+        <div class="suggestions-track" data-suggest-track>
           {% for item in suggestions %}
           <article class="suggestion-card">
-            <img src="{{ item.image }}" alt="{{ item.name }}">
+            <a href="{% url 'product-detail-by-id' item.id %}">
+              <img src="{{ item.primary_image }}" alt="{{ item.name }}" loading="lazy">
+            </a>
             <h4>{{ item.name }}</h4>
-            <p>{{ item.price|default:item.price_raw }}</p>
+            <p>{{ item.price }}</p>
+            <button class="quick-add add-cart-btn"
+              data-product-id="{{ item.id }}"
+              data-product-name="{{ item.name }}"
+              data-product-price="{{ item.price_raw }}"
+              data-product-image="{{ item.primary_image }}">
+              + Thêm vào giỏ
+            </button>
           </article>
           {% endfor %}
         </div>
@@ -79,32 +53,25 @@
 
     </section>
 
-    <!-- RIGHT -->
+    <!-- RIGHT: SUMMARY -->
     <aside class="summary-card" data-summary>
-
       <h3>Tổng kết đơn hàng</h3>
-
       <p><span>Tạm tính</span><strong data-subtotal>0₫</strong></p>
-      <p><span>Giảm giá</span><strong data-discount>0₫</strong></p>
+      <p><span>Giảm giá</span><strong data-discount>-0₫</strong></p>
       <p><span>Phí vận chuyển</span><strong data-shipping>0₫</strong></p>
-
       <hr>
-
       <p class="total"><span>Tổng tiền</span><strong data-total>0₫</strong></p>
 
-      <!-- COUPON (JS xử lý) -->
       <div class="voucher-box">
         <input type="text" placeholder="Mã giảm giá" data-voucher-input>
         <button type="button" data-apply-voucher>Áp dụng</button>
       </div>
-
       <p class="voucher-message" data-voucher-message></p>
 
-      <!-- CHECKOUT -->
-      <button class="checkout-btn" data-checkout data-checkout-url="{% url 'checkout-page' %}">
+      <button class="checkout-btn" data-checkout
+              data-checkout-url="{% url 'checkout-page' %}">
         Thanh toán
       </button>
-
     </aside>
 
   </div>

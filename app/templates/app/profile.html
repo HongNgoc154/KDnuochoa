@@ -209,6 +209,12 @@
             {% if item.added_at %}
             <p style="font-size:11px;color:var(--text-muted);margin-top:4px;">Thêm {{ item.added_at }}</p>
             {% endif %}
+            <div class="wish-cta-row">
+              <a href="{% url 'product-detail-by-id' item.product_id %}" class="wish-cta">Xem chi tiết</a>
+              <button class="wish-cta js-wish-remove" data-product-id="{{ item.product_id }}">Bỏ yêu thích</button>
+              <button class="wish-cta js-wish-add-cart" data-product-id="{{ item.product_id }}">Thêm vào giỏ</button>
+              <a href="{% url 'product-detail-by-id' item.product_id %}" class="wish-cta wish-cta-primary">Mua ngay</a>
+            </div>
           </div>
         </div>
         {% endfor %}
@@ -218,8 +224,9 @@
       <div class="wishlist-grid" id="wishlistGrid">
         <div style="grid-column:1/-1;text-align:center;padding:72px 40px;color:var(--text-muted);">
           <div style="font-size:48px;margin-bottom:20px;">♡</div>
-          <p style="font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--text-light);margin-bottom:10px;">Chưa có sản phẩm yêu thích</p>
-          <p style="font-size:13px;line-height:1.7;">Nhấn vào biểu tượng ♡ trên trang sản phẩm để lưu lại những mùi hương bạn yêu thích.</p>
+          <p style="font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--text-light);margin-bottom:10px;">Bạn chưa lưu sản phẩm yêu thích nào.</p>
+          <p style="font-size:13px;line-height:1.7;">Khám phá bộ sưu tập nước hoa niche và lưu lại mùi hương bạn yêu thích.</p>
+          <a href="{% url 'category-all' %}" class="wish-cta wish-cta-primary" style="display:inline-flex;margin-top:18px;">Khám phá nước hoa</a>
         </div>
       </div>
       {% endif %}

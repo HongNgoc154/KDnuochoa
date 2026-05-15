@@ -17,6 +17,30 @@
    12. Reveal        — IntersectionObserver scroll reveal
    ============================================================= */
 
+
+function getCSRFToken() {
+
+    const name = "csrftoken=";
+
+    const decodedCookie = decodeURIComponent(document.cookie);
+
+    const cookies = decodedCookie.split(';');
+
+    for (let i = 0; i < cookies.length; i++) {
+
+        let c = cookies[i];
+
+        while (c.charAt(0) == ' ') {
+            c = c.substring(1);
+        }
+
+        if (c.indexOf(name) == 0) {
+            return c.substring(name.length, c.length);
+        }
+    }
+
+    return "";
+}
 /* ─── 1. GALLERY ───────────────────────────────────────────── */
 (function initGallery() {
   const thumbBtns = [...document.querySelectorAll('.pd-thumb')];
@@ -225,100 +249,106 @@ function updateZoomPaneBg(src) {
 /* ─── 5. WISHLIST — Kết nối DB ─────────────────────────────────────── */
 /* Thay thế hàm initWishlist() hiện tại trong product.js               */
 
-(function initWishlist() {
-  const btn    = document.getElementById('pdWishBtn');
-  const heart  = document.getElementById('pdWishHeart');
-  const label  = btn?.querySelector('.pd-wish-label');
-  if (!btn || !heart) return;
+// (function initWishlist() {
+//   const btn    = document.getElementById('pdWishBtn');
+//   const heart  = document.getElementById('pdWishHeart');
+//   const label  = btn?.querySelector('.pd-wish-label');
+//   if (!btn || !heart) return;
 
-  const productId = document.querySelector('.pd-layout')?.dataset?.productId;
+//   const productId = document.querySelector('.pd-layout')?.dataset?.productId;
 
-  // ── Kiểm tra trạng thái yêu thích khi load trang ──
-  if (productId) {
-    fetch(`/wishlist-status/${productId}/`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.liked) {
-          btn.classList.add('is-liked');
-          btn.setAttribute('aria-pressed', 'true');
-          heart.textContent = '♥';
-          if (label) label.textContent = 'Đã yêu thích';
-        }
-      })
-      .catch(() => {});
-  }
+//   // ── Kiểm tra trạng thái yêu thích khi load trang ──
+//   if (productId) {
+//     fetch(`/wishlist-status/${productId}/`)
+//       .then(r => r.json())
+//       .then(data => {
+//         if (data.liked) {
+//           btn.classList.add('is-liked');
+//           btn.setAttribute('aria-pressed', 'true');
+//           heart.textContent = '♥';
+//           if (label) label.textContent = 'Đã yêu thích';
+//         }
+//       })
+//       .catch(() => {});
+//   }
 
-  // ── Click toggle ──
-  btn.addEventListener('click', async () => {
-    // Chưa đăng nhập → chuyển đến trang đăng nhập
-    const accountName = document.body.dataset.accountName || '';
-    if (!accountName) {
-      const currentUrl = encodeURIComponent(window.location.href);
-      window.location.href = `/auth/?next=${currentUrl}`;
-      return;
-    }
+//   // ── Click toggle ──
+//   btn.addEventListener('click', async () => {
+//     // Chưa đăng nhập → chuyển đến trang đăng nhập
+//     const accountName = document.body.dataset.accountName || '';
+//     if (!accountName) {
+//       const currentUrl = encodeURIComponent(window.location.href);
+//       window.location.href = `/auth/?next=${currentUrl}`;
+//       return;
+//     }
 
-    // Animation burst
-    btn.classList.remove('bursting', 'bounce');
-    void btn.offsetWidth;
-    btn.classList.add('bursting', 'bounce');
-    setTimeout(() => btn.classList.remove('bursting', 'bounce'), 580);
+//     // Animation burst
+//     btn.classList.remove('bursting', 'bounce');
+//     void btn.offsetWidth;
+//     btn.classList.add('bursting', 'bounce');
+//     setTimeout(() => btn.classList.remove('bursting', 'bounce'), 580);
 
-    // Gọi API
-    try {
-      const fd = new FormData();
-      fd.append('product_id', productId);
-      const res  = await fetch('/toggle-wishlist/', { method: 'POST', body: fd });
-      const data = await res.json();
+//     // Gọi API
+//     // Gọi API
+// try {
 
-      if (data.need_login) {
-        const currentUrl = encodeURIComponent(window.location.href);
-        window.location.href = `/auth/?next=${currentUrl}`;
-        return;
-      }
+//     const fd = new FormData();
 
-      if (data.ok) {
-        const liked = data.action === 'added';
-        btn.classList.toggle('is-liked', liked);
-        btn.setAttribute('aria-pressed', String(liked));
-        heart.textContent = liked ? '♥' : '♡';
-        if (label) label.textContent = liked ? 'Đã yêu thích' : 'Yêu thích';
+//     fd.append(
+//         'product_id',
+//         productId
+//     );
 
-        // Toast
-        _showWishToast(data.message, liked);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  });
+//     const res = await fetch(
+//         "/toggle-favorite/",
+//         {
+//             method: "POST",
 
-  function _showWishToast(msg, liked) {
-    const existing = document.getElementById('wishToast');
-    if (existing) existing.remove();
-    const t = document.createElement('div');
-    t.id = 'wishToast';
-    t.style.cssText = `
-      position:fixed; bottom:28px; left:50%;
-      transform:translateX(-50%) translateY(20px);
-      background:${liked ? '#4B672D' : '#5a5a5a'};
-      color:#fff; padding:12px 24px; border-radius:40px;
-      font-family:'Jost',sans-serif; font-size:13px; font-weight:500;
-      box-shadow:0 8px 28px rgba(0,0,0,.18); z-index:9999;
-      opacity:0; transition:opacity .3s, transform .3s;
-    `;
-    t.textContent = msg;
-    document.body.appendChild(t);
-    requestAnimationFrame(() => {
-      t.style.opacity = '1';
-      t.style.transform = 'translateX(-50%) translateY(0)';
-    });
-    setTimeout(() => {
-      t.style.opacity = '0';
-      t.style.transform = 'translateX(-50%) translateY(10px)';
-      setTimeout(() => t.remove(), 350);
-    }, 2800);
-  }
-})();
+//             headers: {
+//                 "X-CSRFToken": getCSRFToken()
+//             },
+
+//             body: fd
+//         }
+//     );
+
+//     const data = await res.json();
+
+//     console.log(data);
+
+// } catch(err) {
+
+//     console.error(err);
+// }
+//   });
+
+//   function _showWishToast(msg, liked) {
+//     const existing = document.getElementById('wishToast');
+//     if (existing) existing.remove();
+//     const t = document.createElement('div');
+//     t.id = 'wishToast';
+//     t.style.cssText = `
+//       position:fixed; bottom:28px; left:50%;
+//       transform:translateX(-50%) translateY(20px);
+//       background:${liked ? '#4B672D' : '#5a5a5a'};
+//       color:#fff; padding:12px 24px; border-radius:40px;
+//       font-family:'Jost',sans-serif; font-size:13px; font-weight:500;
+//       box-shadow:0 8px 28px rgba(0,0,0,.18); z-index:9999;
+//       opacity:0; transition:opacity .3s, transform .3s;
+//     `;
+//     t.textContent = msg;
+//     document.body.appendChild(t);
+//     requestAnimationFrame(() => {
+//       t.style.opacity = '1';
+//       t.style.transform = 'translateX(-50%) translateY(0)';
+//     });
+//     setTimeout(() => {
+//       t.style.opacity = '0';
+//       t.style.transform = 'translateX(-50%) translateY(10px)';
+//       setTimeout(() => t.remove(), 350);
+//     }, 2800);
+//   }
+// })();
 
 /* ─── 6. SIZE PILLS ────────────────────────────────────────── */
 /* ─── 6. VARIANT PILLS ─────────────────────────────────────── */
@@ -902,13 +932,13 @@ function showQaToast(msg, type = "success") {
     window.location.href = '/cart/';
   });
 
-  wishBtn?.addEventListener('click', () => {
-    const productId = container.dataset.productId || '0';
-    const wl = new Set(JSON.parse(localStorage.getItem('ami_wishlist') || '[]'));
-    wl.add(productId);
-    localStorage.setItem('ami_wishlist', JSON.stringify([...wl]));
-    toast('Đã thêm vào danh sách yêu thích');
-  });
+  // wishBtn?.addEventListener('click', () => {
+  //   const productId = container.dataset.productId || '0';
+  //   const wl = new Set(JSON.parse(localStorage.getItem('ami_wishlist') || '[]'));
+  //   wl.add(productId);
+  //   localStorage.setItem('ami_wishlist', JSON.stringify([...wl]));
+  //   toast('Đã thêm vào danh sách yêu thích');
+  // });
 })();
 
 
