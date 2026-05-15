@@ -223,7 +223,88 @@
         <h1 class="panel-title">Đánh giá <em>của tôi</em></h1>
         <p class="panel-sub">Những nhận xét bạn đã chia sẻ về sản phẩm.</p>
       </div>
-      <div class="reviews-list" id="reviewsList"></div>
+      <div class="reviews-list" id="reviewsList">
+
+        {% for rv in review_data %}
+
+        <div class="review-card">
+
+            <div class="review-card-head">
+
+                <img
+                    class="review-product-img"
+                    src="{{ rv.image }}"
+                    alt="{{ rv.product_name }}"
+                >
+
+                <div>
+
+                    <h3 class="review-product-name">
+                        {{ rv.product_name }}
+                    </h3>
+
+                    <p class="review-product-brand">
+                        {{ rv.brand }}
+                    </p>
+                    <p class="review-created-date">
+                        {{ rv.created_at }}
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div class="review-stars-display">
+
+                {% for i in "12345" %}
+
+                    {% if forloop.counter <= rv.rating %}
+                        ★
+                    {% else %}
+                        ☆
+                    {% endif %}
+
+                {% endfor %}
+
+            </div>
+
+            <p class="review-text-display">
+                {{ rv.content }}
+            </p>
+
+            <div class="review-actions">
+
+                <button
+                    class="btn-review-edit"
+                    data-id="{{ rv.id }}"
+                >
+                    Chỉnh sửa
+                </button>
+
+                <button
+                    class="btn-review-delete"
+                    data-id="{{ rv.id }}"
+                >
+                    Xóa
+                </button>
+
+            </div>
+
+        </div>
+
+        {% empty %}
+
+        <div class="review-card">
+
+            <p class="review-text-display">
+                Bạn chưa có đánh giá nào.
+            </p>
+
+        </div>
+
+        {% endfor %}
+
+    </div>
     </section>
 
     <!-- ════ TAB: CÀI ĐẶT ════ -->

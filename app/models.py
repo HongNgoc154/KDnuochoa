@@ -336,7 +336,7 @@ class DanhGia(models.Model):
     NgayDanhGia = models.DateTimeField(null=True, blank=True)
     NoiDung = models.TextField(null=True)
     SoSao = models.IntegerField(null=True)
-    NgayTao = models.DateTimeField(null=True)
+    # NgayTao = models.DateTimeField(null=True)
 
     class Meta:
         managed = False

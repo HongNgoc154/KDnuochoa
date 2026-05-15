@@ -476,54 +476,36 @@
 
     <!-- TAB 3: Reviews -->
     <div class="pd-tab-panel" id="tab-reviews" role="tabpanel" hidden>
-      <div class="pd-review-summary">
+      <div class="pd-review-form" id="pdReviewFormWrap">
+        <h4>Chia sẻ trải nghiệm của bạn</h4>
+        <div class="pd-review-stars-input" id="pdStarInput">
+          {% for i in "12345" %}<button type="button" class="pd-star-btn" data-star="{{ i }}">★</button>{% endfor %}
+        </div>
+        <textarea id="pdReviewContent" placeholder="Mùi hương, độ lưu hương, cảm giác sử dụng..." maxlength="800"></textarea>
+        <button id="pdSubmitReview" class="pd-submit-review">Gửi đánh giá</button>
+      </div>
+      <div class="pd-review-summary" data-rating-avg="{{ product_data.rating_avg|default:0 }}" data-rating-count="{{ product_data.rating_count|default:0 }}">
         <div class="pd-review-score">
-          <span class="pd-big-score">4.9</span>
+          <span class="pd-big-score" id="pdBigScore">{{ product_data.rating_avg|default:'0.0' }}</span>
           <span class="pd-big-stars">★★★★★</span>
-          <span class="pd-review-total">128 đánh giá</span>
+          <span class="pd-review-total" id="pdReviewTotal">{{ product_data.rating_count|default:'0' }} đánh giá</span>
         </div>
         <div class="pd-review-bars">
-          <div class="pd-bar-row"><span>5★</span><div class="pd-rv-bar-wrap"><div class="pd-rv-bar" data-fill="82"></div></div><span>82%</span></div>
-          <div class="pd-bar-row"><span>4★</span><div class="pd-rv-bar-wrap"><div class="pd-rv-bar" data-fill="13"></div></div><span>13%</span></div>
-          <div class="pd-bar-row"><span>3★</span><div class="pd-rv-bar-wrap"><div class="pd-rv-bar" data-fill="3"></div></div><span>3%</span></div>
-          <div class="pd-bar-row"><span>2★</span><div class="pd-rv-bar-wrap"><div class="pd-rv-bar" data-fill="1"></div></div><span>1%</span></div>
-          <div class="pd-bar-row"><span>1★</span><div class="pd-rv-bar-wrap"><div class="pd-rv-bar" data-fill="1"></div></div><span>1%</span></div>
+          {% for star, count in product_data.rating_breakdown.items %}
+          <div class="pd-bar-row"><span>{{ star }}★</span><div class="pd-rv-bar-wrap"><div class="pd-rv-bar" data-count="{{ count }}"></div></div><span>{{ count }}</span></div>
+          {% endfor %}
         </div>
       </div>
-      <div class="pd-review-list">
+      <div class="pd-review-list" id="pdReviewList">
+        {% for rv in product_data.reviews %}
         <article class="pd-review-card">
-          <div class="pd-rv-head">
-            <div class="pd-rv-avatar">MK</div>
-            <div>
-              <strong class="pd-rv-name">Minh Khang</strong>
-              <span class="pd-rv-stars">★★★★★</span>
-            </div>
-            <time class="pd-rv-date">12/03/2025</time>
-          </div>
-          <p class="pd-rv-text">Mùi này thực sự đẳng cấp, lưu hương suốt 10 giờ mà vẫn dịu. Đi event tối được khen cả đêm. Mua từ Ami rất yên tâm về nguồn gốc.</p>
+          <div class="pd-rv-head"><div class="pd-rv-avatar">{{ rv.avatar }}</div><div><strong class="pd-rv-name">{{ rv.name }}</strong><span class="pd-rv-stars">{% for i in "12345" %}{% if forloop.counter <= rv.rating %}★{% else %}☆{% endif %}{% endfor %}</span></div><time class="pd-rv-date">{{ rv.created_at }}</time></div>
+          <p class="pd-rv-text">{{ rv.content }}</p><small class="pd-rv-label">{{ rv.label }}</small>
+          {% for rep in rv.replies %}
+          <div class="pd-review-reply"><strong>Luxury Consultant · AMI EXPERT</strong><p>{{ rep.NoiDung }}</p></div>
+          {% endfor %}
         </article>
-        <article class="pd-review-card">
-          <div class="pd-rv-head">
-            <div class="pd-rv-avatar">QD</div>
-            <div>
-              <strong class="pd-rv-name">Quốc Đạt</strong>
-              <span class="pd-rv-stars">★★★★★</span>
-            </div>
-            <time class="pd-rv-date">05/03/2025</time>
-          </div>
-          <p class="pd-rv-text">Sauvage Elixir khác hoàn toàn với EDT. Depth và sillage của Elixir ở đẳng cấp khác. Woody, dark và cực masculine. Worth every dong.</p>
-        </article>
-        <article class="pd-review-card">
-          <div class="pd-rv-head">
-            <div class="pd-rv-avatar">HN</div>
-            <div>
-              <strong class="pd-rv-name">Hoài Nam</strong>
-              <span class="pd-rv-stars">★★★★☆</span>
-            </div>
-            <time class="pd-rv-date">28/02/2025</time>
-          </div>
-          <p class="pd-rv-text">Mùi rất ổn nhưng mình thấy hơi mạnh cho văn phòng. Để đi chơi tối hoặc date thì 10/10. Packaging rất sang.</p>
-        </article>
+        {% empty %}<p class="pd-review-empty">Chưa có đánh giá nào.</p>{% endfor %}
       </div>
     </div>
 

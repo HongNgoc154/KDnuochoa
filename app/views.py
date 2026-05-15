@@ -10,6 +10,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
+from django.utils.html import escape
 
 from .models import (
     BaiViet,
@@ -61,6 +62,14 @@ def _safe_first(queryset):
         return queryset.first()
     except DatabaseError:
         return None
+    
+
+def _account_display_name(account):
+    return (account.TenDangNhap or account.Username or "Khách hàng").strip()
+
+
+def _rating_label(star):
+    return {5: "Tuyệt vời · Highly Recommended", 4: "Rất tốt", 3: "Tốt", 2: "Chưa phù hợp", 1: "Không hài lòng"}.get(star, "")
 
 
 # def _normalize_vietnamese_text(value):
@@ -330,8 +339,8 @@ def product_detail(request, product_id=None):
     )
     root_reviews = _safe_list(
     DanhGia.objects.select_related("id_TaiKhoan")
-    .filter(id_SanPham=product_obj)
-        .order_by("-NgayDanhGia")[:5]
+    .filter(id_SanPham=product_obj, parent_id__isnull=True)
+        .order_by("-NgayDanhGia", "-id_DanhGia")
     )
     # ═══════════════════════════════════════════════════════════════
 # THAY TOÀN BỘ đoạn này trong hàm product_detail (views.py)
@@ -407,6 +416,26 @@ def product_detail(request, product_id=None):
         )
     rating_values = [item.SoSao for item in root_reviews if item.SoSao]
     rating_avg = round(sum(rating_values) / len(rating_values), 1) if rating_values else 0
+    rating_count = len(rating_values)
+    rating_breakdown = {star: len([v for v in rating_values if v == star]) for star in range(1, 6)}
+
+    expert_replies = defaultdict(list)
+    for reply in DanhGia.objects.select_related("id_TaiKhoan").filter(id_SanPham=product_obj, parent_id__isnull=False).order_by("NgayDanhGia", "id_DanhGia"):
+        expert_replies[reply.parent_id].append(reply)
+
+    review_cards = []
+    for rv in root_reviews:
+        name = _account_display_name(rv.id_TaiKhoan) if rv.id_TaiKhoan else "Khách hàng"
+        review_cards.append({
+            "id": rv.id_DanhGia,
+            "name": name,
+            "avatar": name[:1].upper(),
+            "rating": int(rv.SoSao or 0),
+            "label": _rating_label(int(rv.SoSao or 0)),
+            "content": rv.NoiDung or "",
+            "created_at": rv.NgayDanhGia.strftime("%d/%m/%Y %H:%M") if rv.NgayDanhGia else "",
+            "replies": expert_replies.get(rv.id_DanhGia, []),
+        })
     # print("ID:", product_obj.id_SanPham)
     # print("NongDo:", product_obj.NongDo)
     # print("XuatXu:", product_obj.XuatXu)
@@ -441,9 +470,11 @@ def product_detail(request, product_id=None):
         "stock": top_variant.SoLuong if top_variant else 0,
         "status": product_obj.TrangThai_SanPham,
         "rating_avg": rating_avg,
-        "rating_count": len(root_reviews),
+        "rating_count": rating_count,
+        "rating_breakdown": {k: v for k, v in sorted(rating_breakdown.items(), reverse=True)},
+        "reviews": review_cards,
         "questions": questions,
-        "reviews": root_reviews,
+        # "reviews": root_reviews,
         "variants": json.dumps(variant_payload, ensure_ascii=False),
         "variant_count": len(variant_payload),
         "option_groups": {k: sorted(list(v)) for k, v in option_groups.items()},
@@ -709,6 +740,61 @@ def submit_question(request):
 
 @csrf_exempt
 @require_POST
+def submit_review(request):
+    account_id = request.session.get("account_id")
+    if not account_id:
+        return JsonResponse({"ok": False, "need_login": True, "message": "Vui lòng đăng nhập để chia sẻ trải nghiệm của bạn."})
+
+    last_submit = request.session.get("review_last_submit")
+    now_ts = timezone.now().timestamp()
+    if last_submit and now_ts - float(last_submit) < 8:
+        return JsonResponse({"ok": False, "message": "Bạn đang thao tác quá nhanh, vui lòng thử lại sau vài giây."}, status=429)
+
+    product_id = request.POST.get("product_id")
+    try:
+        rating = int(request.POST.get("rating") or 0)
+    except ValueError:
+        rating = 0
+    content = escape((request.POST.get("content") or "").strip())
+
+    if rating < 1 or rating > 5:
+        return JsonResponse({"ok": False, "message": "Số sao phải từ 1 đến 5."}, status=400)
+    if not content:
+        return JsonResponse({"ok": False, "message": "Vui lòng nhập nội dung đánh giá."}, status=400)
+    if len(content) > 800:
+        return JsonResponse({"ok": False, "message": "Đánh giá tối đa 800 ký tự."}, status=400)
+
+    account = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first()
+    product = SanPham.objects.filter(id_SanPham=product_id).first()
+    if not account or not product:
+        return JsonResponse({"ok": False, "message": "Không tìm thấy dữ liệu."}, status=404)
+
+    review = DanhGia.objects.create(
+        id_SanPham=product,
+        id_TaiKhoan=account,
+        SoSao=rating,
+        NoiDung=content,
+        parent_id=None,
+        NgayDanhGia=timezone.now(),
+    )
+    request.session["review_last_submit"] = now_ts
+
+    return JsonResponse({
+        "ok": True,
+        "message": "Cảm ơn bạn đã chia sẻ trải nghiệm cùng Ami Perfume.",
+        "review": {
+            "id": review.id_DanhGia,
+            "name": _account_display_name(account),
+            "rating": rating,
+            "label": _rating_label(rating),
+            "content": content,
+            "created_at": review.NgayDanhGia.strftime("%d/%m/%Y %H:%M"),
+        }
+    })
+
+
+@csrf_exempt
+@require_POST
 def login_api(request):
     email = (request.POST.get("email") or "").strip()
     password = request.POST.get("password") or ""
@@ -787,6 +873,61 @@ def profile_page(request):
     customer = _safe_first(
         KhachHang.objects.select_related("id_TaiKhoan").filter(id_TaiKhoan=account) if account else KhachHang.objects.none()
     )
+    user_reviews = (
+        DanhGia.objects
+        .select_related(
+            "id_SanPham",
+            "id_SanPham__id_ThuongHieu"
+        )
+        .filter(
+            id_TaiKhoan_id=account_id,
+            parent_id__isnull=True
+        )
+        .order_by("-NgayDanhGia")
+    )
+
+    review_product_ids = [
+        rv.id_SanPham_id
+        for rv in user_reviews
+        if rv.id_SanPham
+    ]
+
+    review_image_map = _product_image_map(review_product_ids)
+
+    review_data = []
+
+    for rv in user_reviews:
+
+        product = rv.id_SanPham
+
+        images = review_image_map.get(product.id_SanPham, [])
+
+        review_data.append({
+            "id": rv.id_DanhGia,
+
+            "product_id": product.id_SanPham,
+
+            "product_name": product.TenSanPham,
+
+            "brand": (
+                product.id_ThuongHieu.TenThuongHieu
+                if product.id_ThuongHieu else ""
+            ),
+
+            "image": (
+                images[0]
+                if images else FALLBACK_IMAGES["default"]
+            ),
+
+            "rating": int(rv.SoSao or 0),
+
+            "content": rv.NoiDung or "",
+
+            "created_at": (
+                rv.NgayDanhGia.strftime("%d/%m/%Y")
+                if rv.NgayDanhGia else ""
+            ),
+        })
     profile = {
         "full_name":(customer.TenKhachHang if customer else None) or (account.TenDangNhap if account else "") or "Khách hàng",
         "username": (account.Username if account else "") or "guest",
@@ -795,7 +936,11 @@ def profile_page(request):
         "address": (customer.DiaChi if customer else "") or "",
         "gender": (customer.GioiTinh if customer else "") or "",
     }
-    return render(request, 'app/profile.html', {"profile": profile})
+    print(review_data)
+    return render(request, 'app/profile.html', {
+        "profile": profile,
+        "review_data": review_data,
+    })
 
 
 def checkout_page(request):

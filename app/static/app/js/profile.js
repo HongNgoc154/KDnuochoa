@@ -24,11 +24,11 @@ const VOUCHERS = [
   { code: 'FREESHIP',  value: 'Miễn phí vận chuyển', expiry: '31/12/2025', expiring: false },
   { code: 'SUMMER15',  value: 'Giảm 15% nước hoa nam', expiry: '01/05/2025', expiring: true },
 ];
-const REVIEWS = [
-  { id: 1, product: 'Dior Sauvage Elixir', brand: 'Dior', img: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=200&q=80', stars: 5, text: 'Mùi này thực sự đẳng cấp, lưu hương suốt 10 giờ mà vẫn dịu. Đi event tối được khen cả đêm. Mua từ Ami rất yên tâm về nguồn gốc.' },
-  { id: 2, product: 'Bleu de Chanel EDP', brand: 'Chanel', img: 'https://images.unsplash.com/photo-1619994403073-2cec5a97dd6d?auto=format&fit=crop&w=200&q=80', stars: 5, text: 'Được tư vấn rất kỹ theo phong cách cá nhân. Bleu de Chanel rất tươi mát và thanh lịch, phù hợp cả đi làm lẫn đi chơi.' },
-  { id: 3, product: 'YSL Y EDP', brand: 'YSL', img: 'https://images.unsplash.com/photo-1588405748880-12d1d2a59a75?auto=format&fit=crop&w=200&q=80', stars: 4, text: 'Mùi khá ổn, woody và citrus cân bằng tốt. Tuy nhiên sillage hơi yếu hơn mong đợi. Nhìn chung vẫn worth it ở mức giá này.' },
-];
+// const REVIEWS = [
+//   { id: 1, product: 'Dior Sauvage Elixir', brand: 'Dior', img: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=200&q=80', stars: 5, text: 'Mùi này thực sự đẳng cấp, lưu hương suốt 10 giờ mà vẫn dịu. Đi event tối được khen cả đêm. Mua từ Ami rất yên tâm về nguồn gốc.' },
+//   { id: 2, product: 'Bleu de Chanel EDP', brand: 'Chanel', img: 'https://images.unsplash.com/photo-1619994403073-2cec5a97dd6d?auto=format&fit=crop&w=200&q=80', stars: 5, text: 'Được tư vấn rất kỹ theo phong cách cá nhân. Bleu de Chanel rất tươi mát và thanh lịch, phù hợp cả đi làm lẫn đi chơi.' },
+//   { id: 3, product: 'YSL Y EDP', brand: 'YSL', img: 'https://images.unsplash.com/photo-1588405748880-12d1d2a59a75?auto=format&fit=crop&w=200&q=80', stars: 4, text: 'Mùi khá ổn, woody và citrus cân bằng tốt. Tuy nhiên sillage hơi yếu hơn mong đợi. Nhìn chung vẫn worth it ở mức giá này.' },
+// ];
 
 /* i18n strings */
 const I18N = {
@@ -260,117 +260,117 @@ document.getElementById('confirmCancel')?.addEventListener('click', () => {
 
 /* ─── RENDER REVIEWS ─── */
 let editingReviewId = null;
-(function renderReviews() {
-  const list = document.getElementById('reviewsList');
-  if (!list) return;
+// (function renderReviews() {
+//   const list = document.getElementById('reviewsList');
+//   if (!list) return;
 
-  const render = () => {
-    list.innerHTML = '';
-    REVIEWS.forEach(r => {
-      const card = document.createElement('div');
-      card.className = 'review-card';
-      card.dataset.id = r.id;
-      card.innerHTML = `
-        <div class="review-card-head">
-          <img class="review-product-img" src="${r.img}" alt="${r.product}">
-          <div>
-            <h3 class="review-product-name">${r.product}</h3>
-            <p class="review-product-brand">${r.brand}</p>
-          </div>
-        </div>
-        <div class="review-stars-display">
-          ${'★'.repeat(r.stars)}${'☆'.repeat(5 - r.stars)}
-        </div>
-        <p class="review-text-display">${r.text}</p>
-        <div class="review-actions">
-          <button class="btn-review-edit" data-id="${r.id}">Chỉnh sửa</button>
-          <button class="btn-review-delete" data-id="${r.id}">Xóa</button>
-        </div>
-      `;
-      list.appendChild(card);
-    });
-  };
+//   const render = () => {
+//     list.innerHTML = '';
+//     REVIEWS.forEach(r => {
+//       const card = document.createElement('div');
+//       card.className = 'review-card';
+//       card.dataset.id = r.id;
+//       card.innerHTML = `
+//         <div class="review-card-head">
+//           <img class="review-product-img" src="${r.img}" alt="${r.product}">
+//           <div>
+//             <h3 class="review-product-name">${r.product}</h3>
+//             <p class="review-product-brand">${r.brand}</p>
+//           </div>
+//         </div>
+//         <div class="review-stars-display">
+//           ${'★'.repeat(r.stars)}${'☆'.repeat(5 - r.stars)}
+//         </div>
+//         <p class="review-text-display">${r.text}</p>
+//         <div class="review-actions">
+//           <button class="btn-review-edit" data-id="${r.id}">Chỉnh sửa</button>
+//           <button class="btn-review-delete" data-id="${r.id}">Xóa</button>
+//         </div>
+//       `;
+//       list.appendChild(card);
+//     });
+//   };
 
-  render();
+//   render();
 
-  list.addEventListener('click', e => {
-    const editBtn   = e.target.closest('.btn-review-edit');
-    const deleteBtn = e.target.closest('.btn-review-delete');
+//   list.addEventListener('click', e => {
+//     const editBtn   = e.target.closest('.btn-review-edit');
+//     const deleteBtn = e.target.closest('.btn-review-delete');
 
-    if (editBtn) {
-      const id = Number(editBtn.dataset.id);
-      const review = REVIEWS.find(r => r.id === id);
-      if (!review) return;
-      editingReviewId = id;
-      document.getElementById('reviewEditText').value = review.text;
-      renderStarEditor(review.stars);
-      document.getElementById('reviewModal').hidden = false;
-    }
-    if (deleteBtn) {
-      const id = Number(deleteBtn.dataset.id);
-      const idx = REVIEWS.findIndex(r => r.id === id);
-      if (idx >= 0) REVIEWS.splice(idx, 1);
-      render();
-      showToast('Đã xóa đánh giá.');
-    }
-  });
-})();
+//     if (editBtn) {
+//       const id = Number(editBtn.dataset.id);
+//       const review = REVIEWS.find(r => r.id === id);
+//       if (!review) return;
+//       editingReviewId = id;
+//       document.getElementById('reviewEditText').value = review.text;
+//       renderStarEditor(review.stars);
+//       document.getElementById('reviewModal').hidden = false;
+//     }
+//     if (deleteBtn) {
+//       const id = Number(deleteBtn.dataset.id);
+//       const idx = REVIEWS.findIndex(r => r.id === id);
+//       if (idx >= 0) REVIEWS.splice(idx, 1);
+//       render();
+//       showToast('Đã xóa đánh giá.');
+//     }
+//   });
+// })();
 
-function renderStarEditor(selected = 5) {
-  const editor = document.getElementById('starEditor');
-  if (!editor) return;
-  editor.innerHTML = '';
-  let currentRating = selected;
-  for (let i = 1; i <= 5; i++) {
-    const star = document.createElement('span');
-    star.className = `star-editor-star ${i <= currentRating ? 'lit' : ''}`;
-    star.textContent = '★';
-    star.dataset.val = i;
-    star.addEventListener('click', () => {
-      currentRating = i;
-      renderStarEditor(currentRating);
-      editor.dataset.rating = currentRating;
-    });
-    editor.appendChild(star);
-  }
-  editor.dataset.rating = currentRating;
-}
+// function renderStarEditor(selected = 5) {
+//   const editor = document.getElementById('starEditor');
+//   if (!editor) return;
+//   editor.innerHTML = '';
+//   let currentRating = selected;
+//   for (let i = 1; i <= 5; i++) {
+//     const star = document.createElement('span');
+//     star.className = `star-editor-star ${i <= currentRating ? 'lit' : ''}`;
+//     star.textContent = '★';
+//     star.dataset.val = i;
+//     star.addEventListener('click', () => {
+//       currentRating = i;
+//       renderStarEditor(currentRating);
+//       editor.dataset.rating = currentRating;
+//     });
+//     editor.appendChild(star);
+//   }
+//   editor.dataset.rating = currentRating;
+// }
 
-document.getElementById('reviewModalClose')?.addEventListener('click',  () => { document.getElementById('reviewModal').hidden = true; });
-document.getElementById('reviewModalClose2')?.addEventListener('click', () => { document.getElementById('reviewModal').hidden = true; });
-document.getElementById('saveReview')?.addEventListener('click', async () => {
-  const btn    = document.getElementById('saveReview');
-  const text   = document.getElementById('reviewEditText')?.value?.trim();
-  const rating = Number(document.getElementById('starEditor')?.dataset.rating || 5);
+// document.getElementById('reviewModalClose')?.addEventListener('click',  () => { document.getElementById('reviewModal').hidden = true; });
+// document.getElementById('reviewModalClose2')?.addEventListener('click', () => { document.getElementById('reviewModal').hidden = true; });
+// document.getElementById('saveReview')?.addEventListener('click', async () => {
+//   const btn    = document.getElementById('saveReview');
+//   const text   = document.getElementById('reviewEditText')?.value?.trim();
+//   const rating = Number(document.getElementById('starEditor')?.dataset.rating || 5);
 
-  if (!text) return;
-  btn.classList.add('loading'); btn.disabled = true;
-  await delay(1000);
-  btn.classList.remove('loading'); btn.disabled = false;
+//   if (!text) return;
+//   btn.classList.add('loading'); btn.disabled = true;
+//   await delay(1000);
+//   btn.classList.remove('loading'); btn.disabled = false;
 
-  const review = REVIEWS.find(r => r.id === editingReviewId);
-  if (review) { review.text = text; review.stars = rating; }
+//   const review = REVIEWS.find(r => r.id === editingReviewId);
+//   if (review) { review.text = text; review.stars = rating; }
 
-  document.getElementById('reviewModal').hidden = true;
-  /* Re-render */
-  const list = document.getElementById('reviewsList');
-  if (list) list.innerHTML = '';
-  document.querySelector('[data-tab="reviews"]')?.click();
-  showToast('Đánh giá đã được cập nhật ✓');
-});
+//   document.getElementById('reviewModal').hidden = true;
+//   /* Re-render */
+//   const list = document.getElementById('reviewsList');
+//   if (list) list.innerHTML = '';
+//   document.querySelector('[data-tab="reviews"]')?.click();
+//   showToast('Đánh giá đã được cập nhật ✓');
+// });
 
-/* ─── PROFILE FORM ─── */
-document.getElementById('profileForm')?.addEventListener('submit', async e => {
-  e.preventDefault();
-  const btn = document.getElementById('profileSaveBtn');
-  btn.classList.add('loading'); btn.disabled = true;
-  await delay(1200);
-  btn.classList.remove('loading');
-  btn.classList.add('success');
-  btn.querySelector('.btn-text').textContent = '✓ Đã lưu';
-  setTimeout(() => { btn.classList.remove('success'); btn.querySelector('.btn-text').textContent = 'Lưu thay đổi'; btn.disabled = false; }, 2200);
-  showToast('Thông tin cá nhân đã được cập nhật ✓');
-});
+// /* ─── PROFILE FORM ─── */
+// document.getElementById('profileForm')?.addEventListener('submit', async e => {
+//   e.preventDefault();
+//   const btn = document.getElementById('profileSaveBtn');
+//   btn.classList.add('loading'); btn.disabled = true;
+//   await delay(1200);
+//   btn.classList.remove('loading');
+//   btn.classList.add('success');
+//   btn.querySelector('.btn-text').textContent = '✓ Đã lưu';
+//   setTimeout(() => { btn.classList.remove('success'); btn.querySelector('.btn-text').textContent = 'Lưu thay đổi'; btn.disabled = false; }, 2200);
+//   showToast('Thông tin cá nhân đã được cập nhật ✓');
+// });
 
 /* ─── PASSWORD FORM ─── */
 document.getElementById('passwordForm')?.addEventListener('submit', async e => {

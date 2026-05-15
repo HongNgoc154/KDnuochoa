@@ -470,8 +470,9 @@ function showSuccess(title, sub) {
   overlay.classList.add('visible');
 
   /* Redirect after animation (replace with real URL) */
+  const next = new URLSearchParams(window.location.search).get('next') || '/';
   setTimeout(() => {
-    window.location.href = '/';
+    window.location.href = next;
   }, 2600);
 }
 /* ─── 10. AUTH TAB FROM URL QUERY (?tab=login|register) ─── */

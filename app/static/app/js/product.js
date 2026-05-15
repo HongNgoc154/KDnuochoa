@@ -831,3 +831,55 @@ function showQaToast(msg, type = "success") {
 })();
 
 
+/* ─── 13. Reviews AJAX ─────────────────────────────────────── */
+(function initReviews(){
+  const submitBtn = document.getElementById('pdSubmitReview');
+  const textarea = document.getElementById('pdReviewContent');
+  const starBtns = [...document.querySelectorAll('.pd-star-btn')];
+  const list = document.getElementById('pdReviewList');
+  const root = document.querySelector('.pd-layout');
+  if(!submitBtn || !textarea || !root) return;
+
+  const productId = root.dataset.productId;
+  const draftKey = `review_draft_${productId}`;
+  let rating = 5;
+  textarea.value = sessionStorage.getItem(draftKey) || '';
+
+  const paintStars = () => starBtns.forEach(btn => btn.classList.toggle('active', Number(btn.dataset.star) <= rating));
+  paintStars();
+  starBtns.forEach(btn => btn.addEventListener('click', ()=>{ rating = Number(btn.dataset.star); paintStars(); }));
+  textarea.addEventListener('input', ()=> sessionStorage.setItem(draftKey, textarea.value));
+
+  const toast = (msg) => {
+    const el=document.createElement('div'); el.className='pd-lux-toast'; el.textContent=msg; document.body.appendChild(el);
+    setTimeout(()=>el.classList.add('show'),10); setTimeout(()=>{el.classList.remove('show'); setTimeout(()=>el.remove(),300)},2600);
+  };
+
+  submitBtn.addEventListener('click', async ()=>{
+    const content = textarea.value.trim();
+    if(!content){ toast('Vui lòng nhập nội dung đánh giá.'); return; }
+    const fd = new FormData(); fd.append('product_id', productId); fd.append('rating', rating); fd.append('content', content);
+    const res = await fetch('/submit-review/', {method:'POST', body:fd});
+    const data = await res.json();
+    if(!data.ok && data.need_login){
+      sessionStorage.setItem(draftKey, content);
+      sessionStorage.setItem(`${draftKey}_rating`, String(rating));
+      window.location.href = `/auth/?next=${encodeURIComponent(window.location.pathname + '#tab-reviews')}`;
+      return;
+    }
+    if(!data.ok){ toast(data.message || 'Không thể gửi đánh giá'); return; }
+
+    const rv=data.review;
+    const card = document.createElement('article');
+    card.className='pd-review-card';
+    card.innerHTML = `<div class="pd-rv-head"><div class="pd-rv-avatar">${rv.name[0].toUpperCase()}</div><div><strong class="pd-rv-name"></strong><span class="pd-rv-stars">${'★'.repeat(rv.rating)}${'☆'.repeat(5-rv.rating)}</span></div><time class="pd-rv-date">${rv.created_at}</time></div><p class="pd-rv-text"></p><small class="pd-rv-label">${rv.label || ''}</small>`;
+    card.querySelector('.pd-rv-name').textContent = rv.name;
+    card.querySelector('.pd-rv-text').textContent = rv.content;
+    list.prepend(card);
+    textarea.value=''; sessionStorage.removeItem(draftKey);
+    toast(data.message || 'Cảm ơn bạn đã chia sẻ trải nghiệm cùng Ami Perfume.');
+  });
+
+  const savedRating = sessionStorage.getItem(`${draftKey}_rating`);
+  if(savedRating){ rating = Number(savedRating) || 5; paintStars(); sessionStorage.removeItem(`${draftKey}_rating`); }
+})();

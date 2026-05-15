@@ -10,7 +10,7 @@ import nested_admin
 from .models import (
     BienThe, BienTheThuocTinh, GiaTriThuocTinh,
     LoaiSanPham, NhomHuong, SanPham, ThuocTinh,
-    ThuongHieu, HinhAnh, SanPhamNhomHuong, BaiViet, HoiDap, TaiKhoan
+    ThuongHieu, HinhAnh, SanPhamNhomHuong, BaiViet, HoiDap, TaiKhoan, DanhGia
 )
 
 
@@ -483,3 +483,61 @@ class HoiDapAdmin(admin.ModelAdmin):
 
     class Media:
         css = {'all': ('admin/css/ami_admin.css',)}
+
+@admin.register(DanhGia, site=admin_site)
+class DanhGiaAdmin(admin.ModelAdmin):
+
+    list_display = (
+        'id_DanhGia',
+        'get_product',
+        'get_user',
+        'SoSao',
+        'short_content',
+        'NgayDanhGia',
+    )
+
+    search_fields = (
+        'NoiDung',
+        'id_TaiKhoan__TenDangNhap',
+        'id_SanPham__TenSanPham',
+    )
+
+    list_filter = (
+        'SoSao',
+        'NgayDanhGia',
+    )
+
+    readonly_fields = (
+        'NgayDanhGia',
+    )
+
+    ordering = (
+        '-NgayDanhGia',
+    )
+
+    def get_product(self, obj):
+
+        if obj.id_SanPham:
+            return obj.id_SanPham.TenSanPham
+
+        return "-"
+
+    get_product.short_description = "Sản phẩm"
+
+    def get_user(self, obj):
+
+        if obj.id_TaiKhoan:
+            return obj.id_TaiKhoan.TenDangNhap
+
+        return "-"
+
+    get_user.short_description = "Khách hàng"
+
+    def short_content(self, obj):
+
+        if not obj.NoiDung:
+            return "-"
+
+        return obj.NoiDung[:80]
+
+    short_content.short_description = "Nội dung"

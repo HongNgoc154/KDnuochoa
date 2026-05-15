@@ -27,6 +27,8 @@ urlpatterns = [
         views.submit_question,
         name='submit-question'
     ),
+
+    path('submit-review/', views.submit_review, name='submit-review'),
     # path('admin-dashboard/', views.admin_dashboard, name='admin-dashboard'),
     # path('admin/', views.admin_redirect),
     # path('admin/', admin_site.urls),

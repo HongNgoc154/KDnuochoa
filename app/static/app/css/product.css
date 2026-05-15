@@ -1605,3 +1605,12 @@
     color:#556b2f;
 }
 
+.pd-review-form{background:rgba(255,255,255,.72);backdrop-filter:blur(10px);padding:20px;border-radius:22px;box-shadow:0 14px 30px rgba(67,56,30,.08);margin-bottom:20px}
+.pd-review-stars-input{display:flex;gap:8px;margin:10px 0}
+.pd-star-btn{border:none;background:transparent;font-size:28px;color:#d5c9b0;cursor:pointer;transition:.25s}
+.pd-star-btn.active,.pd-star-btn:hover{color:#9aad62;transform:translateY(-1px)}
+#pdReviewContent{width:100%;min-height:110px;border:1px solid #ece3d2;border-radius:16px;padding:14px;background:#fffffff0}
+.pd-submit-review{margin-top:10px;background:linear-gradient(135deg,#9aad62,#b7c786);border:none;color:#fff;padding:10px 18px;border-radius:999px}
+.pd-review-reply{margin-top:12px;padding:12px 14px;border-left:3px solid #9aad62;background:#f8f6ef;border-radius:12px}
+.pd-lux-toast{position:fixed;right:20px;bottom:22px;background:#2e2a24;color:#f7f1e5;padding:12px 16px;border-radius:14px;opacity:0;transform:translateY(12px);transition:.3s;z-index:9999}
+.pd-lux-toast.show{opacity:1;transform:translateY(0)}
