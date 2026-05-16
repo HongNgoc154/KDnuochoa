@@ -1176,7 +1176,9 @@ def checkout_page(request):
 @csrf_exempt
 @require_POST
 def apply_voucher_api(request):
+
     account_id = request.session.get("account_id")
+
     if not account_id:
         return JsonResponse({
             "ok": False,
@@ -1184,48 +1186,142 @@ def apply_voucher_api(request):
             "message": "Vui lòng đăng nhập để sử dụng ưu đãi thành viên."
         }, status=401)
 
-    code = (request.POST.get("code") or "").strip().upper()
+    # =========================
+    # LẤY DỮ LIỆU
+    # =========================
+    code = (request.POST.get("code") or "").strip()
     subtotal = float(request.POST.get("subtotal") or 0)
+
+    print("CODE:", code)
+    print("SUBTOTAL:", subtotal)
+
     if not code:
-        return JsonResponse({"ok": False, "message": "Vui lòng nhập mã khuyến mãi."}, status=400)
+        return JsonResponse({
+            "ok": False,
+            "message": "Vui lòng nhập mã khuyến mãi."
+        }, status=400)
 
-    rel = _safe_first(KhuyenMaiTaiKhoan.objects.select_related("id_KhuyenMai").filter(
+    # =========================
+    # TÌM VOUCHER
+    # =========================
+    voucher = KhuyenMai.objects.filter(
+        MaKhuyenMai__iexact=code,
+        TrangThai="active"
+    ).first()
+
+    print("FOUND VOUCHER:", voucher)
+
+    if not voucher:
+        return JsonResponse({
+            "ok": False,
+            "message": "Mã khuyến mãi không hợp lệ."
+        }, status=404)
+
+    # =========================
+    # KIỂM TRA USER CÓ SỞ HỮU
+    # =========================
+    rel = KhuyenMaiTaiKhoan.objects.filter(
         id_TaiKhoan_id=account_id,
-        id_KhuyenMai__MaKhuyenMai__iexact=code,
-    ))
-    if not rel or not rel.id_KhuyenMai:
-        return JsonResponse({"ok": False, "message": "Mã không tồn tại."}, status=404)
+        id_KhuyenMai=voucher
+    ).first()
 
-    v = rel.id_KhuyenMai
-    now = timezone.now()
+    print("USER REL:", rel)
+
+    if not rel:
+        return JsonResponse({
+            "ok": False,
+            "message": "Bạn không sở hữu mã này."
+        }, status=403)
+
+    # =========================
+    # KIỂM TRA ĐÃ DÙNG
+    # =========================
     if rel.DaSuDung:
-        return JsonResponse({"ok": False, "message": "Bạn đã sử dụng mã này."}, status=400)
-    if (v.TrangThai or "").lower() not in {"active", "on", "1"}:
-        return JsonResponse({"ok": False, "message": "Mã không khả dụng."}, status=400)
-    if v.NgayBatDau and v.NgayBatDau > now:
-        return JsonResponse({"ok": False, "message": "Mã chưa đến thời gian áp dụng."}, status=400)
-    if v.NgayKetThuc and v.NgayKetThuc < now:
-        return JsonResponse({"ok": False, "message": "Mã đã hết hạn."}, status=400)
-    if v.SoLuong is not None and int(v.DaSuDung or 0) >= int(v.SoLuong):
-        return JsonResponse({"ok": False, "message": "Mã đã hết lượt sử dụng."}, status=400)
-    if subtotal < float(v.DonHangToiThieu or 0):
-        return JsonResponse({"ok": False, "message": "Đơn hàng chưa đủ điều kiện tối thiểu."}, status=400)
+        return JsonResponse({
+            "ok": False,
+            "message": "Bạn đã sử dụng mã này."
+        }, status=400)
 
-    discount = 0.0
-    loai_giam = (v.LoaiGiam or "").lower()
-    if "phan" in loai_giam or "%" in loai_giam:
-        discount = subtotal * (float(v.GiaTriGiam or 0) / 100.0)
-        if v.GiamToiDa:
-            discount = min(discount, float(v.GiamToiDa))
-    elif "free" in loai_giam:
-        discount = 0.0
-    else:
-        discount = float(v.GiaTriGiam or 0)
+    # =========================
+    # KIỂM TRA THỜI GIAN
+    # =========================
+    now = timezone.now()
+
+    if voucher.NgayBatDau and voucher.NgayBatDau > now:
+        return JsonResponse({
+            "ok": False,
+            "message": "Mã chưa thể sử dụng."
+        }, status=400)
+
+    if voucher.NgayKetThuc and voucher.NgayKetThuc < now:
+        return JsonResponse({
+            "ok": False,
+            "message": "Mã đã hết hạn."
+        }, status=400)
+
+    # =========================
+    # KIỂM TRA SỐ LƯỢNG
+    # =========================
+    if (
+        voucher.SoLuong is not None
+        and int(voucher.DaSuDung or 0) >= int(voucher.SoLuong)
+    ):
+        return JsonResponse({
+            "ok": False,
+            "message": "Mã khuyến mãi đã hết lượt sử dụng."
+        }, status=400)
+
+    # =========================
+    # KIỂM TRA ĐƠN TỐI THIỂU
+    # =========================
+    if subtotal < float(voucher.DonHangToiThieu or 0):
+        return JsonResponse({
+            "ok": False,
+            "message": "Đơn hàng chưa đạt giá trị tối thiểu."
+        }, status=400)
+
+    # =========================
+    # TÍNH GIẢM GIÁ
+    # =========================
+    discount = 0
+    loai_giam = (voucher.LoaiGiam or "").lower()
+
+    print("LOAI GIAM:", loai_giam)
+
+    # GIẢM %
+    if loai_giam == "percent":
+
+        discount = subtotal * (
+            float(voucher.GiaTriGiam or 0) / 100
+        )
+
+        # GIẢM TỐI ĐA
+        if voucher.GiamToiDa:
+            discount = min(
+                discount,
+                float(voucher.GiamToiDa)
+            )
+
+    # FREE SHIP
+    elif loai_giam == "free_ship":
+
+        discount = 0
+
+    # GIẢM TIỀN CỐ ĐỊNH
+    elif loai_giam == "fixed":
+
+        discount = float(voucher.GiaTriGiam or 0)
+
+    print("DISCOUNT:", discount)
+
+    # =========================
+    # RESPONSE
+    # =========================
     return JsonResponse({
         "ok": True,
-        "message": "Mã khuyến mãi đã được áp dụng thành công ✨",
-        "code": code,
-        "discount": max(0, int(discount)),
+        "message": "Áp dụng mã thành công ✨",
+        "code": voucher.MaKhuyenMai,
+        "discount": int(discount),
         "type": loai_giam,
     })
 

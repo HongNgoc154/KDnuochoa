@@ -284,14 +284,62 @@ function showCartToast(name, qty) {
     }
   });
 
-  /* Voucher */
-  document.querySelector('[data-apply-voucher]')?.addEventListener('click', () => {
-    const code = document.querySelector('[data-voucher-input]')?.value.trim().toUpperCase();
-    const msg  = document.querySelector('[data-voucher-message]');
-    discount = code === 'AMI10' ? 300000 : 0;
-    if (msg) msg.textContent = code === 'AMI10' ? '🎉 Giảm 300.000₫ thành công' : 'Mã không hợp lệ.';
-    updateSummary();
-  });
+  /* Voucher API */
+document.querySelector('[data-apply-voucher]')?.addEventListener('click', async () => {
+
+    const input = document.querySelector('[data-voucher-input]');
+    const msg = document.querySelector('[data-voucher-message]');
+
+    const code = input?.value.trim();
+
+    if (!code) {
+        msg.textContent = 'Vui lòng nhập mã.';
+        return;
+    }
+
+    try {
+
+        // subtotal hiện tại
+        const cart = getCart();
+
+        const subtotal = cart
+            .filter(i => i.checked !== false)
+            .reduce((s, i) => s + (i.price || 0) * (i.qty || 1), 0);
+
+        const fd = new FormData();
+
+        fd.append('code', code);
+        fd.append('subtotal', subtotal);
+
+        const res = await fetch('/api/apply-voucher/', {
+            method: 'POST',
+            body: fd
+        });
+
+        const data = await res.json();
+
+        console.log(data);
+
+        if (!data.ok) {
+
+            msg.textContent = data.message;
+            return;
+        }
+
+        // cập nhật discount
+        discount = data.discount || 0;
+
+        msg.textContent = data.message;
+
+        updateSummary();
+
+    } catch (err) {
+
+        console.error(err);
+
+        msg.textContent = 'Có lỗi xảy ra.';
+    }
+});
 
   document.querySelector('[data-checkout]')?.addEventListener('click', function () {
     window.location.href = this.dataset.checkoutUrl || '/checkout/';

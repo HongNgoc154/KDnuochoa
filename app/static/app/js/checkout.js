@@ -68,6 +68,11 @@ async function applyVoucher(code) {
   appliedVoucher = data.code;
   freeShip = data.type.includes('free');
   appliedDiscount = freeShip ? 0 : (data.discount || 0);
+  const usedIndex = memberVouchers.findIndex(v => (v.code || '').toUpperCase() === data.code);
+  if (usedIndex >= 0) {
+    memberVouchers.splice(usedIndex, 1);
+    renderMemberVouchers();
+  }
   document.getElementById('voucherTagText').textContent = data.code;
   document.getElementById('voucherTag').classList.add('show');
   renderTotals();
@@ -80,6 +85,10 @@ document.getElementById('applyVoucher')?.addEventListener('click', () => {
   const code = document.getElementById('voucherInput').value.trim().toUpperCase();
   if (!code) return;
   applyVoucher(code);
+});
+document.getElementById('voucherInput')?.addEventListener('paste', (e) => {
+  const text = e.clipboardData?.getData('text') || '';
+  if (text) e.target.value = text.trim().toUpperCase();
 });
 document.getElementById('coMemberVouchers')?.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-code]');
