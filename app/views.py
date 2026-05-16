@@ -26,6 +26,8 @@ from .models import (
     KhachHang,
     SanPham,
     TaiKhoan,
+    KhuyenMai,
+    KhuyenMaiTaiKhoan,
     ThuongHieu,
     YeuThich,
 )
@@ -71,6 +73,57 @@ def _account_display_name(account):
 def _rating_label(star):
     return {5: "Tuyệt vời · Highly Recommended", 4: "Rất tốt", 3: "Tốt", 2: "Chưa phù hợp", 1: "Không hài lòng"}.get(star, "")
 
+
+def _voucher_type_label(voucher):
+    loai = (voucher.LoaiKhuyenMai or "").lower()
+    mapping = {
+        "vip": "Exclusive",
+        "thanh vien moi": "New Member",
+        "freeship": "Freeship",
+    }
+    for key, label in mapping.items():
+        if key in loai:
+            return label
+    return "Member"
+
+
+def _get_available_vouchers(account_id):
+    now = timezone.now()
+    rows = KhuyenMaiTaiKhoan.objects.select_related("id_KhuyenMai").filter(
+        id_TaiKhoan_id=account_id,
+    ).order_by("-id")
+    vouchers = []
+    for row in rows:
+        v = row.id_KhuyenMai
+        if not v:
+            continue
+        is_active = (v.TrangThai or "").lower() in {"active", "on", "1"}
+        not_expired = (v.NgayKetThuc is None) or (v.NgayKetThuc >= now)
+        started = (v.NgayBatDau is None) or (v.NgayBatDau <= now)
+        has_quota = (v.SoLuong is None) or (int(v.DaSuDung or 0) < int(v.SoLuong or 0))
+        status = "Còn hiệu lực"
+        if row.DaSuDung:
+            status = "Đã sử dụng"
+        elif not not_expired:
+            status = "Hết hạn"
+        elif not (is_active and started and has_quota):
+            status = "Không khả dụng"
+
+        vouchers.append({
+            "id": v.id_KhuyenMai,
+            "code": (v.MaKhuyenMai or "").upper(),
+            "name": v.TenKhuyenMai or "",
+            "description": v.MoTa or "",
+            "discount_type": (v.LoaiGiam or "").lower(),
+            "discount_value": float(v.GiaTriGiam or 0),
+            "minimum_order": float(v.DonHangToiThieu or 0),
+            "max_discount": float(v.GiamToiDa or 0),
+            "expiry": v.NgayKetThuc.strftime("%d/%m/%Y") if v.NgayKetThuc else "",
+            "status": status,
+            "exclusive_badge": _voucher_type_label(v),
+            "used": bool(row.DaSuDung),
+        })
+    return vouchers
 
 # def _normalize_vietnamese_text(value):
 #     if not isinstance(value, str):
@@ -1094,10 +1147,12 @@ def profile_page(request):
     }
 
     print("WISHLIST DATA:", wishlist_data)
+    vouchers = _get_available_vouchers(account_id)
     return render(request, 'app/profile.html', {
         "profile":       profile,
         "review_data":   review_data,
         "wishlist_data": wishlist_data,
+        "voucher_data": vouchers,
     })
 
 
@@ -1110,7 +1165,69 @@ def checkout_page(request):
         "address": delivery.DiaChi if delivery else "",
         "note": delivery.GhiChu if delivery else "",
     }
-    return render(request, 'app/checkout.html', {"checkout": form_data})
+    account_id = request.session.get("account_id")
+    return render(request, 'app/checkout.html', {
+        "checkout": form_data,
+        "is_logged_in": bool(account_id),
+        "voucher_data": _get_available_vouchers(account_id) if account_id else [],
+    })
+
+
+@csrf_exempt
+@require_POST
+def apply_voucher_api(request):
+    account_id = request.session.get("account_id")
+    if not account_id:
+        return JsonResponse({
+            "ok": False,
+            "need_login": True,
+            "message": "Vui lòng đăng nhập để sử dụng ưu đãi thành viên."
+        }, status=401)
+
+    code = (request.POST.get("code") or "").strip().upper()
+    subtotal = float(request.POST.get("subtotal") or 0)
+    if not code:
+        return JsonResponse({"ok": False, "message": "Vui lòng nhập mã khuyến mãi."}, status=400)
+
+    rel = _safe_first(KhuyenMaiTaiKhoan.objects.select_related("id_KhuyenMai").filter(
+        id_TaiKhoan_id=account_id,
+        id_KhuyenMai__MaKhuyenMai__iexact=code,
+    ))
+    if not rel or not rel.id_KhuyenMai:
+        return JsonResponse({"ok": False, "message": "Mã không tồn tại."}, status=404)
+
+    v = rel.id_KhuyenMai
+    now = timezone.now()
+    if rel.DaSuDung:
+        return JsonResponse({"ok": False, "message": "Bạn đã sử dụng mã này."}, status=400)
+    if (v.TrangThai or "").lower() not in {"active", "on", "1"}:
+        return JsonResponse({"ok": False, "message": "Mã không khả dụng."}, status=400)
+    if v.NgayBatDau and v.NgayBatDau > now:
+        return JsonResponse({"ok": False, "message": "Mã chưa đến thời gian áp dụng."}, status=400)
+    if v.NgayKetThuc and v.NgayKetThuc < now:
+        return JsonResponse({"ok": False, "message": "Mã đã hết hạn."}, status=400)
+    if v.SoLuong is not None and int(v.DaSuDung or 0) >= int(v.SoLuong):
+        return JsonResponse({"ok": False, "message": "Mã đã hết lượt sử dụng."}, status=400)
+    if subtotal < float(v.DonHangToiThieu or 0):
+        return JsonResponse({"ok": False, "message": "Đơn hàng chưa đủ điều kiện tối thiểu."}, status=400)
+
+    discount = 0.0
+    loai_giam = (v.LoaiGiam or "").lower()
+    if "phan" in loai_giam or "%" in loai_giam:
+        discount = subtotal * (float(v.GiaTriGiam or 0) / 100.0)
+        if v.GiamToiDa:
+            discount = min(discount, float(v.GiamToiDa))
+    elif "free" in loai_giam:
+        discount = 0.0
+    else:
+        discount = float(v.GiaTriGiam or 0)
+    return JsonResponse({
+        "ok": True,
+        "message": "Mã khuyến mãi đã được áp dụng thành công ✨",
+        "code": code,
+        "discount": max(0, int(discount)),
+        "type": loai_giam,
+    })
 
 def logout_view(request):
     logout(request)

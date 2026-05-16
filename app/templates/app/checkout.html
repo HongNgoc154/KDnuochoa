@@ -135,9 +135,21 @@
     <!-- Voucher -->
     <div class="co-voucher">
       <div class="co-voucher-row">
-        <input class="co-voucher-input" type="text" id="voucherInput" placeholder="MÃ GIẢM GIÁ">
+        <input class="co-voucher-input" type="text" id="voucherInput" placeholder="Nhập mã khuyến mãi">
         <button class="btn-apply" id="applyVoucher">Áp dụng</button>
       </div>
+      <div class="co-voucher-auth" id="voucherAuthMessage">
+        {% if not is_logged_in %}
+        Vui lòng đăng nhập để sử dụng ưu đãi thành viên.
+        <a href="{% url 'auth-page' %}">Đăng nhập ngay</a>
+        {% endif %}
+      </div>
+      {% if is_logged_in %}
+      <div class="co-member-offers">
+        <h4>Ưu đãi dành riêng cho bạn</h4>
+        <div class="co-member-vouchers" id="coMemberVouchers"></div>
+      </div>
+      {% endif %}
       <div class="co-voucher-tag" id="voucherTag">
         <span>✓</span>
         <span id="voucherTagText">WELCOME20 — Giảm 20%</span>
@@ -182,6 +194,10 @@
   </div>
 </div>
 
+{{ voucher_data|json_script:"voucherData" }}
+<script>
+  window.CHECKOUT_AUTH = { isLoggedIn: {{ is_logged_in|yesno:"true,false" }} };
+</script>
 <script src="{% static 'app/js/checkout.js' %}"></script>
 </body>
 </html>

@@ -232,13 +232,24 @@
       {% endif %}
     </section>
 
-    <!-- ════ TAB: VOUCHERS ════ -->
+    <!-- ════ TAB: VOUCHERS — LUXURY REDESIGN ════ -->
+    <!-- Thay toàn bộ <section class="tab-panel" id="tab-vouchers"> ... </section> -->
     <section class="tab-panel" id="tab-vouchers" hidden>
       <div class="panel-header">
         <h1 class="panel-title">Mã <em>khuyến mãi</em></h1>
         <p class="panel-sub">Các voucher hiện có trong tài khoản của bạn.</p>
       </div>
-      <div class="vouchers-list" id="vouchersList"></div>
+
+      <div class="vouchers-grid" id="vouchersList">
+        <!-- JS renderVouchers() sẽ inject vào đây -->
+      </div>
+
+      <!-- Empty state nếu không có voucher -->
+      <div class="vouchers-empty" id="vouchersEmpty" hidden>
+        <div class="vouchers-empty-icon">🎟</div>
+        <p class="vouchers-empty-title">Chưa có voucher nào</p>
+        <p class="vouchers-empty-sub">Các ưu đãi dành riêng cho bạn sẽ xuất hiện tại đây.</p>
+      </div>
     </section>
 
     <!-- ════ TAB: REVIEWS ════ -->
@@ -470,5 +481,6 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ voucher_data|json_script:"profileVoucherData" }}
 <script src="{% static 'app/js/profile.js' %}"></script>
 {% endblock %}

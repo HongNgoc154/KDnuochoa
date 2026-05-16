@@ -22,6 +22,7 @@ urlpatterns = [
     path('tai-khoan/', views.profile_page, name='profile-page'),
     path('thanh-toan/', views.checkout_page, name='checkout-page'),
     path('logout/', views.logout_view, name='logout'),
+    path('api/apply-voucher/', views.apply_voucher_api, name='apply-voucher-api'),
     path(
         'submit-question/',
         views.submit_question,

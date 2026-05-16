@@ -18,12 +18,14 @@ const ORDERS = [
 //   { id: 5, name: 'Lancôme La Vie est Belle', brand: 'Lancôme', price: '3.700.000₫', img: 'https://images.unsplash.com/photo-1541643600914-78b084683702?auto=format&fit=crop&w=600&q=80' },
 //   { id: 6, name: 'Dior Miss Dior', brand: 'Dior', price: '3.600.000₫', img: 'https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?auto=format&fit=crop&w=600&q=80' },
 // ];
-const VOUCHERS = [
-  { code: 'WELCOME20', value: 'Giảm 20% toàn bộ đơn hàng', expiry: '30/06/2025', expiring: false },
-  { code: 'VIP50K',    value: 'Giảm 50.000₫ đơn từ 500K', expiry: '15/05/2025', expiring: true },
-  { code: 'FREESHIP',  value: 'Miễn phí vận chuyển', expiry: '31/12/2025', expiring: false },
-  { code: 'SUMMER15',  value: 'Giảm 15% nước hoa nam', expiry: '01/05/2025', expiring: true },
-];
+const VOUCHERS = JSON.parse(document.getElementById('profileVoucherData')?.textContent || '[]').map(v => ({
+  code: v.code,
+  value: v.description || v.name || 'Ưu đãi thành viên',
+  expiry: v.expiry || '--/--/----',
+  expiring: v.status === 'Hết hạn',
+  status: v.status || 'Còn hiệu lực',
+  badge: v.exclusive_badge || 'Member',
+}));
 // const REVIEWS = [
 //   { id: 1, product: 'Dior Sauvage Elixir', brand: 'Dior', img: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=200&q=80', stars: 5, text: 'Mùi này thực sự đẳng cấp, lưu hương suốt 10 giờ mà vẫn dịu. Đi event tối được khen cả đêm. Mua từ Ami rất yên tâm về nguồn gốc.' },
 //   { id: 2, product: 'Bleu de Chanel EDP', brand: 'Chanel', img: 'https://images.unsplash.com/photo-1619994403073-2cec5a97dd6d?auto=format&fit=crop&w=200&q=80', stars: 5, text: 'Được tư vấn rất kỹ theo phong cách cá nhân. Bleu de Chanel rất tươi mát và thanh lịch, phù hợp cả đi làm lẫn đi chơi.' },
@@ -303,35 +305,104 @@ document.getElementById('confirmCancel')?.addEventListener('click', () => {
   });
 })();
 
-/* ─── RENDER VOUCHERS ─── */
-(function renderVouchers() {
-  const list = document.getElementById('vouchersList');
-  if (!list) return;
+/* ─── RENDER VOUCHERS — Luxury Coupon Design ─── */
+/* Thay hàm renderVouchers() cũ trong profile.js  */
 
-  VOUCHERS.forEach(v => {
+(function renderVouchers() {
+  const grid  = document.getElementById('vouchersList');
+  const empty = document.getElementById('vouchersEmpty');
+  if (!grid) return;
+
+  // Đọc data từ json_script tag truyền từ Django
+  let vouchers = [];
+  try {
+    vouchers = JSON.parse(document.getElementById('profileVoucherData')?.textContent || '[]');
+  } catch { vouchers = []; }
+
+  if (!vouchers.length) {
+    if (empty) empty.hidden = false;
+    return;
+  }
+  if (empty) empty.hidden = true;
+
+  // Màu theo loại badge
+  const PALETTE = {
+    'Exclusive': { bg: '#4B5320', light: '#6b7a3a', text: '#EBF6C4', accent: '#c9a96e' },
+    'VIP':       { bg: '#7a4a10', light: '#a06520', text: '#fff8e8', accent: '#f0c060' },
+    'New Member':{ bg: '#2d4a6e', light: '#3d6090', text: '#e8f0fc', accent: '#90c0f0' },
+    'Freeship':  { bg: '#3a5a3a', light: '#507050', text: '#e8fce8', accent: '#90d090' },
+    'Member':    { bg: '#4B672D', light: '#6a8d40', text: '#EBF6C4', accent: '#b8d870' },
+  };
+
+  vouchers.forEach((v, idx) => {
+    const pal     = PALETTE[v.exclusive_badge] || PALETTE['Member'];
+    const expired = v.status === 'Hết hạn' || v.status === 'Đã sử dụng';
+    const used    = v.status === 'Đã sử dụng';
+    const expiring = v.status === 'Còn hiệu lực' && v.expiry;
+
     const card = document.createElement('div');
-    card.className = `voucher-card ${v.expiring ? 'expiring' : ''}`;
+    card.className = `vou-card${expired ? ' vou-expired' : ''}`;
+    card.style.animationDelay = `${idx * 0.07}s`;
+
     card.innerHTML = `
-      <div class="voucher-left">
-        <div class="voucher-code">${v.code}</div>
-        <div class="voucher-value">${v.value}</div>
+      <!-- LEFT: mã + mô tả -->
+      <div class="vou-left" style="background:linear-gradient(135deg,${pal.bg},${pal.light});">
+        <div class="vou-badge-chip">${v.exclusive_badge || 'Member'}</div>
+        <div class="vou-code">${v.code}</div>
+        <div class="vou-desc">${v.description || v.name || 'Ưu đãi thành viên'}</div>
+        <!-- Notch decoration -->
+        <div class="vou-dots">
+          <span></span><span></span><span></span>
+        </div>
       </div>
-      <div class="voucher-notch"><span></span><span></span><span></span></div>
-      <div class="voucher-right">
-        <span class="voucher-expiry">${v.expiring ? '⚠ ' : ''}HSD: ${v.expiry}</span>
-        <button class="btn-copy" data-code="${v.code}" data-tip="Đã sao chép!">Sao chép</button>
+
+      <!-- Perforation line -->
+      <div class="vou-perf">
+        <div class="vou-perf-top"></div>
+        <div class="vou-perf-line"></div>
+        <div class="vou-perf-bot"></div>
+      </div>
+
+      <!-- RIGHT: info + action -->
+      <div class="vou-right">
+        <div class="vou-status-row">
+          <span class="vou-status-dot ${used ? 'used' : expired ? 'expired' : 'active'}"></span>
+          <span class="vou-status-text">${v.status}</span>
+        </div>
+        <div class="vou-info-rows">
+          ${v.expiry ? `<div class="vou-info-row">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            <span>${expiring ? '⚠ ' : ''}HSD: ${v.expiry}</span>
+          </div>` : ''}
+          ${v.minimum_order > 0 ? `<div class="vou-info-row">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/></svg>
+            <span>ĐH tối thiểu: ${Number(v.minimum_order).toLocaleString('vi-VN')}₫</span>
+          </div>` : ''}
+        </div>
+        ${!expired ? `
+        <button class="vou-copy-btn" data-code="${v.code}" title="Sao chép mã">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          Sao chép
+        </button>` : `<div class="vou-used-stamp">${used ? 'ĐÃ DÙNG' : 'HẾT HẠN'}</div>`}
       </div>
     `;
-    list.appendChild(card);
+    grid.appendChild(card);
   });
 
-  list.addEventListener('click', e => {
-    const btn = e.target.closest('.btn-copy');
+  /* Copy button */
+  grid.addEventListener('click', e => {
+    const btn = e.target.closest('.vou-copy-btn');
     if (!btn) return;
-    navigator.clipboard?.writeText(btn.dataset.code).catch(() => {});
+    const code = btn.dataset.code;
+    navigator.clipboard?.writeText(code).catch(() => {});
+    btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Đã sao chép!`;
     btn.classList.add('copied');
-    setTimeout(() => btn.classList.remove('copied'), 1800);
-    showToast(`Đã sao chép mã ${btn.dataset.code} ✓`);
+    setTimeout(() => {
+      btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Sao chép`;
+      btn.classList.remove('copied');
+    }, 2000);
+    // Toast
+    if (typeof showToast === 'function') showToast(`Đã sao chép mã ${code} ✓`);
   });
 })();
 

@@ -972,3 +972,271 @@ body {
   margin-left: 10px !important;
   vertical-align: middle !important;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   VOUCHER CARDS — Luxury Coupon Design
+   Thêm vào cuối profile.css
+   ═══════════════════════════════════════════════════════════ */
+
+/* Grid layout */
+.vouchers-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+/* Card */
+.vou-card {
+  display: grid;
+  grid-template-columns: 1fr 14px 120px;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(44,51,36,.1);
+  border: 1px solid rgba(91,103,75,.08);
+  background: #fff;
+  transition: transform .3s ease, box-shadow .3s ease;
+  animation: voucherFadeIn .45s ease both;
+  min-height: 120px;
+}
+.vou-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 36px rgba(44,51,36,.15);
+}
+.vou-card.vou-expired {
+  opacity: 0.55;
+  filter: grayscale(40%);
+}
+.vou-card.vou-expired:hover {
+  transform: none;
+  box-shadow: 0 4px 24px rgba(44,51,36,.08);
+}
+
+@keyframes voucherFadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* LEFT — màu nền đậm */
+.vou-left {
+  padding: 20px 18px 16px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.vou-left::before {
+  content: '';
+  position: absolute;
+  top: -30px; right: -30px;
+  width: 90px; height: 90px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.07);
+}
+.vou-left::after {
+  content: '';
+  position: absolute;
+  bottom: -20px; left: 10px;
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.05);
+}
+
+.vou-badge-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 40px;
+  border: 1px solid rgba(255,255,255,.3);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.9);
+  width: fit-content;
+  backdrop-filter: blur(4px);
+}
+
+.vou-code {
+  font-family: 'Jost', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #ffffff;
+  text-transform: uppercase;
+  margin-top: 2px;
+  position: relative;
+  z-index: 1;
+}
+
+.vou-desc {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 13px;
+  font-style: italic;
+  color: rgba(255,255,255,.8);
+  line-height: 1.4;
+  position: relative;
+  z-index: 1;
+}
+
+/* Dots decoration (notch) */
+.vou-dots {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.vou-dots span {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--bg, #f2ede4);
+  display: block;
+}
+
+/* Perforation divider */
+.vou-perf {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #fff;
+  position: relative;
+}
+.vou-perf-top,
+.vou-perf-bot {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--bg, #f2ede4);
+  flex-shrink: 0;
+}
+.vou-perf-top { margin-top: -7px; }
+.vou-perf-bot { margin-bottom: -7px; }
+.vou-perf-line {
+  flex: 1;
+  width: 1px;
+  border-left: 2px dashed rgba(91,103,75,.18);
+}
+
+/* RIGHT — info */
+.vou-right {
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.vou-status-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.vou-status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.vou-status-dot.active  { background: #4B672D; }
+.vou-status-dot.expired { background: #c0392b; }
+.vou-status-dot.used    { background: #9e9e8e; }
+.vou-status-text {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--text-light);
+}
+
+.vou-info-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+.vou-info-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+.vou-info-row svg {
+  flex-shrink: 0;
+  opacity: .6;
+}
+
+/* Copy button */
+.vou-copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 12px;
+  border-radius: 20px;
+  border: 1.5px solid rgba(75,103,45,.3);
+  background: transparent;
+  color: #4B672D;
+  font-family: 'Jost', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .2s, color .2s, border-color .2s;
+  white-space: nowrap;
+}
+.vou-copy-btn:hover {
+  background: #4B672D;
+  color: #EBF6C4;
+  border-color: #4B672D;
+}
+.vou-copy-btn.copied {
+  background: #4B672D;
+  color: #EBF6C4;
+  border-color: #4B672D;
+}
+
+/* Used/Expired stamp */
+.vou-used-stamp {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #9e9e8e;
+  text-transform: uppercase;
+  opacity: 0.7;
+  text-align: center;
+  padding: 6px 0;
+}
+
+/* Empty state */
+.vouchers-empty {
+  text-align: center;
+  padding: 72px 40px;
+  color: var(--text-muted);
+}
+.vouchers-empty-icon {
+  font-size: 48px;
+  margin-bottom: 20px;
+}
+.vouchers-empty-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 24px;
+  font-weight: 400;
+  color: var(--text-light);
+  margin-bottom: 10px;
+}
+.vouchers-empty-sub {
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .vouchers-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .vou-card { grid-template-columns: 1fr 14px 100px; }
+  .vou-code { font-size: 16px; letter-spacing: 2px; }
+  .vou-right { padding: 12px 10px; }
+}

@@ -205,6 +205,21 @@ body { font-family: 'Jost', sans-serif; background: #f2ede4; color: var(--text);
 .co-voucher-tag { display: none; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--success); font-weight: 500; }
 .co-voucher-tag.show { display: flex; }
 .co-voucher-tag button { background: none; border: none; cursor: pointer; font-size: 16px; color: var(--text-muted); line-height: 1; }
+.co-voucher-auth { margin-top: 10px; font-size: 12px; color: var(--warn); }
+.co-voucher-auth a { margin-left: 6px; color: var(--olive); font-weight: 600; text-decoration: none; }
+.co-member-offers { margin-top: 14px; }
+.co-member-offers h4 { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 500; margin-bottom: 10px; }
+.co-member-vouchers { display: flex; flex-direction: column; gap: 10px; }
+.co-member-card {
+  border: 1px solid var(--border); border-radius: 20px; padding: 12px;
+  background: linear-gradient(120deg, rgba(240,234,220,.9), rgba(255,255,255,.75));
+  box-shadow: 0 10px 22px rgba(87,98,56,.08);
+}
+.co-member-card:hover { transform: translateY(-2px); transition: all .25s ease; box-shadow: 0 16px 30px rgba(87,98,56,.14); }
+.co-member-card .badge { font-size: 10px; letter-spacing: 1px; color: #7c5a22; background: #f2e1b6; border-radius: 999px; padding: 4px 8px; }
+.co-member-card .code { font-size: 18px; font-weight: 600; letter-spacing: 2px; margin-top: 8px; }
+.co-member-card .meta { font-size: 12px; color: var(--text-light); margin-top: 4px; }
+.co-member-card .apply-now { margin-top: 10px; }
 
 /* Totals */
 .co-totals { padding: 16px 28px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }

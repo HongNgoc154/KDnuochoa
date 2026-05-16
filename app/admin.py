@@ -10,7 +10,8 @@ import nested_admin
 from .models import (
     BienThe, BienTheThuocTinh, GiaTriThuocTinh,
     LoaiSanPham, NhomHuong, SanPham, ThuocTinh,
-    ThuongHieu, HinhAnh, SanPhamNhomHuong, BaiViet, HoiDap, TaiKhoan, DanhGia
+    ThuongHieu, HinhAnh, SanPhamNhomHuong, BaiViet, HoiDap, TaiKhoan, DanhGia,
+    KhuyenMai, KhuyenMaiTaiKhoan
 )
 
 
@@ -541,3 +542,35 @@ class DanhGiaAdmin(admin.ModelAdmin):
         return obj.NoiDung[:80]
 
     short_content.short_description = "Nội dung"
+
+# ===================== KHUYẾN MÃI =====================
+
+@admin.register(KhuyenMai, site=admin_site)
+class KhuyenMaiAdmin(admin.ModelAdmin):
+
+    list_display = (
+        'id_KhuyenMai',
+        'MaKhuyenMai',
+        'TenKhuyenMai',
+        'LoaiKhuyenMai',
+        'LoaiGiam',
+        'GiaTriGiam',
+        'SoLuong',
+        'DaSuDung',
+        'TrangThai',
+        'NgayBatDau',
+        'NgayKetThuc',
+    )
+
+    search_fields = (
+        'MaKhuyenMai',
+        'TenKhuyenMai',
+    )
+
+    list_filter = (
+        'TrangThai',
+        'LoaiKhuyenMai',
+        'LoaiGiam',
+    )
+
+    ordering = ('-id_KhuyenMai',)

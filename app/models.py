@@ -251,6 +251,73 @@ class TaiKhoan(models.Model):
         db_table = "TaiKhoan"
 
 
+# ===================== KHUYẾN MÃI =====================
+
+class KhuyenMai(models.Model):
+
+    id_KhuyenMai = models.AutoField(primary_key=True)
+
+    MaKhuyenMai = models.CharField(max_length=50, null=True, blank=True)
+
+    TenKhuyenMai = models.CharField(max_length=255, null=True, blank=True)
+
+    MoTa = models.TextField(null=True, blank=True)
+
+    LoaiKhuyenMai = models.CharField(max_length=50, null=True, blank=True)
+
+    LoaiGiam = models.CharField(max_length=20, null=True, blank=True)
+
+    GiaTriGiam = models.FloatField(null=True, blank=True)
+
+    GiamToiDa = models.FloatField(null=True, blank=True)
+
+    DonHangToiThieu = models.FloatField(null=True, blank=True)
+
+    SoLuong = models.IntegerField(null=True, blank=True)
+
+    DaSuDung = models.IntegerField(default=0)
+
+    NgayBatDau = models.DateTimeField(null=True, blank=True)
+
+    NgayKetThuc = models.DateTimeField(null=True, blank=True)
+
+    TrangThai = models.CharField(max_length=20, null=True, blank=True)
+
+    class Meta:
+        managed = False
+        db_table = 'KhuyenMai'
+
+    def __str__(self):
+        return self.MaKhuyenMai
+
+
+# ===================== KHUYẾN MÃI TÀI KHOẢN =====================
+
+class KhuyenMaiTaiKhoan(models.Model):
+
+    id = models.AutoField(primary_key=True)
+
+    id_TaiKhoan = models.ForeignKey(
+        'TaiKhoan',
+        on_delete=models.DO_NOTHING,
+        db_column='id_TaiKhoan'
+    )
+
+    id_KhuyenMai = models.ForeignKey(
+        'KhuyenMai',
+        on_delete=models.DO_NOTHING,
+        db_column='id_KhuyenMai'
+    )
+
+    DaSuDung = models.BooleanField(default=False)
+
+    NgayNhan = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        managed = False
+        db_table = 'KhuyenMai_TaiKhoan'
+
+
 class DonHang(models.Model):
     id_DonHang = models.AutoField(primary_key=True)
 
