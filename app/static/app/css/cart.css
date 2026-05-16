@@ -521,3 +521,221 @@ body.cart-page {
   .cart-line-total { text-align: left; }
   .suggestions-track { grid-auto-columns: 72vw; }
 }
+
+/* ── Thêm vào cuối cart.css ── */
+
+/* Banner freeship đơn đầu tiên */
+.cart-freeship-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  background: linear-gradient(135deg, #4B672D, #6a8d40);
+  color: #EBF6C4;
+  border-radius: 14px;
+  font-family: 'Jost', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  margin-bottom: 16px;
+  animation: freshipSlide .4s ease;
+}
+.freeship-tag {
+  margin-left: auto;
+  background: rgba(255,255,255,.18);
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  white-space: nowrap;
+}
+@keyframes freshipSlide {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Thêm vào cuối cart.css ── */
+
+/* ── Summary rows ── */
+.cart-summary-rows p {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #5a5a4a;
+}
+.cart-summary-rows hr {
+  border: none;
+  border-top: 1px solid rgba(91,103,75,.1);
+  margin: 10px 0;
+}
+.cart-summary-rows .total {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  color: #2c3324;
+}
+.cart-summary-rows .total strong {
+  color: #4B672D;
+  font-weight: 400;
+}
+
+/* ── Voucher section ── */
+.cart-voucher-section {
+  margin: 14px 0;
+  padding-top: 14px;
+  border-top: 1px solid rgba(91,103,75,.1);
+}
+
+/* ── Member voucher chips ── */
+.cart-voucher-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #9e9e8e;
+  margin: 10px 0 8px;
+}
+.cart-voucher-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, rgba(75,103,45,.06), rgba(75,103,45,.02));
+  border: 1px solid rgba(75,103,45,.18);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  transition: border-color .2s;
+}
+.cart-voucher-chip:hover { border-color: rgba(75,103,45,.35); }
+.cart-vc-left { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.cart-vc-badge {
+  font-size: 8px; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: #4B672D;
+  background: rgba(75,103,45,.1); border-radius: 20px;
+  padding: 1px 7px; width: fit-content;
+}
+.cart-vc-code {
+  font-family: 'Jost', monospace;
+  font-size: 14px; font-weight: 700;
+  letter-spacing: 2px; color: #2c3324;
+}
+.cart-vc-desc { font-size: 11px; color: #6b7560; }
+.cart-vc-apply {
+  padding: 7px 14px;
+  border-radius: 20px;
+  border: 1.5px solid rgba(75,103,45,.35);
+  background: transparent;
+  color: #4B672D;
+  font-family: 'Jost', sans-serif;
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 1px; text-transform: uppercase;
+  cursor: pointer;
+  transition: background .2s, color .2s;
+  white-space: nowrap;
+}
+.cart-vc-apply:hover { background: #4B672D; color: #EBF6C4; }
+
+/* ── Point box ── */
+.cart-point-box {
+  background: linear-gradient(135deg, #fdf8ee, #f5edd8);
+  border: 1px solid rgba(201,169,110,.28);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin: 10px 0;
+  transition: box-shadow .25s;
+}
+.cart-point-box:has(#cartPointToggle:checked) {
+  border-color: rgba(201,169,110,.55);
+  box-shadow: 0 4px 16px rgba(201,169,110,.18);
+}
+.cart-point-header {
+  display: flex; align-items: center; gap: 8px;
+}
+.cart-point-icon {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(201,169,110,.15);
+  display: grid; place-items: center;
+  color: #c9a96e; flex-shrink: 0;
+}
+.cart-point-info {
+  flex: 1; display: flex; flex-direction: column; gap: 1px;
+}
+.cart-point-label { font-size: 10px; color: #9e8c6a; }
+.cart-point-balance {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 15px; font-weight: 600; color: #c9a96e;
+}
+
+/* Toggle */
+.cart-point-toggle { cursor: pointer; flex-shrink: 0; }
+.cart-point-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+.cart-pt-track {
+  display: block; width: 40px; height: 22px; border-radius: 11px;
+  background: rgba(158,140,106,.25); border: 1.5px solid rgba(158,140,106,.3);
+  position: relative; transition: background .25s, border-color .25s;
+}
+.cart-pt-thumb {
+  position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  transition: transform .25s cubic-bezier(.4,0,.2,1);
+}
+.cart-point-toggle input:checked ~ .cart-pt-track { background: #c9a96e; border-color: #c9a96e; }
+.cart-point-toggle input:checked ~ .cart-pt-track .cart-pt-thumb { transform: translateX(18px); }
+
+/* Point detail */
+.cart-point-detail {
+  margin-top: 10px; padding-top: 10px;
+  border-top: 1px dashed rgba(201,169,110,.3);
+  display: flex; flex-direction: column; gap: 5px;
+  animation: pointIn .3s ease;
+}
+@keyframes pointIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.cart-pd-row {
+  display: flex; justify-content: space-between;
+  font-size: 12px; color: #7a6a4a;
+}
+.cart-pd-row.highlight { font-weight: 600; color: #c9a96e; font-size: 13px; }
+.cart-pd-note { font-size: 10px; color: #9e8c6a; margin-top: 3px; }
+
+/* ── Checkout button ── */
+.checkout-btn {
+  width: 100%;
+  margin-top: 14px;
+  padding: 15px;
+  border-radius: 40px;
+  background: linear-gradient(135deg, #3d4d22, #4B672D, #6a8d3f);
+  background-size: 200%;
+  color: #EBF6C4;
+  font-family: 'Jost', sans-serif;
+  font-size: 12px; font-weight: 600;
+  letter-spacing: 2.5px; text-transform: uppercase;
+  border: none; cursor: pointer;
+  transition: background-position .4s, transform .2s, box-shadow .2s;
+}
+.checkout-btn:hover {
+  background-position: right center;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(75,103,45,.35);
+}
+
+/* Secure note */
+.cart-secure-note {
+  text-align: center;
+  font-size: 11px;
+  color: #9e9e8e;
+  margin-top: 10px;
+  letter-spacing: 0.2px;
+}
+
+/* Voucher message */
+.voucher-message {
+  font-size: 12px;
+  min-height: 18px;
+  margin-top: 6px;
+  color: #4B672D;
+}

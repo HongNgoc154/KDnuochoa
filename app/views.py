@@ -11,6 +11,15 @@ from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from django.utils.html import escape
+import random, string
+import hashlib
+import hmac
+import urllib.parse
+from datetime import datetime, timedelta
+from django.conf import settings
+import requests as http_requests
+import uuid
+
 
 from .models import (
     BaiViet,
@@ -30,6 +39,8 @@ from .models import (
     KhuyenMaiTaiKhoan,
     ThuongHieu,
     YeuThich,
+    LichSuDiem,
+    CauHinhThanhVien,
 )
 from collections import defaultdict
 
@@ -86,6 +97,184 @@ def _voucher_type_label(voucher):
             return label
     return "Member"
 
+# ═══════════════════════════════════════════════════════════════
+# views.py — Thay các hàm helper điểm + thêm apply_points_api
+# ═══════════════════════════════════════════════════════════════
+
+# ── Helper: cộng điểm ──────────────────────────────────────────
+def add_points(account, points, loai, mo_ta="", order=None):
+    """Cộng điểm và ghi lịch sử. Dùng schema DB thực tế."""
+    if not account or int(points) <= 0:
+        return
+    account.DiemTichLuy = int(account.DiemTichLuy or 0) + int(points)
+    account.save(update_fields=["DiemTichLuy"])
+
+    LichSuDiem.objects.create(
+        id_TaiKhoan=account,
+        id_DonHang=order,
+        SoDiem=int(points),           # cột SoDiem (dương = cộng)
+        Loai=loai,
+        MoTa=mo_ta or f"Cộng {points} điểm",
+        NgayTao=timezone.now(),
+    )
+
+
+# ── Helper: trừ điểm ──────────────────────────────────────────
+def redeem_points(account, points, order=None):
+    """Trừ điểm khi thanh toán. Trả False nếu không đủ điểm."""
+    if not account:
+        return False
+    points = int(points)
+    current = int(account.DiemTichLuy or 0)
+    if points > current:
+        return False
+    account.DiemTichLuy = current - points
+    account.save(update_fields=["DiemTichLuy"])
+
+    LichSuDiem.objects.create(
+        id_TaiKhoan=account,
+        id_DonHang=order,
+        SoDiem=-points,               # âm = trừ điểm
+        Loai="redeem_order",
+        MoTa="Dùng điểm thanh toán",
+        NgayTao=timezone.now(),
+    )
+    return True
+
+
+# ── Helper: cập nhật hạng thành viên ──────────────────────────
+def update_member_level(account):
+    """Cập nhật HangThanhVien theo TongChiTieu."""
+    total = float(account.TongChiTieu or 0)
+    if total >= 10_000_000:
+        level = "Platinum"
+    elif total >= 5_000_000:
+        level = "Gold"
+    elif total >= 2_000_000:
+        level = "Silver"
+    else:
+        level = "Member"
+    if account.HangThanhVien != level:
+        account.HangThanhVien = level
+        account.save(update_fields=["HangThanhVien"])
+
+
+# ══════════════════════════════════════════════════════════════
+# API: GET điểm hiện tại của user (dùng khi trang checkout load)
+# URL: GET /api/points/
+# ══════════════════════════════════════════════════════════════
+def get_points_api(request):
+    account_id = request.session.get("account_id")
+    if not account_id:
+        return JsonResponse({"ok": False, "points": 0, "discount": 0})
+ 
+    account = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first()
+    if not account:
+        return JsonResponse({"ok": False, "points": 0, "discount": 0})
+ 
+    points  = int(account.DiemTichLuy or 0)
+    # 100 điểm = 10.000₫ → 1 điểm = 100₫
+    discount = points * 100
+    return JsonResponse({
+        "ok": True,
+        "points":   points,
+        "discount": discount,                    # số tiền quy đổi nếu dùng hết
+        "rate":     100,                          # 1 điểm = 100 VNĐ
+    })
+
+
+# ══════════════════════════════════════════════════════════════
+# API: Tính giảm giá từ điểm (KHÔNG trừ thật, chỉ tính preview)
+# POST /api/apply-points/
+# Body: subtotal (tạm tính đã trừ voucher)
+# ══════════════════════════════════════════════════════════════
+@csrf_exempt
+@require_POST
+def apply_points_api(request):
+    account_id = request.session.get("account_id")
+    if not account_id:
+        return JsonResponse({"ok": False, "need_login": True,
+                             "message": "Vui lòng đăng nhập."})
+ 
+    account = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first()
+    if not account:
+        return JsonResponse({"ok": False, "message": "Không tìm thấy tài khoản."})
+ 
+    points  = int(account.DiemTichLuy or 0)
+    if points <= 0:
+        return JsonResponse({"ok": False, "message": "Bạn chưa có điểm tích lũy."})
+ 
+    subtotal = float(request.POST.get("subtotal") or 0)
+ 
+    # Giới hạn: điểm chỉ được giảm tối đa 30% tổng đơn
+    RATE        = 100           # 1 điểm = 100 VNĐ
+    MAX_RATIO   = 0.30          # tối đa 30% đơn hàng
+    max_by_pct  = subtotal * MAX_RATIO
+    discount_all = points * RATE
+ 
+    # Số tiền thực tế được giảm
+    discount = min(discount_all, max_by_pct)
+    # Số điểm tương ứng
+    points_used = int(discount / RATE)
+ 
+    if points_used <= 0:
+        return JsonResponse({"ok": False,
+                             "message": "Đơn hàng chưa đủ điều kiện sử dụng điểm."})
+ 
+    return JsonResponse({
+        "ok":           True,
+        "message":      f"Áp dụng {points_used} điểm — giảm {int(discount):,}₫ ✨",
+        "points":       points,
+        "points_used":  points_used,
+        "discount":     int(discount),
+        "rate":         RATE,
+    })
+
+
+# ══════════════════════════════════════════════════════════════
+# Thêm vào urls.py:
+# path('api/points/',         views.get_points_api,   name='points-api'),
+# path('api/apply-points/',   views.apply_points_api, name='apply-points-api'),
+# ══════════════════════════════════════════════════════════════
+
+# ── Helper: cộng điểm ──────────────────────────────────────────
+def add_points(account, points, loai, mo_ta="", order=None):
+    """Cộng điểm và ghi lịch sử. Dùng schema DB thực tế."""
+    if not account or int(points) <= 0:
+        return
+    account.DiemTichLuy = int(account.DiemTichLuy or 0) + int(points)
+    account.save(update_fields=["DiemTichLuy"])
+ 
+    LichSuDiem.objects.create(
+        id_TaiKhoan=account,
+        id_DonHang=order,
+        SoDiem=int(points),           # cột SoDiem (dương = cộng)
+        Loai=loai,
+        MoTa=mo_ta or f"Cộng {points} điểm",
+        NgayTao=timezone.now(),
+    )
+
+# ── Helper: trừ điểm ──────────────────────────────────────────
+def redeem_points(account, points, order=None):
+    """Trừ điểm khi thanh toán. Trả False nếu không đủ điểm."""
+    if not account:
+        return False
+    points = int(points)
+    current = int(account.DiemTichLuy or 0)
+    if points > current:
+        return False
+    account.DiemTichLuy = current - points
+    account.save(update_fields=["DiemTichLuy"])
+ 
+    LichSuDiem.objects.create(
+        id_TaiKhoan=account,
+        id_DonHang=order,
+        SoDiem=-points,               # âm = trừ điểm
+        Loai="redeem_order",
+        MoTa="Dùng điểm thanh toán",
+        NgayTao=timezone.now(),
+    )
+    return True
 
 def _get_available_vouchers(account_id):
     now = timezone.now()
@@ -695,37 +884,30 @@ def contact_page(request):
 
 
 def cart_page(request):
-    cart_items = []
-    order = _safe_first(
-    DonHang.objects
-    .select_related("id_KhachHang", "id_GiaoHang")
-    .order_by("-ThoiGian")
-)
-    if order:
-        details = _safe_list(
-            ChiTietDonHang.objects.select_related("id_BienThe__id_SanPham").filter(id_DonHang=order)
-        )
-        product_ids = [row.id_BienThe.id_SanPham_id for row in details]
-        image_map = _product_image_map(product_ids)
-        for row in details:
-            product = row.id_BienThe.id_SanPham
-            cart_items.append(
-                {
-                    "name": product.TenSanPham,
-                    "price": row.GiaBan or row.id_BienThe.GiaBan,
-                    "quantity": row.SoLuong,
-                    "image": image_map.get(product.id_SanPham, FALLBACK_IMAGES["default"]),
-                }
-            )
-
+    account_id = request.session.get("account_id")
+ 
     suggestions = _build_product_cards(
         _safe_list(
             SanPham.objects.select_related("id_ThuongHieu", "id_LoaiSanPham")
-                            .prefetch_related("nhom_huongs")
-            .order_by("-id_SanPham")[:8]
+                           .prefetch_related("nhom_huongs")
+                           .order_by("-id_SanPham")[:8]
         )
     )[:4]
-    return render(request, 'app/cart.html', {'cart_items': cart_items, 'suggestions': suggestions})
+ 
+    voucher_data = []
+    account      = None
+    if account_id:
+        voucher_data = _get_available_vouchers(account_id)
+        account      = _safe_first(TaiKhoan.objects.filter(id_TaiKhoan=account_id))
+ 
+    return render(request, 'app/cart.html', {
+        'suggestions':  suggestions,
+        'voucher_data': voucher_data,
+        'is_logged_in': bool(account_id),
+        'account':      account,
+    })
+
+
 
 def auth_page(request):
     if request.session.get("account_id"):
@@ -841,6 +1023,30 @@ def submit_review(request):
     if not account or not product:
         return JsonResponse({"ok": False, "message": "Không tìm thấy dữ liệu."}, status=404)
 
+    has_purchased = ChiTietDonHang.objects.filter(
+        id_DonHang__id_KhachHang__id_TaiKhoan=account,
+        id_BienThe__id_SanPham=product,
+        id_DonHang__TrangThai="Đã giao"
+    ).exists()
+
+    if not has_purchased:
+        return JsonResponse({
+            "ok": False,
+            "message": "Bạn cần mua và nhận sản phẩm trước khi đánh giá."
+        }, status=403)
+
+    already_reviewed = DanhGia.objects.filter(
+        id_SanPham=product,
+        id_TaiKhoan=account,
+        parent_id__isnull=True
+    ).exists()
+
+    if already_reviewed:
+        return JsonResponse({
+            "ok": False,
+            "message": "Bạn đã đánh giá sản phẩm này rồi."
+        }, status=400)
+
     review = DanhGia.objects.create(
         id_SanPham=product,
         id_TaiKhoan=account,
@@ -850,6 +1056,24 @@ def submit_review(request):
         NgayDanhGia=timezone.now(),
     )
     request.session["review_last_submit"] = now_ts
+
+    config = CauHinhThanhVien.objects.filter(
+        TrangThai='active'
+    ).order_by('MucChiTieuToiThieu').first()
+
+    review_bonus = 100
+
+    if config:
+        review_bonus = int(config.ThuongDanhGia or 100)
+
+    add_points(
+        account,
+        review_bonus,
+        "review_bonus",
+        "Thưởng đánh giá sản phẩm"
+    )
+
+    update_member_level(account)
 
     return JsonResponse({
         "ok": True,
@@ -1144,33 +1368,244 @@ def profile_page(request):
         "phone":     (account.SDT if account else "") or "",
         "address":   (customer.DiaChi if customer else "") or "",
         "gender":    (customer.GioiTinh if customer else "") or "",
+        "points": account.DiemTichLuy if account else 0,
+
+        "level": account.HangThanhVien if account else "Member",
+
+        "total_spending": _format_currency(
+            account.TongChiTieu if account else 0
+        ),
     }
 
     print("WISHLIST DATA:", wishlist_data)
     vouchers = _get_available_vouchers(account_id)
+
+    point_logs = []
+
+    if account:
+
+        point_logs = list(
+
+            LichSuDiem.objects
+            .filter(id_TaiKhoan=account)
+            .order_by("-NgayTao")[:20]
+
+        )
     return render(request, 'app/profile.html', {
         "profile":       profile,
         "review_data":   review_data,
         "wishlist_data": wishlist_data,
         "voucher_data": vouchers,
+        "point_logs": point_logs,
     })
 
 
 def checkout_page(request):
-    delivery = _safe_first(GiaoHang.objects.select_related("id_TaiKhoan").order_by("-id_GiaoHang"))
-    form_data = {
-        "name": delivery.TenNguoiNhan if delivery else "",
-        "phone": delivery.SDT if delivery else "",
-        "email": delivery.id_TaiKhoan.Email if delivery and delivery.id_TaiKhoan else "",
-        "address": delivery.DiaChi if delivery else "",
-        "note": delivery.GhiChu if delivery else "",
-    }
     account_id = request.session.get("account_id")
+ 
+    delivery  = None
+    form_data = {"name": "", "phone": "", "email": "", "address": "", "note": ""}
+ 
+    if account_id:
+        # Lấy thông tin giao hàng gần nhất của tài khoản này
+        delivery = _safe_first(
+            GiaoHang.objects
+            .filter(id_TaiKhoan_id=account_id)
+            .order_by("-id_GiaoHang")
+        )
+        if delivery:
+            form_data["name"]    = delivery.TenNguoiNhan or ""
+            form_data["phone"]   = delivery.SDT          or ""
+            form_data["address"] = delivery.DiaChi       or ""
+            form_data["note"]    = delivery.GhiChu       or ""
+ 
+        # Email lấy từ TaiKhoan
+        acc = _safe_first(TaiKhoan.objects.filter(id_TaiKhoan=account_id))
+        if acc:
+            form_data["email"] = acc.Email or ""
+            if not form_data["name"]:
+                form_data["name"] = acc.TenDangNhap or ""
+ 
     return render(request, 'app/checkout.html', {
-        "checkout": form_data,
+        "checkout":     form_data,
         "is_logged_in": bool(account_id),
         "voucher_data": _get_available_vouchers(account_id) if account_id else [],
     })
+
+
+@csrf_exempt
+@require_POST
+def place_order_api(request):
+    """
+    Nhận thông tin từ checkout.js → lưu GiaoHang + DonHang + ChiTietDonHang
+    Body JSON: { name, phone, email, address, note, payment,
+                 items: [{productId, variantId, name, price, qty}],
+                 subtotal, discount, points_used, points_discount,
+                 shipping, total, voucher_code, is_first_order }
+    """
+    account_id = request.session.get("account_id")
+ 
+    try:
+        body = json.loads(request.body)
+    except Exception:
+        return JsonResponse({"ok": False, "message": "Dữ liệu không hợp lệ."}, status=400)
+ 
+    name       = (body.get("name")    or "").strip()
+    phone      = (body.get("phone")   or "").strip()
+    address    = (body.get("address") or "").strip()
+    note       = (body.get("note")    or "").strip()
+    payment    = (body.get("payment") or "cod").strip()
+    items      = body.get("items", [])
+    total      = float(body.get("total") or 0)
+    voucher_cd = (body.get("voucher_code") or "").strip().upper()
+    pts_used   = int(body.get("points_used") or 0)
+    pts_disc   = float(body.get("points_discount") or 0)
+ 
+    if not name or not phone or not address:
+        return JsonResponse({"ok": False, "message": "Thiếu thông tin giao hàng."}, status=400)
+    if not items:
+        return JsonResponse({"ok": False, "message": "Giỏ hàng trống."}, status=400)
+ 
+    # Mã đơn hàng
+    ma_don = "AMI-" + "".join(random.choices(string.digits, k=8))
+ 
+    try:
+        # ── Lấy tài khoản & khách hàng ──────────────────────────
+        account  = None
+        customer = None
+        if account_id:
+            account  = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first()
+            customer = KhachHang.objects.filter(id_TaiKhoan_id=account_id).first()
+ 
+        # ── 1. Lưu GiaoHang ──────────────────────────────────────
+        giao_hang = GiaoHang.objects.create(
+            id_TaiKhoan_id = account_id if account_id else None,
+            TenNguoiNhan   = name,
+            SDT            = phone,
+            DiaChi         = address,
+            GhiChu         = note,
+        )
+ 
+        # ── 2. Lưu DonHang ───────────────────────────────────────
+        don_hang = DonHang.objects.create(
+            MaDonHang           = ma_don,
+            id_KhachHang        = customer,
+            id_GiaoHang         = giao_hang,
+            ThoiGian            = timezone.now(),
+            HinhThucThanhToan   = payment,
+            TrangThai           = "Chờ xác nhận",
+            TongTien            = total,
+            DiemDaDung          = pts_used,
+            TienGiamTuDiem      = pts_disc,
+            DiemNhanDuoc        = 0,        # sẽ cập nhật sau khi tính điểm
+        )
+ 
+        # ── 3. Lưu ChiTietDonHang ────────────────────────────────
+        for item in items:
+            product_id = item.get("productId")
+            variant_id = item.get("variantId")   # có thể None
+            qty        = int(item.get("qty") or 1)
+            price      = float(item.get("price") or 0)
+ 
+            # Tìm BienThe khớp (nếu không có variantId thì lấy variant đầu tiên)
+            bien_the = None
+            if variant_id and variant_id != "default":
+                # variantId trong cart.js là "{productId}-{attrValue}" hoặc id BienThe
+                # Thử lấy theo id_BienThe nếu là số
+                if str(variant_id).isdigit():
+                    bien_the = BienThe.objects.filter(id_BienThe=int(variant_id)).first()
+            if not bien_the and product_id:
+                bien_the = BienThe.objects.filter(id_SanPham_id=product_id).order_by("id_BienThe").first()
+ 
+            if bien_the:
+                ChiTietDonHang.objects.create(
+                    id_DonHang  = don_hang,
+                    id_BienThe  = bien_the,
+                    SoLuong     = qty,
+                    GiaBan      = price,
+                    GiaGiam     = 0,
+                )
+ 
+        # ── 4. Đánh dấu voucher đã dùng ─────────────────────────
+        if voucher_cd and account_id:
+            rel = KhuyenMaiTaiKhoan.objects.filter(
+                id_TaiKhoan_id=account_id,
+                id_KhuyenMai__MaKhuyenMai__iexact=voucher_cd,
+                DaSuDung=False,
+            ).first()
+            if rel:
+                rel.DaSuDung = True
+                rel.save(update_fields=["DaSuDung"])
+                # Tăng DaSuDung của KhuyenMai
+                v = rel.id_KhuyenMai
+                if v:
+                    v.DaSuDung = int(v.DaSuDung or 0) + 1
+                    v.save(update_fields=["DaSuDung"])
+ 
+        # ── 5. Trừ điểm nếu dùng ────────────────────────────────
+        if pts_used > 0 and account:
+            redeem_points(account, pts_used, order=don_hang)
+ 
+        # ── 6. Cộng điểm đơn đầu tiên (bonus) ───────────────────
+        if account and customer:
+            order_count = DonHang.objects.filter(id_KhachHang=customer).count()
+            if order_count == 1:   # vừa tạo đơn đầu tiên
+                add_points(account, 200, "first_order_bonus",
+                           "Thưởng đơn hàng đầu tiên", don_hang)
+ 
+        # ── 7. Cộng điểm thường từ đơn hàng (10.000₫ = 1 điểm) ─
+        if account:
+            earned = int(total / 10000)   # 10k = 1 điểm
+            if earned > 0:
+                add_points(account, earned, "earn_order",
+                           f"Tích điểm đơn hàng {ma_don}", don_hang)
+ 
+        # ── 8. Cập nhật TongChiTieu & hạng thành viên ───────────
+        if account:
+            account.TongChiTieu = float(account.TongChiTieu or 0) + total
+            account.save(update_fields=["TongChiTieu"])
+            update_member_level(account)
+ 
+        # ── Sau khi lưu đơn hàng thành công ──
+        if payment == "vnpay":
+            return JsonResponse({
+                "ok":       True,
+                "order_id": ma_don,
+                "redirect": f"/api/vnpay-create/?order_id={ma_don}&amount={int(total)}",
+            })
+
+        # ── Return theo phương thức thanh toán ──
+        if payment == "vnpay":
+            return JsonResponse({
+                "ok":       True,
+                "order_id": ma_don,
+                "redirect": f"/api/vnpay-create/?order_id={ma_don}&amount={int(total)}",
+            })
+
+        if payment == "momo":
+            return JsonResponse({
+                "ok":       True,
+                "order_id": ma_don,
+                "redirect": f"/api/momo-create/?order_id={ma_don}&amount={int(total)}",
+            })
+
+        if payment == "paypal":
+            return JsonResponse({
+                "ok":       True,
+                "order_id": ma_don,
+                "redirect": f"/api/paypal-create/?order_id={ma_don}&amount={int(total)}",
+            })
+
+        # COD
+        return JsonResponse({
+            "ok":       True,
+            "order_id": ma_don,
+            "message":  "Đặt hàng thành công!",
+        })
+ 
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return JsonResponse({"ok": False, "message": f"Lỗi hệ thống: {str(e)}"}, status=500)
 
 
 @csrf_exempt
@@ -1387,3 +1822,297 @@ def admin_dashboard(request):
 
 # def admin_redirect(request):
 #     return redirect('admin-dashboard')
+
+# ═══════════════════════════════════════════════════════════════
+# Thêm vào views.py — API kiểm tra đơn hàng đầu tiên
+# URL: GET /api/check-first-order/
+# ═══════════════════════════════════════════════════════════════
+
+def check_first_order_api(request):
+    """
+    Kiểm tra xem đây có phải đơn hàng đầu tiên của khách không.
+    Nếu chưa có đơn nào → freeship tự động.
+    """
+    account_id = request.session.get("account_id")
+    if not account_id:
+        return JsonResponse({"is_first": False, "freeship": False})
+
+    try:
+        customer = KhachHang.objects.filter(id_TaiKhoan_id=account_id).first()
+        if not customer:
+            return JsonResponse({"is_first": True, "freeship": True,
+                                 "message": "🎁 Đơn hàng đầu tiên — Miễn phí vận chuyển!"})
+
+        has_order = DonHang.objects.filter(
+            id_KhachHang=customer
+        ).exists()
+
+        if not has_order:
+            return JsonResponse({
+                "is_first": True,
+                "freeship": True,
+                "message": "🎁 Đơn hàng đầu tiên — Miễn phí vận chuyển!",
+            })
+        else:
+            return JsonResponse({"is_first": False, "freeship": False})
+
+    except Exception:
+        return JsonResponse({"is_first": False, "freeship": False})
+
+
+# ═══════════════════════════════════════════════════════════════
+# Thêm vào urls.py:
+# path('api/check-first-order/', views.check_first_order_api, name='check-first-order'),
+# ═══════════════════════════════════════════════════════════════
+
+
+# ── Ký VNPAY ──────────────────────────────────────────────────
+def _vnpay_sign(data: dict, secret: str) -> str:
+    """
+    VNPAY yêu cầu:
+    1. Sắp xếp key theo alphabet
+    2. Nối thành query string (KHÔNG encode value)
+    3. Ký HMAC-SHA512
+    """
+    # Sắp xếp theo key
+    sorted_items = sorted(data.items())
+    # Nối chuỗi dạng key=value&key=value (KHÔNG urllib.parse.urlencode)
+    query_string = "&".join(f"{k}={v}" for k, v in sorted_items)
+    
+    # Ký HMAC-SHA512
+    signature = hmac.new(
+        secret.encode("utf-8"),
+        query_string.encode("utf-8"),
+        hashlib.sha512
+    ).hexdigest()
+    return signature
+
+
+# ── Tạo URL thanh toán VNPAY ──────────────────────────────────
+def vnpay_create(request):
+    order_id = request.GET.get("order_id", "")
+    amount   = int(request.GET.get("amount", 0))
+
+    now         = datetime.now()
+    create_date = now.strftime("%Y%m%d%H%M%S")
+    expire_date = (now + timedelta(minutes=15)).strftime("%Y%m%d%H%M%S")
+
+    params = {
+        "vnp_Version":    "2.1.0",
+        "vnp_Command":    "pay",
+        "vnp_TmnCode":    settings.VNPAY_TMN_CODE,
+        "vnp_Amount":     str(amount * 100),
+        "vnp_CurrCode":   "VND",
+        "vnp_TxnRef":     order_id,
+        "vnp_OrderInfo":  f"Thanh toan don hang {order_id}",
+        "vnp_OrderType":  "other",
+        "vnp_Locale":     "vn",
+        "vnp_ReturnUrl":  settings.VNPAY_RETURN_URL,
+        "vnp_IpAddr":     request.META.get("REMOTE_ADDR", "127.0.0.1"),
+        "vnp_CreateDate": create_date,
+        "vnp_ExpireDate": expire_date,
+    }
+
+    # ── Bước 1: Sắp xếp ──
+    sorted_params = sorted(params.items())
+
+    # ── Bước 2: Tạo chuỗi ký — dùng urllib.parse.quote_plus cho value ──
+    hash_data = "&".join(
+        f"{k}={urllib.parse.quote_plus(str(v), safe='')}"
+        for k, v in sorted_params
+    )
+
+    # ── Bước 3: Ký HMAC-SHA512 ──
+    secure_hash = hmac.new(
+        settings.VNPAY_HASH_SECRET.encode("utf-8"),
+        hash_data.encode("utf-8"),
+        hashlib.sha512
+    ).hexdigest()
+
+    # DEBUG
+    print("=== VNPAY HASH DATA ===")
+    print(hash_data)
+    print("HASH:", secure_hash[:20], "...")
+
+    # ── Bước 4: Build URL cuối ──
+    query = "&".join(
+        f"{k}={urllib.parse.quote_plus(str(v), safe='')}"
+        for k, v in sorted_params
+    )
+    pay_url = f"{settings.VNPAY_URL}?{query}&vnp_SecureHash={secure_hash}"
+
+    return redirect(pay_url)
+
+
+# ── Nhận kết quả từ VNPAY trả về ─────────────────────────────
+def _vnpay_sign_verify(data: dict, secret: str) -> str:
+    """Dùng để verify callback từ VNPAY — cùng logic encode."""
+    sorted_items = sorted(data.items())
+    hash_data = "&".join(
+        f"{k}={urllib.parse.quote_plus(str(v), safe='')}"
+        for k, v in sorted_items
+    )
+    return hmac.new(
+        secret.encode("utf-8"),
+        hash_data.encode("utf-8"),
+        hashlib.sha512
+    ).hexdigest()
+
+
+def vnpay_return(request):
+    params        = dict(request.GET)
+    vnp_hash      = request.GET.get("vnp_SecureHash", "")
+    order_id      = request.GET.get("vnp_TxnRef", "")
+    response_code = request.GET.get("vnp_ResponseCode", "")
+
+    # Loại bỏ hash khỏi params trước khi verify
+    verify_params = {
+        k: (v[0] if isinstance(v, list) else v)
+        for k, v in params.items()
+        if k not in ("vnp_SecureHash", "vnp_SecureHashType")
+    }
+
+    expected_hash   = _vnpay_sign_verify(verify_params, settings.VNPAY_HASH_SECRET)
+    signature_valid = hmac.compare_digest(expected_hash, vnp_hash)
+
+    print("=== VNPAY RETURN ===")
+    print("Response code:", response_code)
+    print("Signature valid:", signature_valid)
+    print("Expected:", expected_hash[:20])
+    print("Got:     ", vnp_hash[:20])
+
+    if signature_valid and response_code == "00":
+        DonHang.objects.filter(MaDonHang=order_id).update(TrangThai="Đã thanh toán")
+        return render(request, "app/payment_success.html", {
+            "order_id": order_id,
+            "message":  "Thanh toán VNPAY thành công!",
+        })
+    else:
+        DonHang.objects.filter(MaDonHang=order_id).update(TrangThai="Thanh toán thất bại")
+        return render(request, "app/payment_failed.html", {
+            "order_id":      order_id,
+            "response_code": response_code,
+            "message":       "Thanh toán thất bại hoặc bị hủy.",
+        })
+    
+
+# Thanh toán MOMO
+def momo_create(request):
+    order_id   = request.GET.get("order_id", "")
+    amount     = int(request.GET.get("amount", 0))
+    request_id = str(uuid.uuid4())  # ID duy nhất cho mỗi request
+    order_info = f"Thanh toan don hang {order_id}"
+    extra_data = ""
+
+    # ── Tạo chữ ký ──────────────────────────────────────────
+    raw_signature = (
+        f"accessKey={settings.MOMO_ACCESS_KEY}"
+        f"&amount={amount}"
+        f"&extraData={extra_data}"
+        f"&ipnUrl={settings.MOMO_NOTIFY_URL}"
+        f"&orderId={order_id}"
+        f"&orderInfo={order_info}"
+        f"&partnerCode={settings.MOMO_PARTNER_CODE}"
+        f"&redirectUrl={settings.MOMO_RETURN_URL}"
+        f"&requestId={request_id}"
+        f"&requestType=payWithMethod"
+    )
+
+    signature = hmac.new(
+        settings.MOMO_SECRET_KEY.encode("utf-8"),
+        raw_signature.encode("utf-8"),
+        hashlib.sha256
+    ).hexdigest()
+
+    # ── Gọi API MoMo ────────────────────────────────────────
+    payload = {
+        "partnerCode": settings.MOMO_PARTNER_CODE,
+        "partnerName": "Ami Perfumery",
+        "storeId":     "AmiStore",
+        "requestId":   request_id,
+        "amount":      str(amount),
+        "orderId":     order_id,
+        "orderInfo":   order_info,
+        "redirectUrl": settings.MOMO_RETURN_URL,
+        "ipnUrl":      settings.MOMO_NOTIFY_URL,
+        "requestType": "payWithMethod",
+        "extraData":   extra_data,
+        "lang":        "vi",
+        "signature":   signature,
+    }
+
+    print("=== MOMO REQUEST ===")
+    print("Raw signature:", raw_signature)
+    print("Signature:", signature[:20], "...")
+
+    try:
+        res  = http_requests.post(
+            settings.MOMO_ENDPOINT,
+            json=payload,
+            timeout=15
+        )
+        data = res.json()
+
+        print("=== MOMO RESPONSE ===")
+        print(data)
+
+        if data.get("resultCode") == 0:
+            return redirect(data["payUrl"])
+        else:
+            print("MoMo Error:", data.get("message"))
+            return render(request, "app/payment_failed.html", {
+                "order_id": order_id,
+                "message":  f"MoMo: {data.get('message', 'Lỗi không xác định')}",
+                "response_code": str(data.get("resultCode", "")),
+            })
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return render(request, "app/payment_failed.html", {
+            "order_id": order_id,
+            "message":  f"Lỗi kết nối MoMo: {str(e)}",
+            "response_code": "",
+        })
+
+
+def momo_return(request):
+    """MoMo redirect về đây sau khi thanh toán."""
+    result_code = request.GET.get("resultCode", "")
+    order_id    = request.GET.get("orderId",    "")
+    message     = request.GET.get("message",    "")
+
+    print("=== MOMO RETURN ===")
+    print("resultCode:", result_code)
+    print("orderId:",    order_id)
+    print("message:",    message)
+
+    if result_code == "0":
+        DonHang.objects.filter(MaDonHang=order_id).update(TrangThai="Đã thanh toán")
+        return render(request, "app/payment_success.html", {
+            "order_id": order_id,
+            "message":  "Thanh toán MoMo thành công!",
+        })
+    else:
+        DonHang.objects.filter(MaDonHang=order_id).update(TrangThai="Thanh toán thất bại")
+        return render(request, "app/payment_failed.html", {
+            "order_id":      order_id,
+            "message":       f"Thanh toán thất bại: {message}",
+            "response_code": result_code,
+        })
+
+
+@csrf_exempt
+def momo_ipn(request):
+    """MoMo gọi IPN để xác nhận server-to-server."""
+    try:
+        data        = json.loads(request.body)
+        result_code = str(data.get("resultCode", ""))
+        order_id    = data.get("orderId", "")
+
+        print("=== MOMO IPN ===")
+        print(data)
+
+        if result_code == "0":
+            DonHang.objects.filter(MaDonHang=order_id).update(TrangThai="Đã thanh toán")
+        return JsonResponse({"status": "ok"})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)

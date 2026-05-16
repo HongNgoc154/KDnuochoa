@@ -131,6 +131,7 @@ DATABASES = {
         'HOST': 'localhost',       # hoặc .\SQLEXPRESS
         'OPTIONS': {
             'driver': 'ODBC Driver 17 for SQL Server',
+            'unicode_results': True, 
         },
     }
 }
@@ -174,3 +175,18 @@ STATIC_URL = 'static/'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
+# VNPAY Sandbox
+VNPAY_TMN_CODE    = "BRH4CBDX"        # Lấy từ sandbox.vnpayment.vn
+VNPAY_HASH_SECRET = "5R0WH1ZTB8I4SHUKCI1BHKLNTC6AAASA"     # Secret key từ VNPAY
+VNPAY_URL         = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
+VNPAY_RETURN_URL  = "http://localhost:8000/thanh-toan/vnpay-return/"
+
+# MoMo Sandbox
+MOMO_PARTNER_CODE = "MOMO"
+MOMO_ACCESS_KEY   = "F8BBA842ECF85"
+MOMO_SECRET_KEY   = "K951B6PE1waDMi640xX08PD3vg6EkVlz"
+MOMO_ENDPOINT     = "https://test-payment.momo.vn/v2/gateway/api/create"
+MOMO_RETURN_URL   = "http://localhost:8000/thanh-toan/momo-return/"
+MOMO_NOTIFY_URL   = "http://localhost:8000/api/momo-ipn/"

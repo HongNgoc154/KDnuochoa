@@ -12,21 +12,19 @@
 <section class="section-space">
   <div class="container cart-layout" data-cart-app>
 
-    <!-- LEFT -->
+    <!-- ══ LEFT: SẢN PHẨM ══ -->
     <section>
       <h1>Giỏ hàng của bạn</h1>
 
-      <!-- CART ITEMS — luôn render, JS sẽ inject sản phẩm từ localStorage -->
       <div class="cart-items" data-cart-items hidden></div>
 
-      <!-- EMPTY STATE — luôn render, JS toggle hidden -->
       <div class="empty-state" data-empty-state>
         <h2>Giỏ hàng của bạn đang trống</h2>
         <p>Hãy khám phá bộ sưu tập nước hoa cao cấp của Ami.</p>
         <a href="{% url 'category-all' %}" class="btn-primary">Khám phá sản phẩm</a>
       </div>
 
-      <!-- SUGGESTIONS -->
+      <!-- GỢI Ý SẢN PHẨM -->
       <section class="cart-suggestions">
         <div class="suggestions-head">
           <h2>Có thể bạn cũng thích</h2>
@@ -50,28 +48,102 @@
           {% endfor %}
         </div>
       </section>
-
     </section>
 
-    <!-- RIGHT: SUMMARY -->
+    <!-- ══ RIGHT: SUMMARY ══ -->
     <aside class="summary-card" data-summary>
       <h3>Tổng kết đơn hàng</h3>
-      <p><span>Tạm tính</span><strong data-subtotal>0₫</strong></p>
-      <p><span>Giảm giá</span><strong data-discount>-0₫</strong></p>
-      <p><span>Phí vận chuyển</span><strong data-shipping>0₫</strong></p>
-      <hr>
-      <p class="total"><span>Tổng tiền</span><strong data-total>0₫</strong></p>
 
-      <div class="voucher-box">
-        <input type="text" placeholder="Mã giảm giá" data-voucher-input>
-        <button type="button" data-apply-voucher>Áp dụng</button>
+      <!-- Tổng tiền -->
+      <div class="cart-summary-rows">
+        <p><span>Tạm tính</span><strong data-subtotal>0₫</strong></p>
+        <p><span>Giảm giá</span><strong data-discount>-0₫</strong></p>
+        <p><span>Phí vận chuyển</span><strong data-shipping>0₫</strong></p>
+        <hr>
+        <p class="total"><span>Tổng tiền</span><strong data-total>0₫</strong></p>
       </div>
-      <p class="voucher-message" data-voucher-message></p>
 
+      <!-- ── MÃ KHUYẾN MÃI ── -->
+      <div class="cart-voucher-section">
+        <div class="voucher-box">
+          <input type="text" placeholder="Mã giảm giá" data-voucher-input>
+          <button type="button" data-apply-voucher>Áp dụng</button>
+        </div>
+        <p class="voucher-message" data-voucher-message></p>
+
+        <!-- Voucher tag đã áp dụng -->
+      <div id="cartVoucherTag" style="display:none;align-items:center;gap:8px;padding:8px 14px;
+           background:rgba(75,103,45,.08);border:1px solid rgba(75,103,45,.2);border-radius:10px;
+           font-size:12px;color:#4B672D;font-weight:500;margin-top:8px;">
+        <span>✓</span>
+        <span id="cartVoucherTagText"></span>
+        <button id="cartVoucherRemove" style="margin-left:auto;background:none;border:none;
+                font-size:16px;color:#9e9e8e;cursor:pointer;line-height:1;padding:0;" title="Xóa mã">×</button>
+      </div>
+
+        <!-- Voucher gợi ý nếu đã đăng nhập -->
+        {% if is_logged_in and voucher_data %}
+        <div class="cart-member-vouchers">
+          <p class="cart-voucher-label">Ưu đãi của bạn</p>
+          {% for v in voucher_data %}
+          {% if v.status == "Còn hiệu lực" %}
+          <div class="cart-voucher-chip">
+            <div class="cart-vc-left">
+              <span class="cart-vc-badge">{{ v.exclusive_badge }}</span>
+              <span class="cart-vc-code">{{ v.code }}</span>
+              <span class="cart-vc-desc">
+                {% if v.discount_type == "percent" %}Giảm {{ v.discount_value|floatformat:0 }}%
+                {% elif "free" in v.discount_type %}Miễn phí vận chuyển
+                {% else %}Giảm {{ v.discount_value|floatformat:0 }}₫{% endif %}
+              </span>
+            </div>
+            <button class="cart-vc-apply" data-voucher-code="{{ v.code }}">Áp dụng</button>
+          </div>
+          {% endif %}
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- ── ĐIỂM TÍCH LŨY ── -->
+      {% if is_logged_in %}
+      <div class="cart-point-box" id="cartPointBox">
+        <div class="cart-point-header">
+          <div class="cart-point-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          </div>
+          <div class="cart-point-info">
+            <span class="cart-point-label">Điểm tích lũy</span>
+            <span class="cart-point-balance" id="cartPointBalance">0 điểm</span>
+          </div>
+          <label class="cart-point-toggle" title="Bật/tắt dùng điểm">
+            <input type="checkbox" id="cartPointToggle">
+            <span class="cart-pt-track"><span class="cart-pt-thumb"></span></span>
+          </label>
+        </div>
+        <div class="cart-point-detail" id="cartPointDetail" hidden>
+          <div class="cart-pd-row">
+            <span>Điểm sẽ dùng</span>
+            <span id="cartPointUsed">0 điểm</span>
+          </div>
+          <div class="cart-pd-row highlight">
+            <span>Giảm được</span>
+            <span id="cartPointDiscount">0₫</span>
+          </div>
+          <p class="cart-pd-note">💎 100 điểm = 10.000₫ · Tối đa 30% đơn hàng</p>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- ── NÚT THANH TOÁN ── -->
       <button class="checkout-btn" data-checkout
               data-checkout-url="{% url 'checkout-page' %}">
         Thanh toán
       </button>
+
+      <p class="cart-secure-note">🔒 Thanh toán bảo mật · Đổi trả trong 7 ngày</p>
     </aside>
 
   </div>

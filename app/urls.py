@@ -28,12 +28,14 @@ urlpatterns = [
         views.submit_question,
         name='submit-question'
     ),
-
+    path('api/points/',         views.get_points_api,   name='points-api'),
+    path('api/apply-points/',   views.apply_points_api, name='apply-points-api'),
     # Trong app/urls.py, thêm 2 dòng này vào urlpatterns:
 
     path('delete-review/', views.delete_review, name='delete-review'),
     path('edit-review/',   views.edit_review,   name='edit-review'),
     # Thêm vào app/urls.py trong urlpatterns:
+    path('api/check-first-order/', views.check_first_order_api, name='check-first-order'),
 
     path(
         "toggle-favorite/",
@@ -45,6 +47,17 @@ urlpatterns = [
     # path('admin-dashboard/', views.admin_dashboard, name='admin-dashboard'),
     # path('admin/', views.admin_redirect),
     # path('admin/', admin_site.urls),
+    path('api/place-order/', views.place_order_api, name='place-order'),
+
+    # VNPAY
+    path('api/vnpay-create/',        views.vnpay_create, name='vnpay-create'),
+    path('thanh-toan/vnpay-return/', views.vnpay_return, name='vnpay-return'),
+
+    # MOMO
+    path('api/momo-create/',         views.momo_create,  name='momo-create'),
+    path('thanh-toan/momo-return/',  views.momo_return,  name='momo-return'),
+    path('api/momo-ipn/',            views.momo_ipn,     name='momo-ipn'),
+    
      
 ]
 

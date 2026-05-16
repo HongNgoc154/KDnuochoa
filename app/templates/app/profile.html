@@ -30,8 +30,24 @@
         <h2 class="profile-name">{{ profile.full_name }}</h2>
         <p class="profile-username">@{{ profile.username }}</p>
         <div class="profile-badges">
-          <span class="badge-vip">⭐ VIP Member</span>
-          <span class="badge-pts">2.840 điểm</span>
+          {% comment %} <div class="member-progress">
+
+            <p class="member-spending">
+              Tổng chi tiêu:
+              <strong>{{ profile.total_spending }}</strong>
+            </p>
+
+            <p class="member-next">
+              {{ profile.next_level_message }}
+            </p>
+
+          </div> {% endcomment %}
+          <span class="badge-vip">
+              ⭐ {{ profile.level|default:"Member" }}
+          </span>
+          <span class="badge-pts">
+              {{ profile.points|default:0 }} điểm
+          </span>
         </div>
       </div>
     </div>
@@ -64,6 +80,17 @@
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
         <span>Đánh giá</span>
         <span class="nav-arrow">›</span>
+      </button>
+      <button class="nav-item" data-tab="points">
+
+        <span class="nav-icon">
+          💎
+        </span>
+
+        <span>Lịch sử điểm</span>
+
+        <span class="nav-arrow">›</span>
+
       </button>
       <button class="nav-item" data-tab="settings">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>

@@ -125,48 +125,25 @@
   </div>
 
   <!-- ── RIGHT: ORDER SUMMARY ── -->
+  <!-- ── RIGHT: ORDER SUMMARY — phiên bản đơn giản chỉ tóm tắt ── -->
+  <!-- Thay toàn bộ <aside class="co-summary"> trong checkout.html bằng đoạn này -->
+
   <aside class="co-summary">
     <div class="co-summary-head">Tóm tắt đơn hàng</div>
 
-    <div class="co-items" id="coItems">
-      <!-- rendered by JS -->
-    </div>
+    <!-- Danh sách sản phẩm -->
+    <div class="co-items" id="coItems"><!-- JS render --></div>
 
-    <!-- Voucher -->
-    <div class="co-voucher">
-      <div class="co-voucher-row">
-        <input class="co-voucher-input" type="text" id="voucherInput" placeholder="Nhập mã khuyến mãi">
-        <button class="btn-apply" id="applyVoucher">Áp dụng</button>
-      </div>
-      <div class="co-voucher-auth" id="voucherAuthMessage">
-        {% if not is_logged_in %}
-        Vui lòng đăng nhập để sử dụng ưu đãi thành viên.
-        <a href="{% url 'auth-page' %}">Đăng nhập ngay</a>
-        {% endif %}
-      </div>
-      {% if is_logged_in %}
-      <div class="co-member-offers">
-        <h4>Ưu đãi dành riêng cho bạn</h4>
-        <div class="co-member-vouchers" id="coMemberVouchers"></div>
-      </div>
-      {% endif %}
-      <div class="co-voucher-tag" id="voucherTag">
-        <span>✓</span>
-        <span id="voucherTagText">WELCOME20 — Giảm 20%</span>
-        <button id="removeVoucher" title="Xóa mã">×</button>
-      </div>
-    </div>
+    <!-- Tổng tiền (JS render, bao gồm các dòng giảm giá từ cart) -->
+    <div class="co-totals" id="coTotals"><!-- JS render --></div>
 
-    <!-- Totals -->
-    <div class="co-totals" id="coTotals"><!-- rendered by JS --></div>
-
-    <!-- Delivery estimate -->
+    <!-- Giao hàng dự kiến -->
     <div class="co-delivery">
       <span class="co-delivery-icon">🚚</span>
       <span>Dự kiến giao: <strong>2 – 4 ngày làm việc</strong></span>
     </div>
 
-    <!-- Place order CTA -->
+    <!-- Đặt hàng -->
     <div class="co-cta">
       <button class="btn-place-order" id="placeOrderBtn">
         <span class="bpo-text">Đặt hàng ngay</span>

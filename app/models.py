@@ -245,6 +245,9 @@ class TaiKhoan(models.Model):
     LoaiTaiKhoan = models.CharField(max_length=50, null=True)
     TrangThai_TaiKhoan = models.CharField(max_length=50, null=True)
     NgayTao = models.DateTimeField(null=True)
+    DiemTichLuy = models.IntegerField(default=0)
+    TongChiTieu = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    HangThanhVien = models.CharField(max_length=50, default='Silver')
 
     class Meta:
         managed = False
@@ -321,6 +324,8 @@ class KhuyenMaiTaiKhoan(models.Model):
 class DonHang(models.Model):
     id_DonHang = models.AutoField(primary_key=True)
 
+    MaDonHang = models.CharField(max_length=100, null=True, blank=True)
+
     id_KhachHang = models.ForeignKey(
         'KhachHang',
         on_delete=models.DO_NOTHING,
@@ -328,7 +333,6 @@ class DonHang(models.Model):
         null=True,
         blank=True
     )
-
     id_GiaoHang = models.ForeignKey(
         'GiaoHang',
         on_delete=models.DO_NOTHING,
@@ -337,23 +341,28 @@ class DonHang(models.Model):
         blank=True
     )
 
-    TenKhachHang = models.CharField(max_length=255, null=True)
-    TongTien = models.DecimalField(max_digits=12, decimal_places=2, null=True)
-    TrangThai = models.CharField(max_length=50, null=True)
-    ThoiGian = models.DateTimeField(null=True)
+    ThoiGian            = models.DateTimeField(null=True)
+    HinhThucThanhToan   = models.CharField(max_length=100, null=True, blank=True)
+    TrangThai           = models.CharField(max_length=50, null=True)
+    TongTien            = models.DecimalField(max_digits=12, decimal_places=2, null=True)
+
+    # ── Điểm (có trong DB) ──
+    DiemDaDung          = models.IntegerField(default=0, null=True)
+    TienGiamTuDiem      = models.DecimalField(max_digits=12, decimal_places=2, default=0, null=True)
+    DiemNhanDuoc        = models.IntegerField(default=0, null=True)
 
     class Meta:
-        managed = False
+        managed  = False
         db_table = 'DonHang'
 
     def __str__(self):
-        return str(self.id_DonHang)
+        return self.MaDonHang or str(self.id_DonHang)
     
 
 
 # ===================== CHI TIẾT ĐƠN HÀNG =====================
 class ChiTietDonHang(models.Model):
-    id = models.AutoField(primary_key=True)
+    id_ChiTietDon = models.AutoField(primary_key=True)
 
     id_DonHang = models.ForeignKey(
         'DonHang',
@@ -362,20 +371,19 @@ class ChiTietDonHang(models.Model):
         null=True,
         blank=True
     )
-
-    id_SanPham = models.ForeignKey(
-        'SanPham',
+    id_BienThe = models.ForeignKey(
+        'BienThe',
         on_delete=models.DO_NOTHING,
-        db_column='id_SanPham',
+        db_column='id_BienThe',
         null=True,
         blank=True
     )
-
     SoLuong = models.IntegerField(null=True)
-    Gia = models.DecimalField(max_digits=12, decimal_places=2, null=True)
+    GiaBan  = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    GiaGiam = models.DecimalField(max_digits=10, decimal_places=2, null=True)
 
     class Meta:
-        managed = False
+        managed  = False
         db_table = 'ChiTietDonHang'
 
 
@@ -417,6 +425,50 @@ class DanhGia(models.Model):
         managed = False
         db_table = 'DanhGia'
 
+
+# ═══════════════════════════════════════════════════════════════
+# 1. models.py — thay class LichSuDiem cho đúng DB thực tế
+# DB có: id_LichSuDiem, id_TaiKhoan, SoDiem, Loai, MoTa, id_DonHang, NgayTao
+# ═══════════════════════════════════════════════════════════════
+
+class LichSuDiem(models.Model):
+    id_LichSuDiem = models.AutoField(primary_key=True)
+
+    id_TaiKhoan = models.ForeignKey(
+        'TaiKhoan',
+        on_delete=models.DO_NOTHING,
+        db_column='id_TaiKhoan'
+    )
+    id_DonHang = models.ForeignKey(
+        'DonHang',
+        on_delete=models.DO_NOTHING,
+        db_column='id_DonHang',
+        null=True, blank=True
+    )
+    SoDiem    = models.IntegerField()                            # cột thực trong DB
+    Loai      = models.CharField(max_length=50)                  # cột thực trong DB
+    MoTa      = models.CharField(max_length=255, null=True)
+    NgayTao   = models.DateTimeField(null=True)
+
+    class Meta:
+        managed  = False
+        db_table = 'LichSuDiem'
+
+
+class CauHinhThanhVien(models.Model):
+    id_CauHinh = models.AutoField(primary_key=True)
+    Hang = models.CharField(max_length=50)
+    MucChiTieuToiThieu = models.DecimalField(max_digits=14, decimal_places=2)
+    QuyDoiDiem = models.IntegerField(default=100)  # 1 điểm = 100 VNĐ
+    GioiHanDiemTheoPhanTram = models.DecimalField(max_digits=5, decimal_places=2, default=30)
+    ThuongDonDauTien = models.IntegerField(default=200)
+    ThuongDanhGia = models.IntegerField(default=100)
+    QuyenLoi = models.TextField(null=True, blank=True)
+    TrangThai = models.CharField(max_length=20, default='active')
+
+    class Meta:
+        managed = False
+        db_table = 'CauHinhThanhVien'
 
 # ===================== HỎI ĐÁP =====================
 class HoiDap(models.Model):
@@ -464,22 +516,20 @@ class HoiDap(models.Model):
 
 # ===================== GIAO HÀNG =====================
 class GiaoHang(models.Model):
-    id_GiaoHang = models.AutoField(primary_key=True)
-
-    id_DonHang = models.ForeignKey(
-        'DonHang',
+    id_GiaoHang  = models.AutoField(primary_key=True)
+    id_TaiKhoan  = models.ForeignKey(
+        'TaiKhoan',
         on_delete=models.DO_NOTHING,
-        db_column='id_DonHang',
-        null=True,
-        blank=True
+        db_column='id_TaiKhoan',
+        null=True, blank=True
     )
-
-    DiaChi = models.CharField(max_length=255, null=True)
-    TrangThai = models.CharField(max_length=50, null=True)
-    NgayGiao = models.DateTimeField(null=True)
-
+    TenNguoiNhan = models.CharField(max_length=255, null=True)
+    SDT          = models.CharField(max_length=20, null=True)
+    DiaChi       = models.TextField(null=True)
+    GhiChu       = models.TextField(null=True)
+ 
     class Meta:
-        managed = False
+        managed  = False
         db_table = 'GiaoHang'
 
 

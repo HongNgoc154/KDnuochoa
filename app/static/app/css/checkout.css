@@ -304,3 +304,295 @@ body { font-family: 'Jost', sans-serif; background: #f2ede4; color: var(--text);
   .co-section { padding: 20px 18px; }
   .co-summary-head, .co-items, .co-voucher, .co-totals, .co-cta, .co-delivery { padding-left: 18px; padding-right: 18px; }
 }
+
+/* ══════════════════════════════════════════════════
+   Thêm vào cuối checkout.css
+   ══════════════════════════════════════════════════ */
+
+/* ── Point Box ── */
+.point-box {
+  background: linear-gradient(135deg, #fdf8ee, #f5edd8);
+  border: 1px solid rgba(201,169,110,.3);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.point-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #5a4a2a;
+}
+.point-top strong {
+  font-size: 15px;
+  font-weight: 600;
+  color: #c9a96e;
+  font-family: 'Cormorant Garamond', serif;
+}
+.point-desc {
+  font-size: 11px;
+  color: #9e8c6a;
+  margin: 0;
+}
+#applyPointBtn {
+  width: 100%;
+  padding: 9px 16px;
+  border-radius: 30px;
+  border: 1.5px solid rgba(201,169,110,.5);
+  background: transparent;
+  color: #c9a96e;
+  font-family: 'Jost', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .2s, color .2s;
+}
+#applyPointBtn:hover {
+  background: #c9a96e;
+  color: #fff;
+  border-color: #c9a96e;
+}
+
+/* ── Member Voucher Cards ── */
+.co-member-card {
+  display: flex;
+  align-items: stretch;
+  background: #fff;
+  border: 1px solid rgba(91,103,75,.12);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 8px;
+  transition: box-shadow .2s;
+}
+.co-member-card:hover { box-shadow: 0 4px 16px rgba(44,51,36,.1); }
+.co-mc-left {
+  background: linear-gradient(135deg, #4B672D, #6a8d40);
+  padding: 12px 14px;
+  min-width: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.co-mc-badge {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(235,246,196,.8);
+  border: 1px solid rgba(235,246,196,.3);
+  border-radius: 20px;
+  padding: 2px 7px;
+  width: fit-content;
+}
+.co-mc-code {
+  font-family: 'Jost', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #EBF6C4;
+}
+.co-mc-desc {
+  font-size: 11px;
+  color: rgba(235,246,196,.8);
+  font-style: italic;
+}
+.co-mc-right {
+  flex: 1;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 4px;
+}
+.co-mc-expiry, .co-mc-min {
+  font-size: 11px;
+  color: #9e9e8e;
+}
+.co-mc-apply {
+  width: 100%;
+  padding: 7px 12px;
+  border-radius: 20px;
+  border: 1.5px solid rgba(75,103,45,.3);
+  background: transparent;
+  color: #4B672D;
+  font-family: 'Jost', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .2s, color .2s;
+}
+.co-mc-apply:hover {
+  background: #4B672D;
+  color: #EBF6C4;
+  border-color: #4B672D;
+}
+
+/* Voucher tag đã áp dụng */
+.co-voucher-tag {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: rgba(75,103,45,.08);
+  border: 1px solid rgba(75,103,45,.2);
+  border-radius: 10px;
+  font-size: 12px;
+  color: #4B672D;
+  font-weight: 500;
+  margin-top: 8px;
+}
+.co-voucher-tag.show { display: flex; }
+.co-voucher-tag button {
+  margin-left: auto;
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #9e9e8e;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+.co-voucher-tag button:hover { color: #c0392b; }
+
+/* Total rows */
+.co-total-row.discount { animation: discountFade .4s ease; }
+@keyframes discountFade {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+
+/* ── ĐIỂM TÍCH LŨY — Point Box ────────────────────── */
+/* Thêm vào cuối checkout.css                          */
+
+.point-box {
+  background: linear-gradient(135deg, #fdf8ee 0%, #f5edd8 100%);
+  border: 1px solid rgba(201, 169, 110, .28);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin: 10px 0 6px;
+  transition: box-shadow .25s;
+}
+.point-box:has(#pointToggle:checked) {
+  border-color: rgba(201, 169, 110, .55);
+  box-shadow: 0 4px 18px rgba(201, 169, 110, .18);
+}
+
+/* Header */
+.point-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.point-icon-wrap {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: rgba(201, 169, 110, .15);
+  display: grid;
+  place-items: center;
+  color: #c9a96e;
+  flex-shrink: 0;
+}
+
+.point-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.point-label {
+  font-size: 11px;
+  color: #9e8c6a;
+  letter-spacing: 0.3px;
+}
+.point-balance {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #c9a96e;
+  letter-spacing: 0.3px;
+}
+
+/* Toggle switch */
+.point-toggle {
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.point-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0; height: 0;
+}
+.point-toggle-track {
+  display: block;
+  width: 42px; height: 24px;
+  border-radius: 12px;
+  background: rgba(158, 140, 106, .25);
+  border: 1.5px solid rgba(158, 140, 106, .3);
+  position: relative;
+  transition: background .25s, border-color .25s;
+}
+.point-toggle-thumb {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.2);
+  transition: transform .25s cubic-bezier(.4,0,.2,1), background .25s;
+}
+.point-toggle input:checked ~ .point-toggle-track {
+  background: #c9a96e;
+  border-color: #c9a96e;
+}
+.point-toggle input:checked ~ .point-toggle-track .point-toggle-thumb {
+  transform: translateX(18px);
+  background: #fff;
+}
+
+/* Detail section */
+.point-detail {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(201, 169, 110, .3);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: pointDetailIn .3s ease;
+}
+@keyframes pointDetailIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.point-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #7a6a4a;
+}
+.point-detail-row.highlight {
+  font-weight: 600;
+  color: #c9a96e;
+  font-size: 13px;
+}
+.point-rate-note {
+  font-size: 10px;
+  color: #9e8c6a;
+  margin: 4px 0 0;
+  letter-spacing: 0.2px;
+}
+@keyframes firstOrderIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

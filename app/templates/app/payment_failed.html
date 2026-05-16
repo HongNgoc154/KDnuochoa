@@ -1,0 +1,14 @@
+{% extends "app/base.html" %}
+{% block content %}
+<div style="text-align:center; padding: 80px 20px;">
+  <div style="font-size:48px;">❌</div>
+  <h2 style="color:#c0392b; font-family:'Cormorant Garamond', serif;">Thanh toán thất bại</h2>
+  <p>Mã đơn hàng: <strong>{{ order_id }}</strong></p>
+  <p>{{ message }}</p>
+  <p style="color:#999; font-size:13px;">Mã lỗi: {{ response_code }}</p>
+  <a href="/gio-hang/" style="display:inline-block; margin-top:20px; padding:12px 32px;
+     background:#4B672D; color:#fff; border-radius:8px; text-decoration:none;">
+    Quay lại giỏ hàng
+  </a>
+</div>
+{% endblock %}
