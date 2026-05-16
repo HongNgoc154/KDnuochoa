@@ -1,0 +1,145 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_list %}
+
+{% block title %}{{ cl.opts.verbose_name_plural|capfirst }}{% endblock %}
+{% block breadcrumb_title %}{{ cl.opts.verbose_name_plural|capfirst }}{% endblock %}
+
+{% block breadcrumbs %}
+<a href="/admin/">Admin</a>
+<span class="topbar-sep">›</span>
+<a href="/admin/{{ cl.opts.app_label }}/">{{ cl.opts.app_label|capfirst }}</a>
+<span class="topbar-sep">›</span>
+<span>{{ cl.opts.verbose_name_plural|capfirst }}</span>
+{% endblock %}
+
+{% block content %}
+<div class="ami-page-header">
+  <div>
+    <h1 class="ami-page-title">{{ cl.opts.verbose_name_plural|capfirst }}</h1>
+    <p class="ami-page-sub">
+      {% if cl.result_count %}{{ cl.result_count }} kết quả{% else %}Không có kết quả{% endif %}
+    </p>
+  </div>
+  <div class="ami-page-actions">
+    {% if has_add_permission %}
+    <a href="{% add_preserved_filters cl.opts|admin_urlname:'add' is_popup to_field %}"
+       class="ami-btn ami-btn-primary">
+      + Thêm {{ cl.opts.verbose_name }}
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<div id="changelist">
+  <!-- ── FILTERS SIDEBAR ── -->
+  {% if cl.has_filters %}
+  <div id="changelist-filter">
+    <h2>Bộ lọc</h2>
+    {% for spec in cl.filter_specs %}
+      {% admin_list_filter cl spec %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- ── MAIN FORM ── -->
+  <div id="changelist-form">
+
+    <!-- Search -->
+    {% if cl.search_fields %}
+    <div id="changelist-search" style="margin-bottom:16px; display:flex; gap:10px; align-items:center;">
+      <form id="changelist-search" method="get">
+        {% if cl.is_popup %}<input type="hidden" name="{{ is_popup_var }}" value="1">{% endif %}
+        {% if cl.to_field %}<input type="hidden" name="{{ to_field_var }}" value="{{ cl.to_field }}">{% endif %}
+        {% for pair in cl.params.items %}
+          {% if pair.0 != query_string_key %}
+          <input type="hidden" name="{{ pair.0 }}" value="{{ pair.1 }}">
+          {% endif %}
+        {% endfor %}
+        <input type="text" name="{{ search_var }}" value="{{ cl.query }}"
+               placeholder="🔍 Tìm kiếm {{ cl.opts.verbose_name_plural }}…"
+               style="padding:10px 16px; border:1.5px solid var(--stone); border-radius:var(--radius-sm); font-family:var(--font-body); font-size:13px; outline:none; width:300px; transition:.2s;"
+               onfocus="this.style.borderColor='var(--olive)'"
+               onblur="this.style.borderColor='var(--stone)'">
+        <input type="submit" value="Tìm"
+               style="padding:10px 22px; background:var(--olive); color:var(--sage); border:none; border-radius:var(--radius-sm); font-family:var(--font-body); font-size:12px; font-weight:600; letter-spacing:1px; cursor:pointer;">
+        {% if cl.query %}
+        <a href="?" style="font-size:12px; color:var(--danger); text-decoration:none; padding:8px 14px; border:1px solid rgba(184,50,50,.25); border-radius:40px;">✕ Xóa</a>
+        {% endif %}
+      </form>
+    </div>
+    {% endif %}
+
+    <form id="changelist-form" method="post"
+          {% if cl.is_popup %}data-popup-url="{% url cl.opts|admin_urlname:'changelist' %}"{% endif %}>
+      {% csrf_token %}
+      {% if action_form and actions_on_top and cl.show_admin_actions %}
+      <div class="ami-card" style="margin-bottom:12px; padding:14px 20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        {% admin_actions %}
+      </div>
+      {% endif %}
+
+      <!-- Results table -->
+      <div class="ami-table-wrap">
+        {% if result_headers %}
+        <table id="result_list">
+          <thead>
+            <tr>
+              {% for header in result_headers %}
+              <th scope="col"
+                {% if header.sortable %} class="sortable{% if header.sorted %} sorted {% if header.ascending %}ascending{% else %}descending{% endif %}{% endif %}"{% endif %}>
+                {% if header.sortable %}
+                <a href="{{ header.url_primary }}">
+                  {{ header.text|capfirst }}
+                  {% if header.sorted %}{% if header.ascending %}↑{% else %}↓{% endif %}{% endif %}
+                </a>
+                {% else %}{{ header.text|capfirst }}{% endif %}
+              </th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for result in results %}
+            {% if result.form and result.form.non_field_errors %}
+            <tr><td colspan="{{ result|length }}">{{ result.form.non_field_errors }}</td></tr>
+            {% endif %}
+            <tr class="{% cycle 'row1' 'row2' %}{% if result.form.errors %} error{% endif %}">
+              {% for item in result %}{{ item }}{% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+
+        <!-- Pagination -->
+        {% if cl.result_count %}
+        <div class="paginator">
+          {% if cl.page_num > 1 %}
+          <a href="?{{ cl.get_query_string|safe }}&p={{ cl.page_num|add:"-1" }}">‹</a>
+          {% endif %}
+          {% for page in cl.page_range %}
+          {% if page == cl.page_num %}
+          <span class="this-page">{{ page }}</span>
+          {% else %}
+          <a href="?{{ cl.get_query_string|safe }}&p={{ page }}">{{ page }}</a>
+          {% endif %}
+          {% endfor %}
+          {% if cl.page_num < cl.paginator.num_pages %}
+          <a href="?{{ cl.get_query_string|safe }}&p={{ cl.page_num|add:"1" }}">›</a>
+          {% endif %}
+          <span style="margin-left:12px; font-size:12px; color:var(--text-4);">
+            {{ cl.result_count }} kết quả
+          </span>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if action_form and actions_on_bottom and cl.show_admin_actions %}
+      <div style="margin-top:12px; display:flex; align-items:center; gap:12px;">
+        {% admin_actions %}
+      </div>
+      {% endif %}
+    </form>
+
+  </div><!-- /changelist-form -->
+</div><!-- /changelist -->
+{% endblock %}

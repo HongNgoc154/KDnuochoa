@@ -1438,10 +1438,6 @@ def checkout_page(request):
 def place_order_api(request):
     """
     Nhận thông tin từ checkout.js → lưu GiaoHang + DonHang + ChiTietDonHang
-    Body JSON: { name, phone, email, address, note, payment,
-                 items: [{productId, variantId, name, price, qty}],
-                 subtotal, discount, points_used, points_discount,
-                 shipping, total, voucher_code, is_first_order }
     """
     account_id = request.session.get("account_id")
  
@@ -1466,18 +1462,28 @@ def place_order_api(request):
     if not items:
         return JsonResponse({"ok": False, "message": "Giỏ hàng trống."}, status=400)
  
-    # Mã đơn hàng
     ma_don = "AMI-" + "".join(random.choices(string.digits, k=8))
  
     try:
-        # ── Lấy tài khoản & khách hàng ──────────────────────────
         account  = None
         customer = None
-        if account_id:
-            account  = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first()
-            customer = KhachHang.objects.filter(id_TaiKhoan_id=account_id).first()
  
-        # ── 1. Lưu GiaoHang ──────────────────────────────────────
+        if account_id:
+            account = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first()
+            if account:
+                customer = KhachHang.objects.filter(id_TaiKhoan_id=account_id).first()
+ 
+                # ── FIX: Tự tạo KhachHang nếu chưa có ──────────
+                if not customer:
+                    customer = KhachHang.objects.create(
+                        id_TaiKhoan=account,
+                        TenKhachHang=account.TenDangNhap or name,
+                        DiaChi=address,
+                        GioiTinh='',
+                    )
+                    print(f"[place_order] Đã tạo KhachHang mới id={customer.id_KhachHang} cho account={account_id}")
+ 
+        # ── 1. Lưu GiaoHang ─────────────────────────────────────
         giao_hang = GiaoHang.objects.create(
             id_TaiKhoan_id = account_id if account_id else None,
             TenNguoiNhan   = name,
@@ -1486,10 +1492,10 @@ def place_order_api(request):
             GhiChu         = note,
         )
  
-        # ── 2. Lưu DonHang ───────────────────────────────────────
+        # ── 2. Lưu DonHang ──────────────────────────────────────
         don_hang = DonHang.objects.create(
             MaDonHang           = ma_don,
-            id_KhachHang        = customer,
+            id_KhachHang        = customer,      # Giờ luôn có giá trị nếu đăng nhập
             id_GiaoHang         = giao_hang,
             ThoiGian            = timezone.now(),
             HinhThucThanhToan   = payment,
@@ -1497,21 +1503,19 @@ def place_order_api(request):
             TongTien            = total,
             DiemDaDung          = pts_used,
             TienGiamTuDiem      = pts_disc,
-            DiemNhanDuoc        = 0,        # sẽ cập nhật sau khi tính điểm
+            DiemNhanDuoc        = 0,
         )
+        print(f"[place_order] Đã tạo DonHang {ma_don} | customer={customer} | total={total}")
  
-        # ── 3. Lưu ChiTietDonHang ────────────────────────────────
+        # ── 3. Lưu ChiTietDonHang ───────────────────────────────
         for item in items:
             product_id = item.get("productId")
-            variant_id = item.get("variantId")   # có thể None
+            variant_id = item.get("variantId")
             qty        = int(item.get("qty") or 1)
             price      = float(item.get("price") or 0)
  
-            # Tìm BienThe khớp (nếu không có variantId thì lấy variant đầu tiên)
             bien_the = None
             if variant_id and variant_id != "default":
-                # variantId trong cart.js là "{productId}-{attrValue}" hoặc id BienThe
-                # Thử lấy theo id_BienThe nếu là số
                 if str(variant_id).isdigit():
                     bien_the = BienThe.objects.filter(id_BienThe=int(variant_id)).first()
             if not bien_the and product_id:
@@ -1525,6 +1529,8 @@ def place_order_api(request):
                     GiaBan      = price,
                     GiaGiam     = 0,
                 )
+            else:
+                print(f"[place_order] WARNING: Không tìm thấy BienThe cho productId={product_id}, variantId={variant_id}")
  
         # ── 4. Đánh dấu voucher đã dùng ─────────────────────────
         if voucher_cd and account_id:
@@ -1536,7 +1542,6 @@ def place_order_api(request):
             if rel:
                 rel.DaSuDung = True
                 rel.save(update_fields=["DaSuDung"])
-                # Tăng DaSuDung của KhuyenMai
                 v = rel.id_KhuyenMai
                 if v:
                     v.DaSuDung = int(v.DaSuDung or 0) + 1
@@ -1546,56 +1551,46 @@ def place_order_api(request):
         if pts_used > 0 and account:
             redeem_points(account, pts_used, order=don_hang)
  
-        # ── 6. Cộng điểm đơn đầu tiên (bonus) ───────────────────
+        # ── 6. Cộng điểm đơn đầu tiên ───────────────────────────
         if account and customer:
             order_count = DonHang.objects.filter(id_KhachHang=customer).count()
-            if order_count == 1:   # vừa tạo đơn đầu tiên
+            if order_count == 1:
                 add_points(account, 200, "first_order_bonus",
                            "Thưởng đơn hàng đầu tiên", don_hang)
  
-        # ── 7. Cộng điểm thường từ đơn hàng (10.000₫ = 1 điểm) ─
+        # ── 7. Cộng điểm thường ─────────────────────────────────
         if account:
-            earned = int(total / 10000)   # 10k = 1 điểm
+            earned = int(total / 10000)
             if earned > 0:
                 add_points(account, earned, "earn_order",
                            f"Tích điểm đơn hàng {ma_don}", don_hang)
  
-        # ── 8. Cập nhật TongChiTieu & hạng thành viên ───────────
+        # ── 8. Cập nhật TongChiTieu & hạng ──────────────────────
         if account:
             account.TongChiTieu = float(account.TongChiTieu or 0) + total
             account.save(update_fields=["TongChiTieu"])
             update_member_level(account)
  
-        # ── Sau khi lưu đơn hàng thành công ──
+        # ── Return ───────────────────────────────────────────────
         if payment == "vnpay":
             return JsonResponse({
                 "ok":       True,
                 "order_id": ma_don,
                 "redirect": f"/api/vnpay-create/?order_id={ma_don}&amount={int(total)}",
             })
-
-        # ── Return theo phương thức thanh toán ──
-        if payment == "vnpay":
-            return JsonResponse({
-                "ok":       True,
-                "order_id": ma_don,
-                "redirect": f"/api/vnpay-create/?order_id={ma_don}&amount={int(total)}",
-            })
-
         if payment == "momo":
             return JsonResponse({
                 "ok":       True,
                 "order_id": ma_don,
                 "redirect": f"/api/momo-create/?order_id={ma_don}&amount={int(total)}",
             })
-
         if payment == "paypal":
             return JsonResponse({
                 "ok":       True,
                 "order_id": ma_don,
                 "redirect": f"/api/paypal-create/?order_id={ma_don}&amount={int(total)}",
             })
-
+ 
         # COD
         return JsonResponse({
             "ok":       True,
@@ -2116,3 +2111,394 @@ def momo_ipn(request):
         return JsonResponse({"status": "ok"})
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
+    
+
+def my_orders_api(request):
+    account_id = request.session.get("account_id")
+    if not account_id:
+        return JsonResponse({"ok": False, "need_login": True})
+ 
+    customer = KhachHang.objects.filter(id_TaiKhoan_id=account_id).first()
+ 
+    # Query cả 2 trường hợp để không bỏ sót đơn hàng
+    if customer:
+        orders = list(
+            DonHang.objects
+            .filter(
+                Q(id_KhachHang=customer) |
+                Q(id_GiaoHang__id_TaiKhoan_id=account_id)
+            )
+            .select_related("id_GiaoHang")
+            .distinct()
+            .order_by("-ThoiGian")
+        )
+    else:
+        # Không có KhachHang → tìm qua GiaoHang
+        orders = list(
+            DonHang.objects
+            .filter(id_GiaoHang__id_TaiKhoan_id=account_id)
+            .select_related("id_GiaoHang")
+            .order_by("-ThoiGian")
+        )
+ 
+    if not orders:
+        return JsonResponse({"ok": True, "orders": []})
+ 
+    order_ids = [o.id_DonHang for o in orders]
+    details = list(
+        ChiTietDonHang.objects
+        .filter(id_DonHang_id__in=order_ids)
+        .select_related(
+            "id_BienThe",
+            "id_BienThe__id_SanPham",
+            "id_BienThe__id_SanPham__id_ThuongHieu"
+        )
+    )
+ 
+    detail_map = {}
+    product_ids_all = []
+    for d in details:
+        detail_map.setdefault(d.id_DonHang_id, []).append(d)
+        if d.id_BienThe and d.id_BienThe.id_SanPham_id:
+            product_ids_all.append(d.id_BienThe.id_SanPham_id)
+ 
+    image_map = _product_image_map(list(set(product_ids_all)))
+ 
+    STATUS_STEP = {
+        "Chờ xác nhận":   0,
+        "Đã xác nhận":    1,
+        "Đang giao":      2,
+        "Hoàn tất":       3,
+        "Đã hủy":         -1,
+        "Đã giao":        3,
+        "Đã thanh toán":  1,
+        "Thanh toán thất bại": -1,
+    }
+ 
+    result = []
+    for order in orders:
+        items = detail_map.get(order.id_DonHang, [])
+        item_list = []
+        for d in items:
+            bt = d.id_BienThe
+            if not bt:
+                continue
+            sp = bt.id_SanPham
+            if not sp:
+                continue
+            imgs = image_map.get(sp.id_SanPham, [])
+            item_list.append({
+                "product_id":   sp.id_SanPham,
+                "product_name": sp.TenSanPham,
+                "brand":        sp.id_ThuongHieu.TenThuongHieu if sp.id_ThuongHieu else "",
+                "image":        imgs[0] if imgs else FALLBACK_IMAGES["default"],
+                "qty":          d.SoLuong or 1,
+                "price":        _format_currency(d.GiaBan),
+            })
+ 
+        trang_thai = (order.TrangThai or "Chờ xác nhận").strip()
+        gh = order.id_GiaoHang
+ 
+        result.append({
+            "id":       order.id_DonHang,
+            "ma_don":   order.MaDonHang or f"#{order.id_DonHang}",
+            "date":     order.ThoiGian.strftime("%d/%m/%Y") if order.ThoiGian else "",
+            "status":   trang_thai,
+            "step":     STATUS_STEP.get(trang_thai, 0),
+            "total":    _format_currency(order.TongTien),
+            "payment":  order.HinhThucThanhToan or "COD",
+            "items":    item_list,
+            "address":  gh.DiaChi if gh else "",
+            "receiver": gh.TenNguoiNhan if gh else "",
+            "phone":    gh.SDT if gh else "",
+        })
+ 
+    return JsonResponse({"ok": True, "orders": result})
+ 
+ 
+# ── 2. API: Khách xác nhận đã nhận hàng ──────────────────────────
+# URL: POST /api/confirm-received/
+# Body: order_id
+# ──────────────────────────────────────────────────────────────────
+@csrf_exempt
+@require_POST
+def confirm_received_api(request):
+    account_id = request.session.get("account_id")
+    if not account_id:
+        return JsonResponse({"ok": False, "need_login": True})
+ 
+    order_id = request.POST.get("order_id")
+    if not order_id:
+        return JsonResponse({"ok": False, "message": "Thiếu order_id."})
+ 
+    customer = KhachHang.objects.filter(id_TaiKhoan_id=account_id).first()
+ 
+    if customer:
+        order = DonHang.objects.filter(
+            Q(id_KhachHang=customer) | Q(id_GiaoHang__id_TaiKhoan_id=account_id),
+            id_DonHang=order_id,
+            TrangThai="Đang giao"
+        ).first()
+    else:
+        order = DonHang.objects.filter(
+            id_DonHang=order_id,
+            id_GiaoHang__id_TaiKhoan_id=account_id,
+            TrangThai="Đang giao"
+        ).first()
+ 
+    if not order:
+        return JsonResponse({
+            "ok": False,
+            "message": "Không tìm thấy đơn hàng hoặc đơn chưa đủ điều kiện xác nhận."
+        })
+ 
+    order.TrangThai = "Hoàn tất"
+    order.save(update_fields=["TrangThai"])
+ 
+    return JsonResponse({
+        "ok":         True,
+        "message":    "Cảm ơn bạn đã xác nhận! Đơn hàng đã được hoàn tất. 🎉",
+        "new_status": "Hoàn tất",
+    })
+ 
+ 
+# ── 3. API: Khách hủy đơn hàng ────────────────────────────────────
+# URL: POST /api/cancel-order/
+# Body: order_id, reason
+# ──────────────────────────────────────────────────────────────────
+@csrf_exempt
+@require_POST
+def cancel_order_api(request):
+    account_id = request.session.get("account_id")
+    if not account_id:
+        return JsonResponse({"ok": False, "need_login": True})
+ 
+    order_id = request.POST.get("order_id")
+    customer = KhachHang.objects.filter(id_TaiKhoan_id=account_id).first()
+ 
+    # Tìm đơn hàng qua cả 2 trường hợp
+    if customer:
+        order = DonHang.objects.filter(
+            Q(id_KhachHang=customer) | Q(id_GiaoHang__id_TaiKhoan_id=account_id),
+            id_DonHang=order_id,
+            TrangThai="Chờ xác nhận"
+        ).first()
+    else:
+        order = DonHang.objects.filter(
+            id_DonHang=order_id,
+            id_GiaoHang__id_TaiKhoan_id=account_id,
+            TrangThai="Chờ xác nhận"
+        ).first()
+ 
+    if not order:
+        return JsonResponse({
+            "ok": False,
+            "message": "Không thể hủy đơn này. Đơn hàng đã được xác nhận hoặc đang giao."
+        })
+ 
+    order.TrangThai = "Đã hủy"
+    order.save(update_fields=["TrangThai"])
+ 
+    account = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first()
+    if account and int(order.DiemDaDung or 0) > 0:
+        add_points(account, int(order.DiemDaDung), "refund_points",
+                   f"Hoàn điểm do hủy đơn {order.MaDonHang}", order)
+ 
+    return JsonResponse({
+        "ok":         True,
+        "message":    "Đơn hàng đã được hủy thành công.",
+        "new_status": "Đã hủy",
+    })
+ 
+ 
+# ═══════════════════════════════════════════════════════════════════
+# ADMIN VIEWS — Quản lý đơn hàng
+# ═══════════════════════════════════════════════════════════════════
+ 
+# ── 4. Admin: Danh sách đơn hàng ──────────────────────────────────
+# URL: GET /admin-orders/
+# ──────────────────────────────────────────────────────────────────
+def admin_orders_view(request):
+    """
+    Trang quản lý đơn hàng cho admin/staff.
+    Filter theo trạng thái, tìm kiếm theo mã đơn / tên khách.
+    """
+    # ── Kiểm tra quyền admin ──
+    account_id = request.session.get("account_id")
+    if not account_id:
+        return redirect('auth-page')
+    account = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first()
+    if not account or account.LoaiTaiKhoan not in ('admin', 'staff'):
+        return redirect('home')
+ 
+    status_filter = request.GET.get("status", "all")
+    search_q      = (request.GET.get("q") or "").strip()
+ 
+    orders_qs = DonHang.objects.select_related(
+        "id_KhachHang", "id_GiaoHang"
+    ).order_by("-ThoiGian")
+ 
+    if status_filter != "all":
+        orders_qs = orders_qs.filter(TrangThai=status_filter)
+ 
+    if search_q:
+        orders_qs = orders_qs.filter(
+            Q(MaDonHang__icontains=search_q) |
+            Q(id_GiaoHang__TenNguoiNhan__icontains=search_q) |
+            Q(id_GiaoHang__SDT__icontains=search_q)
+        )
+ 
+    # ── Đếm theo trạng thái ──
+    from django.db.models import Count
+    status_counts = {
+        row["TrangThai"]: row["cnt"]
+        for row in DonHang.objects.values("TrangThai").annotate(cnt=Count("id_DonHang"))
+    }
+ 
+    return render(request, "admin/orders.html", {
+        "orders":        list(orders_qs[:100]),
+        "status_filter": status_filter,
+        "search_q":      search_q,
+        "status_counts": status_counts,
+        "STATUS_LIST": [
+            "Chờ xác nhận",
+            "Đã xác nhận",
+            "Đang giao",
+            "Hoàn tất",
+            "Đã hủy",
+        ],
+    })
+ 
+ 
+# ── 5. Admin: Cập nhật trạng thái đơn hàng ────────────────────────
+# URL: POST /api/admin/update-order-status/
+# Body: order_id, status
+# ──────────────────────────────────────────────────────────────────
+@csrf_exempt
+@require_POST
+def admin_update_order_status(request):
+    """
+    Admin cập nhật trạng thái đơn hàng.
+    Luồng hợp lệ:
+      Chờ xác nhận → Đã xác nhận
+      Đã xác nhận  → Đang giao
+      Đang giao    → Hoàn tất  (hoặc khách tự confirm)
+      Bất kỳ       → Đã hủy   (admin có thể hủy)
+    """
+    account_id = request.session.get("account_id")
+    if not account_id:
+        return JsonResponse({"ok": False, "need_login": True})
+ 
+    account = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first()
+    if not account or account.LoaiTaiKhoan not in ('admin', 'staff'):
+        return JsonResponse({"ok": False, "message": "Không có quyền thực hiện."}, status=403)
+ 
+    order_id   = request.POST.get("order_id")
+    new_status = (request.POST.get("status") or "").strip()
+ 
+    VALID_STATUSES = ["Chờ xác nhận", "Đã xác nhận", "Đang giao", "Hoàn tất", "Đã hủy"]
+    if new_status not in VALID_STATUSES:
+        return JsonResponse({"ok": False, "message": "Trạng thái không hợp lệ."})
+ 
+    order = DonHang.objects.filter(id_DonHang=order_id).first()
+    if not order:
+        return JsonResponse({"ok": False, "message": "Không tìm thấy đơn hàng."})
+ 
+    # ── Kiểm tra luồng hợp lệ ──
+    FLOW = {
+        "Chờ xác nhận": ["Đã xác nhận", "Đã hủy"],
+        "Đã xác nhận":  ["Đang giao",   "Đã hủy"],
+        "Đang giao":    ["Hoàn tất",     "Đã hủy"],
+        "Hoàn tất":     [],
+        "Đã hủy":       [],
+    }
+    current = (order.TrangThai or "Chờ xác nhận").strip()
+    allowed = FLOW.get(current, [])
+ 
+    if new_status not in allowed:
+        return JsonResponse({
+            "ok": False,
+            "message": f"Không thể chuyển từ '{current}' sang '{new_status}'."
+        })
+ 
+    order.TrangThai = new_status
+    order.save(update_fields=["TrangThai"])
+ 
+    return JsonResponse({
+        "ok":         True,
+        "message":    f"Đã cập nhật đơn hàng {order.MaDonHang} → {new_status}",
+        "new_status": new_status,
+        "order_id":   order.id_DonHang,
+    })
+ 
+ 
+# ── 6. Admin: Chi tiết đơn hàng (API JSON) ────────────────────────
+# URL: GET /api/admin/order-detail/?order_id=...
+# ──────────────────────────────────────────────────────────────────
+def admin_order_detail_api(request):
+    account_id = request.session.get("account_id")
+    if not account_id:
+        return JsonResponse({"ok": False, "need_login": True})
+    account = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first()
+    if not account or account.LoaiTaiKhoan not in ('admin', 'staff'):
+        return JsonResponse({"ok": False, "message": "Không có quyền."}, status=403)
+ 
+    order_id = request.GET.get("order_id")
+    order = DonHang.objects.select_related(
+        "id_KhachHang", "id_GiaoHang",
+        "id_KhachHang__id_TaiKhoan"
+    ).filter(id_DonHang=order_id).first()
+ 
+    if not order:
+        return JsonResponse({"ok": False, "message": "Không tìm thấy đơn hàng."})
+ 
+    details = list(
+        ChiTietDonHang.objects
+        .filter(id_DonHang=order)
+        .select_related("id_BienThe", "id_BienThe__id_SanPham",
+                         "id_BienThe__id_SanPham__id_ThuongHieu")
+    )
+    product_ids = [
+        d.id_BienThe.id_SanPham_id for d in details
+        if d.id_BienThe and d.id_BienThe.id_SanPham_id
+    ]
+    image_map = _product_image_map(product_ids)
+ 
+    items = []
+    for d in details:
+        bt = d.id_BienThe
+        if not bt:
+            continue
+        sp = bt.id_SanPham
+        if not sp:
+            continue
+        imgs = image_map.get(sp.id_SanPham, [])
+        items.append({
+            "product_name": sp.TenSanPham,
+            "brand":        sp.id_ThuongHieu.TenThuongHieu if sp.id_ThuongHieu else "",
+            "image":        imgs[0] if imgs else FALLBACK_IMAGES["default"],
+            "sku":          bt.Sku,
+            "qty":          d.SoLuong or 1,
+            "price":        _format_currency(d.GiaBan),
+        })
+ 
+    gh = order.id_GiaoHang
+    kh = order.id_KhachHang
+ 
+    return JsonResponse({
+        "ok": True,
+        "order": {
+            "id":       order.id_DonHang,
+            "ma_don":   order.MaDonHang,
+            "date":     order.ThoiGian.strftime("%d/%m/%Y %H:%M") if order.ThoiGian else "",
+            "status":   order.TrangThai,
+            "payment":  order.HinhThucThanhToan,
+            "total":    _format_currency(order.TongTien),
+            "items":    items,
+            "receiver": gh.TenNguoiNhan if gh else "",
+            "phone":    gh.SDT if gh else "",
+            "address":  gh.DiaChi if gh else "",
+            "note":     gh.GhiChu if gh else "",
+            "customer": kh.TenKhachHang if kh else "Khách vãng lai",
+        }
+    })

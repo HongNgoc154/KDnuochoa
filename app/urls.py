@@ -57,6 +57,16 @@ urlpatterns = [
     path('api/momo-create/',         views.momo_create,  name='momo-create'),
     path('thanh-toan/momo-return/',  views.momo_return,  name='momo-return'),
     path('api/momo-ipn/',            views.momo_ipn,     name='momo-ipn'),
+
+    # ── Đơn hàng (khách) ──
+    path('api/my-orders/',          views.my_orders_api,       name='my-orders-api'),
+    path('api/confirm-received/',   views.confirm_received_api, name='confirm-received'),
+    path('api/cancel-order/',       views.cancel_order_api,     name='cancel-order'),
+
+    # ── Admin ──
+    path('admin-orders/',                  views.admin_orders_view,         name='admin-orders'),
+    path('api/admin/update-order-status/', views.admin_update_order_status, name='admin-update-order-status'),
+    path('api/admin/order-detail/',        views.admin_order_detail_api,    name='admin-order-detail'),
     
      
 ]

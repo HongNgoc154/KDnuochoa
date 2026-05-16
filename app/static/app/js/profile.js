@@ -80,60 +80,60 @@ const I18N = {
 })();
 
 /* ─── RENDER ORDERS ─── */
-(function renderOrders() {
-  const container = document.getElementById('ordersList');
-  if (!container) return;
+// (function renderOrders() {
+//   const container = document.getElementById('ordersList');
+//   if (!container) return;
 
-  const statusLabel = { delivered: 'Đã giao', shipped: 'Đang giao', processing: 'Đang xử lý', cancelled: 'Đã hủy' };
-  const statusClass = { delivered: 'status-delivered', shipped: 'status-shipped', processing: 'status-processing', cancelled: 'status-cancelled' };
-  const steps = ['Đặt hàng','Xác nhận','Đang giao','Đã giao'];
+//   const statusLabel = { delivered: 'Đã giao', shipped: 'Đang giao', processing: 'Đang xử lý', cancelled: 'Đã hủy' };
+//   const statusClass = { delivered: 'status-delivered', shipped: 'status-shipped', processing: 'status-processing', cancelled: 'status-cancelled' };
+//   const steps = ['Đặt hàng','Xác nhận','Đang giao','Đã giao'];
 
-  ORDERS.forEach(order => {
-    const card = document.createElement('div');
-    card.className = 'order-card';
+//   ORDERS.forEach(order => {
+//     const card = document.createElement('div');
+//     card.className = 'order-card';
 
-    const progressHTML = order.status !== 'cancelled' ? `
-      <div class="order-progress">
-        ${steps.map((s, i) => `
-          <div class="progress-step ${i < order.progress ? 'done' : i === order.progress - 1 ? 'active' : ''}">
-            <div class="step-dot">${i < order.progress ? '✓' : i + 1}</div>
-            <span class="step-label">${s}</span>
-          </div>
-        `).join('')}
-      </div>` : '';
+//     const progressHTML = order.status !== 'cancelled' ? `
+//       <div class="order-progress">
+//         ${steps.map((s, i) => `
+//           <div class="progress-step ${i < order.progress ? 'done' : i === order.progress - 1 ? 'active' : ''}">
+//             <div class="step-dot">${i < order.progress ? '✓' : i + 1}</div>
+//             <span class="step-label">${s}</span>
+//           </div>
+//         `).join('')}
+//       </div>` : '';
 
-    card.innerHTML = `
-      ${progressHTML}
-      <div class="order-header">
-        <span class="order-id">${order.id}</span>
-        <span class="order-date">${order.date}</span>
-        <span class="order-status ${statusClass[order.status]}">${statusLabel[order.status]}</span>
-      </div>
-      <div class="order-body">
-        <img class="order-product-img" src="${order.img}" alt="${order.product}">
-        <div class="order-product-info">
-          <p class="order-product-brand">${order.brand}</p>
-          <h3 class="order-product-name">${order.product}</h3>
-        </div>
-        <div class="order-total">${order.total}</div>
-      </div>
-      <div class="order-footer">
-        <button class="btn-order btn-order-detail" data-order-id="${order.id}">Xem chi tiết</button>
-        ${order.status === 'processing' ? `<button class="btn-order btn-order-cancel" data-order-id="${order.id}">Hủy đơn</button>` : ''}
-      </div>
-    `;
-    container.appendChild(card);
-  });
+//     card.innerHTML = `
+//       ${progressHTML}
+//       <div class="order-header">
+//         <span class="order-id">${order.id}</span>
+//         <span class="order-date">${order.date}</span>
+//         <span class="order-status ${statusClass[order.status]}">${statusLabel[order.status]}</span>
+//       </div>
+//       <div class="order-body">
+//         <img class="order-product-img" src="${order.img}" alt="${order.product}">
+//         <div class="order-product-info">
+//           <p class="order-product-brand">${order.brand}</p>
+//           <h3 class="order-product-name">${order.product}</h3>
+//         </div>
+//         <div class="order-total">${order.total}</div>
+//       </div>
+//       <div class="order-footer">
+//         <button class="btn-order btn-order-detail" data-order-id="${order.id}">Xem chi tiết</button>
+//         ${order.status === 'processing' ? `<button class="btn-order btn-order-cancel" data-order-id="${order.id}">Hủy đơn</button>` : ''}
+//       </div>
+//     `;
+//     container.appendChild(card);
+//   });
 
-  /* Detail modal */
-  container.addEventListener('click', e => {
-    const detailBtn = e.target.closest('.btn-order-detail');
-    const cancelBtn = e.target.closest('.btn-order-cancel');
+//   /* Detail modal */
+//   container.addEventListener('click', e => {
+//     const detailBtn = e.target.closest('.btn-order-detail');
+//     const cancelBtn = e.target.closest('.btn-order-cancel');
 
-    if (detailBtn) openOrderModal(detailBtn.dataset.orderId);
-    if (cancelBtn) openCancelModal(cancelBtn.dataset.orderId);
-  });
-})();
+//     if (detailBtn) openOrderModal(detailBtn.dataset.orderId);
+//     if (cancelBtn) openCancelModal(cancelBtn.dataset.orderId);
+//   });
+// })();
 
 function openOrderModal(orderId) {
   const order = ORDERS.find(o => o.id === orderId);
@@ -750,4 +750,377 @@ function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   document.getElementById('reviewModalClose')?.addEventListener('click',  () => { document.getElementById('reviewModal').hidden = true; });
   document.getElementById('reviewModalClose2')?.addEventListener('click', () => { document.getElementById('reviewModal').hidden = true; });
+})();
+
+const STATUS_STEP_MAP = {
+  "Chờ xác nhận": 0,
+  "Đã xác nhận":  1,
+  "Đang giao":    2,
+  "Hoàn tất":     3,
+  "Đã hủy":       -1,
+  "Đã giao":      3,
+  "Đã thanh toán": 1,
+};
+const STATUS_CSS = {
+  "Chờ xác nhận": "status-processing",
+  "Đã xác nhận":  "status-shipped",
+  "Đang giao":    "status-shipped",
+  "Hoàn tất":     "status-delivered",
+  "Đã hủy":       "status-cancelled",
+  "Đã giao":      "status-delivered",
+};
+const STATUS_LABEL_MAP = {
+  "Chờ xác nhận": "Chờ xác nhận",
+  "Đã xác nhận":  "Đã xác nhận",
+  "Đang giao":    "Đang giao",
+  "Hoàn tất":     "Hoàn tất",
+  "Đã hủy":       "Đã hủy",
+  "Đã giao":      "Đã giao",
+};
+const ORDER_STEPS = ["Đặt hàng", "Xác nhận", "Đang giao", "Hoàn tất"];
+ 
+function buildProgressHTML(step, status) {
+  if (status === "Đã hủy") {
+    return `<div class="order-cancelled-banner">✕ Đơn hàng đã bị hủy</div>`;
+  }
+  return `
+    <div class="order-progress">
+      ${ORDER_STEPS.map((s, i) => `
+        <div class="progress-step ${i < step ? 'done' : i === step ? 'active' : ''}">
+          <div class="step-dot">${i < step ? '✓' : i + 1}</div>
+          <span class="step-label">${s}</span>
+        </div>
+        ${i < ORDER_STEPS.length - 1 ? `<div class="progress-line ${i < step ? 'done' : ''}"></div>` : ''}
+      `).join('')}
+    </div>`;
+}
+ 
+function buildOrderCard(order) {
+  const step   = STATUS_STEP_MAP[order.status] ?? 0;
+  const cssKey = STATUS_CSS[order.status] || "status-processing";
+  const label  = STATUS_LABEL_MAP[order.status] || order.status;
+  const item   = order.items?.[0];
+  const extra  = (order.items?.length || 1) - 1;
+ 
+  let btns = `<button class="btn-order btn-order-detail" data-order-id="${order.id}">Xem chi tiết</button>`;
+  if (order.status === "Chờ xác nhận") {
+    btns += `<button class="btn-order btn-order-cancel" data-order-id="${order.id}">Hủy đơn</button>`;
+  }
+  if (order.status === "Đang giao") {
+    btns += `<button class="btn-order btn-order-received" data-order-id="${order.id}">✓ Đã nhận được hàng</button>`;
+  }
+ 
+  return `
+    <div class="order-card" data-id="${order.id}" data-status="${order.status}">
+      ${buildProgressHTML(step, order.status)}
+      <div class="order-header">
+        <span class="order-id">${order.ma_don}</span>
+        <span class="order-date">${order.date}</span>
+        <span class="order-status ${cssKey}">${label}</span>
+      </div>
+      ${item ? `
+      <div class="order-body">
+        <img class="order-product-img" src="${item.image}" alt="${item.product_name}"
+             onerror="this.src='https://images.unsplash.com/photo-1541643600914-78b084683702?auto=format&fit=crop&w=200&q=80'">
+        <div class="order-product-info">
+          <p class="order-product-brand">${item.brand}</p>
+          <h3 class="order-product-name">${item.product_name}</h3>
+          ${extra > 0 ? `<p style="font-size:12px;color:#9e9e8e;margin-top:4px;">+${extra} sản phẩm khác</p>` : ''}
+        </div>
+        <div class="order-total">${order.total}</div>
+      </div>` : ''}
+      <div class="order-footer">${btns}</div>
+    </div>`;
+}
+ 
+(function initOrdersFromAPI() {
+  const container = document.getElementById('ordersList');
+  if (!container) return;
+ 
+  let loaded = false;
+  let ordersCache = [];
+ 
+  async function loadOrders() {
+    if (loaded) return;
+    loaded = true;
+ 
+    container.innerHTML = `
+      <div style="text-align:center;padding:60px;color:#9e9e8e;">
+        <div style="font-size:32px;margin-bottom:14px;">⏳</div>
+        <p style="font-size:14px;">Đang tải đơn hàng…</p>
+      </div>`;
+ 
+    try {
+      const res  = await fetch('/api/my-orders/');
+      const data = await res.json();
+ 
+      if (!data.ok) {
+        if (data.need_login) { window.location.href = '/auth/'; return; }
+        container.innerHTML = `<p style="text-align:center;padding:40px;color:#c0392b;">Có lỗi xảy ra khi tải đơn hàng.</p>`;
+        return;
+      }
+ 
+      ordersCache = data.orders || [];
+ 
+      if (!ordersCache.length) {
+        container.innerHTML = `
+          <div style="text-align:center;padding:72px 40px;color:#9e9e8e;">
+            <div style="font-size:48px;margin-bottom:20px;">📦</div>
+            <p style="font-family:'Cormorant Garamond',serif;font-size:24px;color:#6b6b5e;margin-bottom:10px;">Chưa có đơn hàng nào</p>
+            <p style="font-size:13px;">Khám phá bộ sưu tập nước hoa và đặt đơn đầu tiên của bạn.</p>
+            <a href="/nuoc-hoa/tat-ca/"
+               style="display:inline-block;margin-top:20px;padding:12px 28px;background:#4B672D;color:#EBF6C4;border-radius:40px;font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;text-decoration:none;">
+              Khám phá nước hoa
+            </a>
+          </div>`;
+        return;
+      }
+ 
+      // Cập nhật badge sidebar
+      const badge = document.querySelector('.nav-item[data-tab="orders"] .nav-badge');
+      if (badge) badge.textContent = ordersCache.length;
+ 
+      container.innerHTML = ordersCache.map(buildOrderCard).join('');
+      attachOrderEvents(container, ordersCache);
+ 
+    } catch {
+      container.innerHTML = `<p style="text-align:center;padding:40px;color:#c0392b;">Lỗi kết nối. Vui lòng thử lại.</p>`;
+    }
+  }
+ 
+  // Load ngay nếu tab đang hiển thị
+  const panel = document.getElementById('tab-orders');
+  if (panel && !panel.hidden) loadOrders();
+  document.querySelector('.nav-item[data-tab="orders"]')?.addEventListener('click', loadOrders);
+})();
+ 
+ 
+function attachOrderEvents(container, ordersData) {
+  container.addEventListener('click', async (e) => {
+    const detailBtn   = e.target.closest('.btn-order-detail');
+    const cancelBtn   = e.target.closest('.btn-order-cancel');
+    const receivedBtn = e.target.closest('.btn-order-received');
+ 
+    if (detailBtn) {
+      const order = ordersData.find(o => String(o.id) === String(detailBtn.dataset.orderId));
+      if (order) openProfileOrderModal(order);
+    }
+    if (cancelBtn) openCancelOrderModal(cancelBtn.dataset.orderId);
+    if (receivedBtn) await confirmReceived(receivedBtn.dataset.orderId, receivedBtn);
+  });
+}
+ 
+ 
+function openProfileOrderModal(order) {
+  const modal   = document.getElementById('orderModal');
+  const content = document.getElementById('orderModalContent');
+  if (!modal || !content) return;
+ 
+  const step   = STATUS_STEP_MAP[order.status] ?? 0;
+  const cssKey = STATUS_CSS[order.status] || "status-processing";
+  const label  = STATUS_LABEL_MAP[order.status] || order.status;
+ 
+  const progressMini = order.status !== "Đã hủy" ? `
+    <div class="od-progress-mini">
+      ${ORDER_STEPS.map((s, i) => `
+        <div class="od-step ${i < step ? 'done' : i === step ? 'active' : ''}">
+          <div class="od-step-dot">${i < step ? '✓' : i + 1}</div>
+          <span>${s}</span>
+        </div>
+        ${i < ORDER_STEPS.length - 1 ? `<div class="od-step-line ${i < step ? 'done' : ''}"></div>` : ''}
+      `).join('')}
+    </div>` : `<div style="text-align:center;padding:12px;color:#c0392b;font-weight:700;letter-spacing:1px;">✕ ĐÃ HỦY</div>`;
+ 
+  const itemsHTML = (order.items || []).map(item => `
+    <div class="od-item">
+      <img class="od-item-img" src="${item.image}" alt="${item.product_name}"
+           onerror="this.src='https://images.unsplash.com/photo-1541643600914-78b084683702?auto=format&fit=crop&w=200&q=80'">
+      <div style="flex:1;">
+        <p style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#576238;font-weight:600;">${item.brand}</p>
+        <p class="od-item-name">${item.product_name}</p>
+        <p style="font-size:12px;color:#9e9e8e;">Số lượng: ${item.qty}</p>
+      </div>
+      <span class="od-item-price">${item.price}</span>
+    </div>`).join('');
+ 
+  content.innerHTML = `
+    <h3 class="modal-title">${order.ma_don}</h3>
+    <p style="margin-bottom:16px;">
+      <span class="order-status ${cssKey}">${label}</span>
+      <span style="font-size:12px;color:#9e9e8e;margin-left:12px;">${order.date}</span>
+    </p>
+    ${progressMini}
+    <p class="od-section-title">Thông tin giao hàng</p>
+    <div style="background:#f8f5f0;border-radius:12px;padding:16px;margin-bottom:16px;font-size:13px;line-height:1.8;color:#5f5a4f;">
+      <strong>${order.receiver}</strong> · ${order.phone}<br>
+      📍 ${order.address}
+    </div>
+    <p class="od-section-title">Sản phẩm</p>
+    <div class="order-detail-items">${itemsHTML}</div>
+    <div class="od-totals">
+      <div class="od-row"><span>Thanh toán</span><span>${(order.payment || 'COD').toUpperCase()}</span></div>
+      <div class="od-row total"><span>Tổng cộng</span><span>${order.total}</span></div>
+    </div>`;
+ 
+  modal.hidden = false;
+}
+ 
+ 
+function openCancelOrderModal(orderId) {
+  const modal = document.getElementById('cancelModal');
+  if (!modal) return;
+  modal.dataset.orderId = orderId;
+  document.getElementById('cancelReason').value = '';
+  modal.hidden = false;
+}
+ 
+// Override nút xác nhận hủy
+const confirmCancelBtn = document.getElementById('confirmCancel');
+if (confirmCancelBtn) {
+  // Clone để xóa event listener cũ (nếu có trong profile.js gốc)
+  const newBtn = confirmCancelBtn.cloneNode(true);
+  confirmCancelBtn.parentNode.replaceChild(newBtn, confirmCancelBtn);
+ 
+  newBtn.addEventListener('click', async () => {
+    const modal   = document.getElementById('cancelModal');
+    const orderId = modal.dataset.orderId;
+    const reason  = document.getElementById('cancelReason')?.value?.trim();
+    if (!orderId) return;
+ 
+    newBtn.disabled = true;
+    newBtn.textContent = '⏳ Đang xử lý…';
+ 
+    try {
+      const fd = new FormData();
+      fd.append('order_id', orderId);
+      fd.append('reason', reason || '');
+      const res  = await fetch('/api/cancel-order/', { method: 'POST', body: fd });
+      const data = await res.json();
+ 
+      modal.hidden = true;
+      if (data.ok) {
+        updateOrderCardUI(orderId, 'Đã hủy');
+        if (typeof showToast === 'function') showToast('Đơn hàng đã được hủy thành công.');
+      } else {
+        if (typeof showToast === 'function') showToast(data.message || 'Không thể hủy đơn hàng này.');
+      }
+    } catch {
+      if (typeof showToast === 'function') showToast('Lỗi kết nối. Vui lòng thử lại.');
+    } finally {
+      newBtn.disabled = false;
+      newBtn.textContent = 'Xác nhận hủy';
+    }
+  });
+}
+ 
+ 
+async function confirmReceived(orderId, btn) {
+  if (!confirm('Xác nhận bạn đã nhận được hàng?')) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ Đang xử lý…';
+ 
+  try {
+    const fd = new FormData();
+    fd.append('order_id', orderId);
+    const res  = await fetch('/api/confirm-received/', { method: 'POST', body: fd });
+    const data = await res.json();
+ 
+    if (data.ok) {
+      updateOrderCardUI(orderId, 'Hoàn tất');
+      if (typeof showToast === 'function') showToast(data.message || 'Đơn hàng hoàn tất. Cảm ơn bạn! 🎉');
+    } else {
+      if (typeof showToast === 'function') showToast(data.message || 'Có lỗi xảy ra.');
+      btn.disabled = false;
+      btn.textContent = '✓ Đã nhận được hàng';
+    }
+  } catch {
+    if (typeof showToast === 'function') showToast('Lỗi kết nối. Vui lòng thử lại.');
+    btn.disabled = false;
+    btn.textContent = '✓ Đã nhận được hàng';
+  }
+}
+ 
+ 
+function updateOrderCardUI(orderId, newStatus) {
+  const card = document.querySelector(`.order-card[data-id="${orderId}"]`);
+  if (!card) return;
+  card.dataset.status = newStatus;
+ 
+  const chip = card.querySelector('.order-status');
+  if (chip) {
+    chip.className = `order-status ${STATUS_CSS[newStatus] || 'status-processing'}`;
+    chip.textContent = STATUS_LABEL_MAP[newStatus] || newStatus;
+  }
+ 
+  const step = STATUS_STEP_MAP[newStatus] ?? 0;
+  const progressEl = card.querySelector('.order-progress, .order-cancelled-banner');
+  if (progressEl) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = buildProgressHTML(step, newStatus);
+    progressEl.replaceWith(tmp.firstElementChild);
+  }
+ 
+  const footer = card.querySelector('.order-footer');
+  if (footer) {
+    let html = `<button class="btn-order btn-order-detail" data-order-id="${orderId}">Xem chi tiết</button>`;
+    if (newStatus === 'Chờ xác nhận') {
+      html += `<button class="btn-order btn-order-cancel" data-order-id="${orderId}">Hủy đơn</button>`;
+    }
+    if (newStatus === 'Đang giao') {
+      html += `<button class="btn-order btn-order-received" data-order-id="${orderId}">✓ Đã nhận được hàng</button>`;
+    }
+    footer.innerHTML = html;
+  }
+}
+ 
+ 
+/* ─── Inject CSS bổ sung ─── */
+(function () {
+  const s = document.createElement('style');
+  s.textContent = `
+    .order-progress {
+      display: flex; align-items: center;
+      padding: 16px 24px 4px;
+    }
+    .progress-line {
+      flex: 1; height: 2px;
+      background: rgba(87,98,56,.15);
+      margin: 0 4px; margin-bottom: 16px;
+      border-radius: 2px; transition: background .4s;
+    }
+    .progress-line.done { background: #4B672D; }
+    .order-cancelled-banner {
+      padding: 12px 24px;
+      background: rgba(192,57,43,.07);
+      color: #c0392b; font-size: 11px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase; text-align: center;
+    }
+    .btn-order-received {
+      background: linear-gradient(135deg,#4B672D,#6a8d40) !important;
+      color: #EBF6C4 !important;
+      padding: 9px 22px !important; border-radius: 40px !important;
+      font-size: 11px !important; font-weight: 700 !important;
+      letter-spacing: 1.5px !important; text-transform: uppercase !important;
+      border: none !important; cursor: pointer !important;
+      font-family: 'Jost',sans-serif !important;
+      box-shadow: 0 4px 14px rgba(75,103,45,.3) !important;
+      transition: all .2s !important;
+    }
+    .btn-order-received:hover { transform: translateY(-2px) !important; box-shadow: 0 8px 20px rgba(75,103,45,.4) !important; }
+    .btn-order-received:disabled { opacity:.6 !important; pointer-events:none !important; }
+    .od-progress-mini {
+      display: flex; align-items: center;
+      margin-bottom: 20px; padding: 16px;
+      background: #f8f5f0; border-radius: 14px;
+    }
+    .od-step { display:flex; flex-direction:column; align-items:center; gap:4px; flex-shrink:0; min-width:52px; }
+    .od-step-dot { width:20px;height:20px;border-radius:50%;background:#e4d8c8;border:2px solid rgba(87,98,56,.2);display:grid;place-items:center;font-size:9px;font-weight:700; }
+    .od-step.done .od-step-dot { background:#4B672D;border-color:#4B672D;color:#fff; }
+    .od-step.active .od-step-dot { border-color:#4B672D;color:#4B672D; }
+    .od-step span { font-size:8px;letter-spacing:1px;text-transform:uppercase;color:#9e9e8e;text-align:center; }
+    .od-step.done span,.od-step.active span { color:#4B672D; }
+    .od-step-line { flex:1;height:2px;background:rgba(87,98,56,.15);margin:0 2px;margin-bottom:14px;border-radius:2px; }
+    .od-step-line.done { background:#4B672D; }
+  `;
+  document.head.appendChild(s);
 })();

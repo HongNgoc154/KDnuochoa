@@ -1,0 +1,321 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}Quản lý Đơn hàng{% endblock %}
+{% block breadcrumb_title %}Quản lý đơn hàng{% endblock %}
+
+{% block breadcrumbs %}
+<a href="/admin/">Admin</a>
+<span class="topbar-sep">›</span>
+<span>Quản lý đơn hàng</span>
+{% endblock %}
+
+{% block content %}
+
+<div class="ami-page-header">
+  <div>
+    <h1 class="ami-page-title">Đơn hàng <em>khách hàng</em></h1>
+    <p class="ami-page-sub">
+      {% if orders %}{{ orders|length }} đơn hàng{% endif %}
+      {% if status_filter != 'all' %} · Đang lọc: <strong>{{ status_filter }}</strong>{% endif %}
+      {% if search_q %} · Tìm: "<strong>{{ search_q }}</strong>"{% endif %}
+    </p>
+  </div>
+  <div class="ami-page-actions">
+    <a href="?status=all" class="ami-btn ami-btn-secondary">↻ Làm mới</a>
+  </div>
+</div>
+
+<!-- ── STATUS TABS ── -->
+<div style="display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; align-items:center;">
+  <a href="?status=all{% if search_q %}&q={{ search_q }}{% endif %}"
+     style="padding:9px 20px; border-radius:40px; border:1.5px solid; font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; text-decoration:none; transition:.2s;
+     {% if status_filter == 'all' %}background:var(--olive); color:var(--sage); border-color:var(--olive);{% else %}background:var(--white); color:var(--olive); border-color:rgba(75,103,45,.25);{% endif %}">
+    Tất cả
+  </a>
+  {% for s in STATUS_LIST %}
+  <a href="?status={{ s }}{% if search_q %}&q={{ search_q }}{% endif %}"
+     style="padding:9px 20px; border-radius:40px; border:1.5px solid; font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; text-decoration:none; transition:.2s; display:flex; align-items:center; gap:6px;
+     {% if status_filter == s %}background:var(--olive); color:var(--sage); border-color:var(--olive);{% else %}background:var(--white); color:var(--olive); border-color:rgba(75,103,45,.25);{% endif %}">
+    {{ s }}
+    {% with cnt=status_counts|get_item:s %}
+    {% if cnt %}
+    <span style="font-size:10px; padding:1px 7px; border-radius:20px; background:rgba(0,0,0,.12);">{{ cnt }}</span>
+    {% endif %}
+    {% endwith %}
+  </a>
+  {% endfor %}
+</div>
+
+<!-- ── SEARCH ── -->
+<form method="get" style="display:flex; gap:10px; margin-bottom:24px; align-items:center;">
+  <input type="hidden" name="status" value="{{ status_filter }}">
+  <input type="text" name="q" value="{{ search_q }}"
+         placeholder="🔍  Mã đơn, tên khách, SĐT…"
+         style="flex:1; max-width:420px; padding:11px 18px; border:1.5px solid var(--stone); border-radius:var(--radius-sm); font-family:var(--font-body); font-size:13px; outline:none; background:var(--white); transition:.2s;"
+         onfocus="this.style.borderColor='var(--olive)'; this.style.boxShadow='0 0 0 3px rgba(75,103,45,.1)'"
+         onblur="this.style.borderColor='var(--stone)'; this.style.boxShadow='none'">
+  <button type="submit" class="ami-btn ami-btn-primary ami-btn-sm">Tìm kiếm</button>
+  {% if search_q %}
+  <a href="?status={{ status_filter }}" style="font-size:12px; color:var(--danger); text-decoration:none; padding:8px 14px; border:1px solid rgba(184,50,50,.25); border-radius:40px;">✕ Xóa</a>
+  {% endif %}
+</form>
+
+<!-- ── ORDERS TABLE ── -->
+<div class="ami-table-wrap">
+  <table class="ami-table" id="ordersTable">
+    <thead>
+      <tr>
+        <th>Mã đơn</th>
+        <th>Ngày đặt</th>
+        <th>Khách hàng</th>
+        <th>Tổng tiền</th>
+        <th>Thanh toán</th>
+        <th>Trạng thái</th>
+        <th>Thao tác</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for order in orders %}
+      <tr class="order-row" data-id="{{ order.id_DonHang }}" data-status="{{ order.TrangThai }}">
+
+        <!-- Mã đơn -->
+        <td>
+          <span style="font-family:var(--font-mono); font-size:12px; font-weight:600; color:var(--olive);">
+            {{ order.MaDonHang }}
+          </span>
+        </td>
+
+        <!-- Ngày -->
+        <td>
+          <span style="font-size:13px; color:var(--text);">{{ order.ThoiGian|date:"d/m/Y" }}</span><br>
+          <span style="font-size:11px; color:var(--text-4);">{{ order.ThoiGian|date:"H:i" }}</span>
+        </td>
+
+        <!-- Khách hàng -->
+        <td>
+          {% if order.id_GiaoHang %}
+          <span style="font-size:13px; font-weight:500; color:var(--text);">{{ order.id_GiaoHang.TenNguoiNhan }}</span><br>
+          <span style="font-size:11px; color:var(--text-4);">{{ order.id_GiaoHang.SDT }}</span>
+          {% else %}
+          <span style="color:var(--text-4); font-size:13px;">Khách vãng lai</span>
+          {% endif %}
+        </td>
+
+        <!-- Tổng tiền -->
+        <td>
+          <span style="font-family:var(--font-display); font-size:17px; font-weight:400; color:var(--text);">
+            {{ order.TongTien|floatformat:0 }}₫
+          </span>
+        </td>
+
+        <!-- Thanh toán -->
+        <td>
+          <span style="display:inline-block; font-size:10px; font-weight:700; letter-spacing:.5px; padding:4px 10px; border-radius:20px; background:var(--parchment); color:var(--text-2);">
+            {% if order.HinhThucThanhToan == 'cod' %}💵 COD
+            {% elif order.HinhThucThanhToan == 'vnpay' %}🏦 VNPAY
+            {% elif order.HinhThucThanhToan == 'momo' %}📱 MoMo
+            {% else %}{{ order.HinhThucThanhToan|default:"COD" }}
+            {% endif %}
+          </span>
+        </td>
+
+        <!-- Trạng thái -->
+        <td>
+          {% with s=order.TrangThai %}
+          <span style="display:inline-block; padding:5px 12px; border-radius:20px; font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase;
+            {% if s == 'Chờ xác nhận' %}background:rgba(184,120,50,.12); color:#b87832;
+            {% elif s == 'Đã xác nhận' %}background:rgba(50,120,184,.12); color:#3278b8;
+            {% elif s == 'Đang giao' %}background:rgba(100,150,220,.12); color:#4070c0;
+            {% elif s == 'Hoàn tất' %}background:rgba(50,120,50,.12); color:#327832;
+            {% elif s == 'Đã hủy' %}background:rgba(184,50,50,.1); color:#b83232;
+            {% elif s == 'Đã thanh toán' %}background:rgba(50,120,50,.12); color:#327832;
+            {% else %}background:var(--parchment); color:var(--text-3);
+            {% endif %}">
+            {{ s }}
+          </span>
+          {% endwith %}
+        </td>
+
+        <!-- Thao tác -->
+        <td>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button onclick="openOrderDetail('{{ order.id_DonHang }}')"
+                    style="padding:6px 12px; border:1.5px solid var(--stone); border-radius:20px; background:var(--white); font-size:11px; font-weight:600; cursor:pointer; color:var(--text-2); transition:.15s;"
+                    onmouseover="this.style.background='var(--parchment)'"
+                    onmouseout="this.style.background='var(--white)'">
+              👁 Xem
+            </button>
+
+            {% if order.TrangThai == 'Chờ xác nhận' %}
+            <button onclick="updateStatus('{{ order.id_DonHang }}', 'Đã xác nhận', this)"
+                    style="padding:6px 12px; border:none; border-radius:20px; background:rgba(50,120,50,.12); color:#327832; font-size:11px; font-weight:600; cursor:pointer; transition:.15s;">
+              ✅ Xác nhận
+            </button>
+            <button onclick="updateStatus('{{ order.id_DonHang }}', 'Đã hủy', this)"
+                    style="padding:6px 12px; border:none; border-radius:20px; background:rgba(184,50,50,.1); color:#b83232; font-size:11px; font-weight:600; cursor:pointer; transition:.15s;">
+              ✕ Hủy
+            </button>
+            {% elif order.TrangThai == 'Đã xác nhận' %}
+            <button onclick="updateStatus('{{ order.id_DonHang }}', 'Đang giao', this)"
+                    style="padding:6px 12px; border:none; border-radius:20px; background:rgba(50,120,184,.12); color:#3278b8; font-size:11px; font-weight:600; cursor:pointer; transition:.15s;">
+              🚚 Giao hàng
+            </button>
+            {% elif order.TrangThai == 'Đang giao' %}
+            <button onclick="updateStatus('{{ order.id_DonHang }}', 'Hoàn tất', this)"
+                    style="padding:6px 12px; border:none; border-radius:20px; background:rgba(75,103,45,.15); color:var(--olive); font-size:11px; font-weight:600; cursor:pointer; transition:.15s;">
+              🎉 Hoàn tất
+            </button>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="7" style="text-align:center; padding:60px 20px; color:var(--text-4); font-size:14px;">
+          <div style="font-size:36px; margin-bottom:12px;">📦</div>
+          Không có đơn hàng nào phù hợp.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- ── ORDER DETAIL MODAL ── -->
+<div id="orderDetailModal"
+     style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(26,28,20,.55); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:24px;">
+  <div style="background:var(--white); border-radius:var(--radius); padding:36px; max-width:700px; width:100%; box-shadow:var(--shadow-md); position:relative; max-height:88vh; overflow-y:auto;">
+    <button onclick="document.getElementById('orderDetailModal').style.display='none'"
+            style="position:absolute; top:16px; right:16px; background:none; border:none; cursor:pointer; font-size:18px; color:var(--text-4); width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition:.2s;"
+            onmouseover="this.style.background='var(--parchment)'"
+            onmouseout="this.style.background='none'">✕</button>
+    <div id="orderDetailContent">
+      <div style="text-align:center; padding:40px; color:var(--text-4);">Đang tải…</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let toastTimer2;
+function showToast(msg, ok=true) {
+  const t = document.getElementById('ami-toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.style.borderColor = ok ? 'rgba(235,246,196,.2)' : 'rgba(184,50,50,.3)';
+  t.classList.add('show');
+  clearTimeout(toastTimer2);
+  toastTimer2 = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+async function updateStatus(orderId, newStatus, btn) {
+  if (!confirm(`Xác nhận chuyển đơn hàng sang "${newStatus}"?`)) return;
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '⏳';
+
+  try {
+    const fd = new FormData();
+    fd.append('order_id', orderId);
+    fd.append('status', newStatus);
+    const res  = await fetch('/api/admin/update-order-status/', { method:'POST', body:fd });
+    const data = await res.json();
+
+    if (data.ok) {
+      showToast(data.message, true);
+      // Cập nhật UI ngay
+      const row = document.querySelector(`.order-row[data-id="${orderId}"]`);
+      if (row) {
+        const statusColors = {
+          'Chờ xác nhận': 'background:rgba(184,120,50,.12);color:#b87832',
+          'Đã xác nhận':  'background:rgba(50,120,184,.12);color:#3278b8',
+          'Đang giao':    'background:rgba(100,150,220,.12);color:#4070c0',
+          'Hoàn tất':     'background:rgba(50,120,50,.12);color:#327832',
+          'Đã hủy':       'background:rgba(184,50,50,.1);color:#b83232',
+        };
+        const chip = row.cells[5].querySelector('span');
+        if (chip) { chip.setAttribute('style', `display:inline-block;padding:5px 12px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;${statusColors[newStatus]||''}`); chip.textContent = newStatus; }
+        // Rebuild action buttons
+        const actionCell = row.cells[6];
+        let html = `<div style="display:flex;gap:6px;flex-wrap:wrap;"><button onclick="openOrderDetail('${orderId}')" style="padding:6px 12px;border:1.5px solid var(--stone);border-radius:20px;background:var(--white);font-size:11px;font-weight:600;cursor:pointer;color:var(--text-2);">👁 Xem</button>`;
+        if (newStatus === 'Đã xác nhận') html += `<button onclick="updateStatus('${orderId}','Đang giao',this)" style="padding:6px 12px;border:none;border-radius:20px;background:rgba(50,120,184,.12);color:#3278b8;font-size:11px;font-weight:600;cursor:pointer;">🚚 Giao hàng</button>`;
+        else if (newStatus === 'Đang giao') html += `<button onclick="updateStatus('${orderId}','Hoàn tất',this)" style="padding:6px 12px;border:none;border-radius:20px;background:rgba(75,103,45,.15);color:var(--olive);font-size:11px;font-weight:600;cursor:pointer;">🎉 Hoàn tất</button>`;
+        html += '</div>';
+        actionCell.innerHTML = html;
+        row.dataset.status = newStatus;
+      }
+    } else {
+      showToast(data.message || 'Có lỗi xảy ra.', false);
+      btn.disabled = false;
+      btn.innerHTML = orig;
+    }
+  } catch {
+    showToast('Lỗi kết nối. Vui lòng thử lại.', false);
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  }
+}
+
+async function openOrderDetail(orderId) {
+  const modal = document.getElementById('orderDetailModal');
+  const content = document.getElementById('orderDetailContent');
+  modal.style.display = 'flex';
+  content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-4);">⏳ Đang tải…</div>';
+
+  try {
+    const res  = await fetch(`/api/admin/order-detail/?order_id=${orderId}`);
+    const data = await res.json();
+    if (!data.ok) { content.innerHTML = `<p style="color:var(--danger);padding:20px;">${data.message}</p>`; return; }
+
+    const o = data.order;
+    const SC = { 'Chờ xác nhận':'#b87832','Đã xác nhận':'#3278b8','Đang giao':'#4070c0','Hoàn tất':'#327832','Đã hủy':'#b83232' };
+    const SB = { 'Chờ xác nhận':'rgba(184,120,50,.12)','Đã xác nhận':'rgba(50,120,184,.12)','Đang giao':'rgba(100,150,220,.12)','Hoàn tất':'rgba(50,120,50,.12)','Đã hủy':'rgba(184,50,50,.1)' };
+
+    const itemsHTML = (o.items||[]).map(i => `
+      <div style="display:flex;gap:14px;align-items:center;padding:12px;background:var(--parchment);border-radius:var(--radius-sm);margin-bottom:8px;">
+        <img src="${i.image}" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;border:1px solid var(--stone);"
+             onerror="this.src='https://images.unsplash.com/photo-1541643600914-78b084683702?auto=format&fit=crop&w=200&q=80'">
+        <div style="flex:1;">
+          <p style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--olive);font-weight:600;margin-bottom:2px;">${i.brand}</p>
+          <p style="font-family:var(--font-display);font-size:17px;color:var(--text);">${i.product_name}</p>
+          <p style="font-size:11px;color:var(--text-4);">SL: ${i.qty}</p>
+        </div>
+        <span style="font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;">${i.price}</span>
+      </div>`).join('');
+
+    let actionBtns = '';
+    if (o.status==='Chờ xác nhận') actionBtns = `<button onclick="updateStatus('${o.id}','Đã xác nhận',this);document.getElementById('orderDetailModal').style.display='none'" style="padding:10px 22px;border:none;border-radius:40px;background:var(--olive);color:var(--sage);font-size:11px;font-weight:600;letter-spacing:1px;cursor:pointer;">✅ Xác nhận đơn</button><button onclick="updateStatus('${o.id}','Đã hủy',this);document.getElementById('orderDetailModal').style.display='none'" style="padding:10px 22px;border:1.5px solid rgba(184,50,50,.25);border-radius:40px;background:rgba(184,50,50,.08);color:#b83232;font-size:11px;font-weight:600;letter-spacing:1px;cursor:pointer;">✕ Hủy đơn</button>`;
+    else if (o.status==='Đã xác nhận') actionBtns = `<button onclick="updateStatus('${o.id}','Đang giao',this);document.getElementById('orderDetailModal').style.display='none'" style="padding:10px 22px;border:none;border-radius:40px;background:var(--olive);color:var(--sage);font-size:11px;font-weight:600;letter-spacing:1px;cursor:pointer;">🚚 Chuyển sang giao hàng</button>`;
+    else if (o.status==='Đang giao') actionBtns = `<button onclick="updateStatus('${o.id}','Hoàn tất',this);document.getElementById('orderDetailModal').style.display='none'" style="padding:10px 22px;border:none;border-radius:40px;background:var(--olive);color:var(--sage);font-size:11px;font-weight:600;letter-spacing:1px;cursor:pointer;">🎉 Xác nhận hoàn tất</button>`;
+
+    content.innerHTML = `
+      <h2 style="font-family:var(--font-display);font-size:26px;font-weight:300;color:var(--text);margin-bottom:8px;">${o.ma_don}</h2>
+      <span style="display:inline-block;margin-bottom:20px;padding:5px 14px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;background:${SB[o.status]||'var(--parchment)'};color:${SC[o.status]||'var(--text-3)'};">${o.status}</span>
+      <p style="font-size:10px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:var(--text-4);margin:0 0 12px;">Thông tin giao hàng</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;background:var(--parchment);border-radius:var(--radius-sm);padding:18px;margin-bottom:20px;">
+        <div><p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text-4);margin-bottom:3px;">Người nhận</p><p style="font-size:14px;color:var(--text);">${o.receiver||'—'}</p></div>
+        <div><p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text-4);margin-bottom:3px;">Số điện thoại</p><p style="font-size:14px;color:var(--text);">${o.phone||'—'}</p></div>
+        <div style="grid-column:1/-1;"><p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text-4);margin-bottom:3px;">Địa chỉ</p><p style="font-size:14px;color:var(--text);">${o.address||'—'}</p></div>
+        <div><p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text-4);margin-bottom:3px;">Thanh toán</p><p style="font-size:14px;color:var(--text);">${o.payment||'COD'}</p></div>
+        <div><p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text-4);margin-bottom:3px;">Ngày đặt</p><p style="font-size:14px;color:var(--text);">${o.date}</p></div>
+        ${o.note?`<div style="grid-column:1/-1;"><p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text-4);margin-bottom:3px;">Ghi chú</p><p style="font-size:14px;color:var(--text);">${o.note}</p></div>`:''}
+      </div>
+      <p style="font-size:10px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:var(--text-4);margin-bottom:12px;">Sản phẩm</p>
+      <div>${itemsHTML||'<p style="color:var(--text-4);font-size:13px;">Không có sản phẩm</p>'}</div>
+      <div style="border-top:1px solid var(--stone);padding-top:16px;margin-top:16px;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-family:var(--font-display);font-size:20px;color:var(--text);">Tổng cộng</span>
+        <span style="font-family:var(--font-display);font-size:24px;color:var(--olive);font-weight:400;">${o.total}</span>
+      </div>
+      ${actionBtns?`<div style="margin-top:20px;display:flex;gap:10px;justify-content:flex-end;">${actionBtns}</div>`:''}`;
+  } catch {
+    content.innerHTML = '<p style="color:var(--danger);padding:20px;">Lỗi tải dữ liệu.</p>';
+  }
+}
+
+// Close modal on overlay click
+document.getElementById('orderDetailModal').addEventListener('click', function(e) {
+  if (e.target === this) this.style.display = 'none';
+});
+</script>
+{% endblock %}
