@@ -1,0 +1,48 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls %}
+
+{% block title %}Xác nhận xóa {{ object }}{% endblock %}
+{% block breadcrumb_title %}Xóa{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'myadmin:index' %}">Admin</a>
+<span class="topbar-sep">›</span>
+<a href="{% url 'myadmin:app_list' app_label=opts.app_label %}">{{ opts.app_label|capfirst }}</a>
+<span class="topbar-sep">›</span>
+<a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+<span class="topbar-sep">›</span>
+<span>Xóa</span>
+{% endblock %}
+
+{% block content %}
+<div style="max-width:640px;">
+  <div style="background:var(--danger-s);border:1px solid rgba(184,50,50,.25);border-radius:var(--r);padding:28px 32px;margin-bottom:24px;">
+    <div style="font-size:36px;margin-bottom:12px;">⚠️</div>
+    <h1 style="font-family:var(--fd);font-size:28px;font-weight:300;color:var(--danger);margin-bottom:8px;">Xác nhận xóa</h1>
+    <p style="font-size:14px;color:var(--text2);line-height:1.7;">
+      Bạn có chắc chắn muốn xóa <strong>"{{ object }}"</strong>?<br>
+      <span style="color:var(--danger);font-size:13px;">Hành động này <strong>không thể hoàn tác</strong>.</span>
+    </p>
+  </div>
+
+  {% if related_objects %}
+  <div style="background:var(--white);border:1px solid var(--stone);border-radius:var(--r);padding:20px 24px;margin-bottom:24px;">
+    <p style="font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:12px;">Các dữ liệu liên quan sẽ bị xóa:</p>
+    {{ related_objects }}
+  </div>
+  {% endif %}
+
+  <form method="post" style="display:flex;gap:12px;flex-wrap:wrap;">
+    {% csrf_token %}
+    <input type="hidden" name="post" value="yes">
+    <button type="submit"
+            style="padding:11px 26px;background:var(--danger);color:#fff;border:none;border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:.2s;">
+      🗑 Xác nhận xóa
+    </button>
+    <a href="{% url opts|admin_urlname:'changelist' %}"
+       style="padding:11px 22px;background:var(--parchment);color:var(--olive);border:1.5px solid rgba(75,103,45,.25);border-radius:40px;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;text-decoration:none;display:inline-flex;align-items:center;transition:.2s;">
+      ← Hủy bỏ
+    </a>
+  </form>
+</div>
+{% endblock %}

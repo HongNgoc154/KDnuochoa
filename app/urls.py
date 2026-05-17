@@ -1,7 +1,7 @@
 # from django.contrib import admin
 from django.urls import path
 from . import views
-# from app.admin import admin_site
+from app.admin import admin_site
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -30,13 +30,9 @@ urlpatterns = [
     ),
     path('api/points/',         views.get_points_api,   name='points-api'),
     path('api/apply-points/',   views.apply_points_api, name='apply-points-api'),
-    # Trong app/urls.py, thêm 2 dòng này vào urlpatterns:
-
     path('delete-review/', views.delete_review, name='delete-review'),
     path('edit-review/',   views.edit_review,   name='edit-review'),
-    # Thêm vào app/urls.py trong urlpatterns:
     path('api/check-first-order/', views.check_first_order_api, name='check-first-order'),
-
     path(
         "toggle-favorite/",
         views.toggle_favorite,
@@ -44,9 +40,6 @@ urlpatterns = [
     ),
     path('wishlist-status/<int:product_id>/', views.get_wishlist_status, name='wishlist-status'),
     path('submit-review/', views.submit_review, name='submit-review'),
-    # path('admin-dashboard/', views.admin_dashboard, name='admin-dashboard'),
-    # path('admin/', views.admin_redirect),
-    # path('admin/', admin_site.urls),
     path('api/place-order/', views.place_order_api, name='place-order'),
 
     # VNPAY
@@ -64,6 +57,7 @@ urlpatterns = [
     path('api/cancel-order/',       views.cancel_order_api,     name='cancel-order'),
 
     # ── Admin ──
+    path('admin/', admin_site.urls),
     path('admin-orders/',                  views.admin_orders_view,         name='admin-orders'),
     path('api/admin/update-order-status/', views.admin_update_order_status, name='admin-update-order-status'),
     path('api/admin/order-detail/',        views.admin_order_detail_api,    name='admin-order-detail'),

@@ -1,0 +1,52 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls %}
+
+{% block title %}Lịch sử: {{ object }}{% endblock %}
+{% block breadcrumb_title %}Lịch sử{% endblock %}
+
+{% block content %}
+<div class="ami-page-header">
+  <div>
+    <h1 class="ami-page-title">Lịch sử thay đổi <em>{{ object }}</em></h1>
+    <p class="ami-page-sub">Tất cả các thay đổi được ghi lại theo thứ tự thời gian</p>
+  </div>
+</div>
+
+<div class="ami-table-wrap">
+  {% if action_list %}
+  <table class="ami-table">
+    <thead>
+      <tr>
+        <th>Thời gian</th>
+        <th>Người thực hiện</th>
+        <th>Hành động</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in action_list %}
+      <tr>
+        <td style="white-space:nowrap;font-size:13px;color:var(--text3);">{{ entry.action_time|date:"d/m/Y H:i" }}</td>
+        <td style="font-weight:500;">{{ entry.user }}</td>
+        <td>
+          <span style="display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:1px;
+            {% if entry.is_addition %}background:rgba(50,120,50,.12);color:#327832;
+            {% elif entry.is_change %}background:rgba(50,120,184,.12);color:#3278b8;
+            {% else %}background:rgba(184,50,50,.12);color:#b83232;{% endif %}">
+            {% if entry.is_addition %}+ Thêm mới{% elif entry.is_change %}✎ Chỉnh sửa{% else %}✕ Xóa{% endif %}
+          </span>
+          {% if entry.change_message %}
+          <span style="font-size:12px;color:var(--text3);margin-left:8px;">{{ entry.change_message }}</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="text-align:center;padding:60px;color:var(--text4);">
+    <div style="font-size:36px;margin-bottom:12px;">📋</div>
+    <p style="font-family:var(--fd);font-size:18px;">Chưa có lịch sử thay đổi nào.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

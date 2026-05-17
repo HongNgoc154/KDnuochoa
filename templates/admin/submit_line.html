@@ -1,0 +1,57 @@
+{% load i18n admin_urls %}
+<div class="submit-row"
+     style="background:var(--white);border:1px solid var(--stone);border-radius:var(--r);box-shadow:var(--shadow);padding:18px 24px;margin-top:20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+
+  {% if show_save %}
+  <input type="submit" value="💾 Lưu {{ opts.verbose_name }}" class="default" name="_save"
+         style="padding:11px 26px;background:linear-gradient(135deg,var(--olive-dark),var(--olive));color:var(--sage);border:none;border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;box-shadow:0 2px 10px rgba(75,103,45,.3);transition:all .2s;"
+         onmouseover="this.style.boxShadow='0 4px 16px rgba(75,103,45,.5)';this.style.transform='translateY(-1px)'"
+         onmouseout="this.style.boxShadow='0 2px 10px rgba(75,103,45,.3)';this.style.transform='none'">
+  {% endif %}
+
+  {% if show_save_and_continue %}
+  <input type="submit"
+         value="{% if can_change %}✎ Lưu và tiếp tục chỉnh sửa{% else %}Lưu và xem{% endif %}"
+         name="_continue"
+         style="padding:11px 22px;background:var(--parchment);color:var(--olive);border:1.5px solid rgba(75,103,45,.35);border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:.2s;"
+         onmouseover="this.style.background='var(--sage)';this.style.borderColor='var(--olive)'"
+         onmouseout="this.style.background='var(--parchment)';this.style.borderColor='rgba(75,103,45,.35)'">
+  {% endif %}
+
+  {% if show_save_and_add_another %}
+  <input type="submit"
+         value="+ Lưu và thêm {{ opts.verbose_name }} mới"
+         name="_addanother"
+         style="padding:11px 22px;background:transparent;color:var(--text3);border:1.5px solid var(--stone);border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:.2s;"
+         onmouseover="this.style.background='var(--parchment)';this.style.color='var(--text)'"
+         onmouseout="this.style.background='transparent';this.style.color='var(--text3)'">
+  {% endif %}
+
+  {% if show_save_as_new %}
+  <input type="submit" value="Lưu bản sao" name="_saveasnew"
+         style="padding:11px 22px;background:transparent;color:var(--text3);border:1.5px solid var(--stone);border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:.2s;">
+  {% endif %}
+
+  {% if show_close %}
+  {% url opts|admin_urlname:'changelist' as changelist_url %}
+  <a href="{{ changelist_url }}"
+     style="display:inline-flex;align-items:center;padding:11px 20px;border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;background:var(--parchment);color:var(--text3);border:1.5px solid var(--stone);text-decoration:none;transition:.2s;">
+    Đóng
+  </a>
+  {% endif %}
+
+  <!-- Nút XÓA — luôn ở phải -->
+  {% if show_delete_link and original %}
+  <div style="margin-left:auto;">
+    {% url opts|admin_urlname:'delete' original.pk|admin_urlquote as delete_url %}
+    <a href="{{ delete_url }}"
+       style="display:inline-flex;align-items:center;gap:7px;padding:11px 22px;border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;background:rgba(184,50,50,.08);color:var(--danger);border:1.5px solid rgba(184,50,50,.25);text-decoration:none;transition:.2s;"
+       onmouseover="this.style.background='var(--danger)';this.style.color='#fff';this.style.borderColor='var(--danger)'"
+       onmouseout="this.style.background='rgba(184,50,50,.08)';this.style.color='var(--danger)';this.style.borderColor='rgba(184,50,50,.25)'"
+       onclick="return confirm('Xác nhận xóa \'{{ original }}\'?\nHành động này không thể hoàn tác!')">
+      🗑 Xóa {{ opts.verbose_name }}
+    </a>
+  </div>
+  {% endif %}
+
+</div>

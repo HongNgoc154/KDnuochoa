@@ -5,141 +5,234 @@
 {% block breadcrumb_title %}{{ cl.opts.verbose_name_plural|capfirst }}{% endblock %}
 
 {% block breadcrumbs %}
-<a href="/admin/">Admin</a>
+<a href="{% url 'myadmin:index' %}">Admin</a>
 <span class="topbar-sep">›</span>
-<a href="/admin/{{ cl.opts.app_label }}/">{{ cl.opts.app_label|capfirst }}</a>
+<a href="{% url 'myadmin:app_list' app_label=cl.opts.app_label %}">{{ cl.opts.app_label|capfirst }}</a>
 <span class="topbar-sep">›</span>
 <span>{{ cl.opts.verbose_name_plural|capfirst }}</span>
 {% endblock %}
 
+{% block extrastyle %}
+{{ block.super }}
+{% if cl.formset or action_form %}
+<script src="{% url 'myadmin:jsi18n' %}" defer></script>
+{% endif %}
+{{ media.css }}
+<style>
+/* ══════════════════════════════════
+   CHANGELIST — Luxury Full Layout
+   ══════════════════════════════════ */
+
+/* Reset Django defaults */
+#content-main { background:transparent!important; box-shadow:none!important; border:none!important; padding:0!important; }
+#changelist { background:transparent; width:100%; }
+.changelist-form-container { display:flex; gap:20px; align-items:flex-start; width:100%; }
+
+/* ── Filter sidebar ── */
+#changelist-filter {
+  width: 220px; flex-shrink: 0;
+  background: var(--white); border: 1px solid var(--stone); border-radius: var(--r);
+  box-shadow: var(--shadow); padding: 18px; position: sticky; top: 80px;
+}
+#changelist-filter h2 {
+  font-family: var(--fd); font-size: 15px; font-weight: 400; color: var(--text);
+  margin: 0 0 12px; padding-bottom: 10px; border-bottom: 1px solid var(--stone);
+}
+#changelist-filter h3 {
+  font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--text3); margin: 14px 0 6px; padding: 0;
+}
+#changelist-filter ul { list-style: none; padding: 0; margin: 0; }
+#changelist-filter ul li a {
+  display: block; padding: 6px 10px; border-radius: 8px;
+  font-size: 13px; color: var(--text2); text-decoration: none; transition: .15s;
+}
+#changelist-filter ul li a:hover { background: rgba(75,103,45,.06); color: var(--olive); }
+#changelist-filter ul li.selected a {
+  background: rgba(75,103,45,.1); color: var(--olive); font-weight: 600;
+}
+
+/* ── Main table area ── */
+#changelist > div:last-child,
+.changelist-form-container > div:last-child { flex: 1; min-width: 0; }
+
+/* ── Results wrapper ── */
+#changelist .results, .results {
+  background: var(--white); border-radius: var(--r);
+  border: 1px solid var(--stone); box-shadow: var(--shadow); overflow: hidden; width: 100%;
+}
+
+/* ── Table ── */
+#result_list {
+  width: 100%; border-collapse: collapse; font-size: 13px; table-layout: auto;
+}
+#result_list thead th {
+  padding: 11px 14px; text-align: left;
+  font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--sage); background: var(--olive); border-bottom: none; white-space: nowrap;
+}
+#result_list thead th:first-child { border-radius: 0; }
+#result_list thead th a { color: var(--sage); text-decoration: none; display:inline-flex; align-items:center; gap:4px; }
+#result_list thead th a:hover { opacity: .85; }
+#result_list thead th.sorted { background: var(--olive-dark); }
+#result_list thead th.action-checkbox-column { width: 40px; text-align: center; }
+
+#result_list tbody tr { transition: background .12s; }
+#result_list tbody tr:nth-child(even) { background: rgba(75,103,45,.02); }
+#result_list tbody tr:hover td { background: rgba(75,103,45,.04)!important; }
+#result_list tbody tr.selected td { background: rgba(75,103,45,.08)!important; }
+
+#result_list tbody td {
+  padding: 13px 14px; border-bottom: 1px solid rgba(26,28,20,.06);
+  color: var(--text2); vertical-align: middle; max-width: 280px;
+}
+#result_list tbody tr:last-child td { border-bottom: none; }
+#result_list tbody td a { color: var(--olive); font-weight: 600; text-decoration: none; }
+#result_list tbody td a:hover { text-decoration: underline; }
+#result_list tbody td.action-checkbox { text-align: center; width: 40px; }
+input[type="checkbox"] { accent-color: var(--olive); width: 15px; height: 15px; cursor: pointer; }
+
+/* ── Actions bar ── */
+.actions {
+  display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+  background: rgba(75,103,45,.04); border-bottom: 1px solid var(--stone); flex-wrap: wrap;
+}
+.actions label { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text3); }
+.actions select {
+  padding: 7px 12px; border: 1.5px solid var(--stone); border-radius: var(--rsm);
+  font-family: var(--fb); font-size: 13px; color: var(--text); background: var(--white); outline: none;
+}
+.actions button[type="submit"] {
+  padding: 7px 18px; border: 1.5px solid var(--stone); border-radius: 40px; font-family: var(--fb);
+  font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+  background: var(--white); color: var(--text2); cursor: pointer; transition: .2s;
+}
+.actions button:hover { background: var(--parchment); color: var(--olive); border-color: rgba(75,103,45,.3); }
+.action-counter { font-size: 12px; color: var(--text3); padding: 4px 10px; background: rgba(75,103,45,.06); border-radius: 20px; }
+
+/* ── Pagination wrapper ── */
+.changelist-footer { padding: 12px 18px; border-top: 1px solid var(--stone); }
+/* paginator_number renders <a> and <span> directly */
+.paginator, p.paginator { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:0; font-size:13px; }
+.paginator a, .paginator .this-page, .paginator span.this-page {
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:32px; height:32px; padding:0 10px; border-radius:8px;
+  font-size:13px; font-weight:500; text-decoration:none; transition:.15s;
+  border: 1px solid var(--stone); background: var(--white); color: var(--text2);
+}
+.paginator a:hover { background: var(--parchment); color: var(--olive); border-color: rgba(75,103,45,.3); }
+.paginator .this-page, .paginator span.this-page {
+  background: var(--olive); color: var(--sage); border-color: var(--olive); font-weight: 700;
+}
+.paginator .end { display:none; }
+
+/* ── Object tools ── */
+ul.object-tools {
+  list-style: none; padding: 0; margin: 0 0 16px;
+  display: flex; gap: 8px; justify-content: flex-end;
+}
+ul.object-tools a {
+  display: inline-flex; align-items: center; gap: 6px; padding: 9px 22px; border-radius: 40px;
+  font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase;
+  text-decoration: none; background: linear-gradient(135deg, var(--olive-dark), var(--olive));
+  color: var(--sage)!important; box-shadow: 0 2px 8px rgba(75,103,45,.25); transition: all .2s;
+}
+ul.object-tools a:hover { box-shadow: 0 4px 14px rgba(75,103,45,.4); transform: translateY(-1px); }
+
+/* ── Visually hidden (accessibility) ── */
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+</style>
+{% endblock %}
+
+{% block extrahead %}{{ block.super }}{{ media.js }}{% endblock %}
+
 {% block content %}
+
+<!-- Page header -->
 <div class="ami-page-header">
   <div>
     <h1 class="ami-page-title">{{ cl.opts.verbose_name_plural|capfirst }}</h1>
-    <p class="ami-page-sub">
-      {% if cl.result_count %}{{ cl.result_count }} kết quả{% else %}Không có kết quả{% endif %}
-    </p>
+    <p class="ami-page-sub">{{ cl.result_count }} bản ghi{% if cl.query %} · Tìm: "<strong>{{ cl.query }}</strong>"{% endif %}</p>
   </div>
   <div class="ami-page-actions">
     {% if has_add_permission %}
-    <a href="{% add_preserved_filters cl.opts|admin_urlname:'add' is_popup to_field %}"
-       class="ami-btn ami-btn-primary">
+    <a href="{% url cl.opts|admin_urlname:'add' %}"
+       style="background:linear-gradient(135deg,var(--olive-dark),var(--olive));color:var(--sage);padding:11px 26px;border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;text-decoration:none;display:inline-flex;align-items:center;gap:8px;box-shadow:0 2px 10px rgba(75,103,45,.3);transition:all .2s;"
+       onmouseover="this.style.boxShadow='0 4px 18px rgba(75,103,45,.45)';this.style.transform='translateY(-1px)'"
+       onmouseout="this.style.boxShadow='0 2px 10px rgba(75,103,45,.3)';this.style.transform='none'">
       + Thêm {{ cl.opts.verbose_name }}
     </a>
     {% endif %}
   </div>
 </div>
 
-<div id="changelist">
-  <!-- ── FILTERS SIDEBAR ── -->
-  {% if cl.has_filters %}
-  <div id="changelist-filter">
-    <h2>Bộ lọc</h2>
-    {% for spec in cl.filter_specs %}
-      {% admin_list_filter cl spec %}
-    {% endfor %}
-  </div>
-  {% endif %}
+<div id="content-main">
+  <!-- Search -->
+  {% block search %}{% search_form cl %}{% endblock %}
 
-  <!-- ── MAIN FORM ── -->
-  <div id="changelist-form">
+  <div class="module{% if cl.has_filters %} filtered{% endif %}" id="changelist">
+    <div class="changelist-form-container">
 
-    <!-- Search -->
-    {% if cl.search_fields %}
-    <div id="changelist-search" style="margin-bottom:16px; display:flex; gap:10px; align-items:center;">
-      <form id="changelist-search" method="get">
-        {% if cl.is_popup %}<input type="hidden" name="{{ is_popup_var }}" value="1">{% endif %}
-        {% if cl.to_field %}<input type="hidden" name="{{ to_field_var }}" value="{{ cl.to_field }}">{% endif %}
-        {% for pair in cl.params.items %}
-          {% if pair.0 != query_string_key %}
-          <input type="hidden" name="{{ pair.0 }}" value="{{ pair.1 }}">
-          {% endif %}
-        {% endfor %}
-        <input type="text" name="{{ search_var }}" value="{{ cl.query }}"
-               placeholder="🔍 Tìm kiếm {{ cl.opts.verbose_name_plural }}…"
-               style="padding:10px 16px; border:1.5px solid var(--stone); border-radius:var(--radius-sm); font-family:var(--font-body); font-size:13px; outline:none; width:300px; transition:.2s;"
-               onfocus="this.style.borderColor='var(--olive)'"
-               onblur="this.style.borderColor='var(--stone)'">
-        <input type="submit" value="Tìm"
-               style="padding:10px 22px; background:var(--olive); color:var(--sage); border:none; border-radius:var(--radius-sm); font-family:var(--font-body); font-size:12px; font-weight:600; letter-spacing:1px; cursor:pointer;">
-        {% if cl.query %}
-        <a href="?" style="font-size:12px; color:var(--danger); text-decoration:none; padding:8px 14px; border:1px solid rgba(184,50,50,.25); border-radius:40px;">✕ Xóa</a>
-        {% endif %}
-      </form>
-    </div>
-    {% endif %}
-
-    <form id="changelist-form" method="post"
-          {% if cl.is_popup %}data-popup-url="{% url cl.opts|admin_urlname:'changelist' %}"{% endif %}>
-      {% csrf_token %}
-      {% if action_form and actions_on_top and cl.show_admin_actions %}
-      <div class="ami-card" style="margin-bottom:12px; padding:14px 20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-        {% admin_actions %}
+      <!-- Filter sidebar -->
+      {% block filters %}
+      {% if cl.has_filters %}
+      <div id="changelist-filter">
+        <h2>Bộ lọc</h2>
+        {% for spec in cl.filter_specs %}{% admin_list_filter cl spec %}{% endfor %}
       </div>
       {% endif %}
+      {% endblock %}
 
-      <!-- Results table -->
-      <div class="ami-table-wrap">
-        {% if result_headers %}
-        <table id="result_list">
-          <thead>
-            <tr>
-              {% for header in result_headers %}
-              <th scope="col"
-                {% if header.sortable %} class="sortable{% if header.sorted %} sorted {% if header.ascending %}ascending{% else %}descending{% endif %}{% endif %}"{% endif %}>
-                {% if header.sortable %}
-                <a href="{{ header.url_primary }}">
-                  {{ header.text|capfirst }}
-                  {% if header.sorted %}{% if header.ascending %}↑{% else %}↓{% endif %}{% endif %}
-                </a>
-                {% else %}{{ header.text|capfirst }}{% endif %}
-              </th>
-              {% endfor %}
-            </tr>
-          </thead>
-          <tbody>
-            {% for result in results %}
-            {% if result.form and result.form.non_field_errors %}
-            <tr><td colspan="{{ result|length }}">{{ result.form.non_field_errors }}</td></tr>
-            {% endif %}
-            <tr class="{% cycle 'row1' 'row2' %}{% if result.form.errors %} error{% endif %}">
-              {% for item in result %}{{ item }}{% endfor %}
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-        {% endif %}
+      <!-- Table + form -->
+      <div style="flex:1;min-width:0;overflow:hidden;">
+        {% block date_hierarchy %}{% if cl.date_hierarchy %}{% date_hierarchy cl %}{% endif %}{% endblock %}
 
-        <!-- Pagination -->
-        {% if cl.result_count %}
-        <div class="paginator">
-          {% if cl.page_num > 1 %}
-          <a href="?{{ cl.get_query_string|safe }}&p={{ cl.page_num|add:"-1" }}">‹</a>
+        <form id="changelist-form" method="post"
+              {% if cl.formset and cl.formset.is_multipart %}enctype="multipart/form-data"{% endif %} novalidate>
+          {% csrf_token %}
+          {% if cl.formset %}<div>{{ cl.formset.management_form }}</div>{% endif %}
+
+          {% block result_list %}
+          <div class="results">
+            {% if action_form and actions_on_top and cl.show_admin_actions %}{% admin_actions %}{% endif %}
+            {% result_list cl %}
+            {% if action_form and actions_on_bottom and cl.show_admin_actions %}{% admin_actions %}{% endif %}
+          </div>
+          {% endblock %}
+
+          {% block pagination %}
+          {% if cl.result_count %}
+          <div class="changelist-footer">{% pagination cl %}</div>
           {% endif %}
-          {% for page in cl.page_range %}
-          {% if page == cl.page_num %}
-          <span class="this-page">{{ page }}</span>
-          {% else %}
-          <a href="?{{ cl.get_query_string|safe }}&p={{ page }}">{{ page }}</a>
+          {% endblock %}
+        </form>
+
+        <!-- Empty state (no results) -->
+        {% if cl.result_count == 0 %}
+        <div style="text-align:center;padding:72px 20px;background:var(--white);border:1px solid var(--stone);border-radius:var(--r);box-shadow:var(--shadow);margin-top:{% if cl.has_filters %}0{% else %}-1px{% endif %};">
+          <div style="font-size:52px;margin-bottom:16px;opacity:.15;">🌿</div>
+          <p style="font-family:var(--fd);font-size:24px;font-weight:300;color:var(--text3);margin-bottom:8px;">
+            {% if cl.query %}Không tìm thấy kết quả{% else %}Chưa có dữ liệu{% endif %}
+          </p>
+          <p style="font-size:13px;color:var(--text4);margin-bottom:24px;">
+            {% if cl.query %}Không tìm thấy {{ cl.opts.verbose_name_plural }} nào khớp với "<strong>{{ cl.query }}</strong>"
+            {% else %}Chưa có {{ cl.opts.verbose_name_plural }} nào. Hãy thêm bản ghi đầu tiên!{% endif %}
+          </p>
+          {% if has_add_permission and not cl.query %}
+          <a href="{% url cl.opts|admin_urlname:'add' %}"
+             style="display:inline-flex;align-items:center;gap:8px;padding:12px 28px;background:linear-gradient(135deg,var(--olive-dark),var(--olive));color:var(--sage);border-radius:40px;font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;text-decoration:none;box-shadow:0 2px 10px rgba(75,103,45,.3);">
+            + Thêm {{ cl.opts.verbose_name }} đầu tiên
+          </a>
           {% endif %}
-          {% endfor %}
-          {% if cl.page_num < cl.paginator.num_pages %}
-          <a href="?{{ cl.get_query_string|safe }}&p={{ cl.page_num|add:"1" }}">›</a>
-          {% endif %}
-          <span style="margin-left:12px; font-size:12px; color:var(--text-4);">
-            {{ cl.result_count }} kết quả
-          </span>
         </div>
         {% endif %}
-      </div>
 
-      {% if action_form and actions_on_bottom and cl.show_admin_actions %}
-      <div style="margin-top:12px; display:flex; align-items:center; gap:12px;">
-        {% admin_actions %}
       </div>
-      {% endif %}
-    </form>
+    </div>
+  </div>
+</div>
 
-  </div><!-- /changelist-form -->
-</div><!-- /changelist -->
 {% endblock %}
