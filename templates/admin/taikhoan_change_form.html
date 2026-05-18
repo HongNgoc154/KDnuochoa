@@ -1,0 +1,298 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block title %}{{ original.TenDangNhap|default:"Tài khoản" }} — Quản lý{% endblock %}
+{% block breadcrumb_title %}Chi tiết{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'myadmin:index' %}">Admin</a>
+<span class="topbar-sep">›</span>
+<a href="{% url opts|admin_urlname:'changelist' %}">Tài khoản</a>
+<span class="topbar-sep">›</span>
+<span>{{ original.TenDangNhap|default:original.pk }}</span>
+{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'admin/css/ami_luxury.css' %}">
+<style>
+#content-main{background:transparent!important;box-shadow:none!important;border:none!important;padding:0!important;}
+.tk-layout{display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;}
+@media(max-width:900px){.tk-layout{grid-template-columns:1fr;}}
+
+.tk-card{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px;}
+.tk-card:last-child{margin-bottom:0;}
+.tk-head{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--stone);background:linear-gradient(135deg,rgba(75,103,45,.04),rgba(235,246,196,.14));}
+.tk-head-icon{font-size:18px;}.tk-head-title{font-family:var(--fd);font-size:17px;font-weight:400;color:var(--text);}
+.tk-body{padding:20px 22px;}
+.tk-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;}
+.tk-field{display:flex;flex-direction:column;gap:5px;}
+.tk-label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);}
+.tk-input{width:100%;padding:9px 12px;border:1.5px solid var(--stone);border-radius:var(--rsm);font-family:var(--fb);font-size:13px;color:var(--text);background:var(--white);outline:none;transition:.2s;}
+.tk-input:focus{border-color:var(--olive);box-shadow:0 0 0 3px rgba(75,103,45,.1);}
+.tk-input[readonly]{background:var(--cream);color:var(--text3);}
+
+/* Avatar */
+.tk-avatar-wrap{display:flex;align-items:center;gap:16px;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--stone);}
+.tk-avatar{width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid var(--stone);}
+.tk-avatar-placeholder{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--olive-dark),var(--olive));display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:var(--sage);flex-shrink:0;}
+.tk-name{font-family:var(--fd);font-size:22px;color:var(--text);}
+.tk-username{font-size:13px;color:var(--text3);}
+
+/* Tier badge */
+.tier-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;}
+.tier-Member  {background:#eceff1;color:#546e7a;}
+.tier-Silver  {background:#e3f2fd;color:#1565c0;}
+.tier-Gold    {background:#fff8e1;color:#f57f17;}
+.tier-Platinum{background:#f3e5f5;color:#6a1b9a;}
+
+/* Lock toggle */
+.lock-toggle{display:flex;flex-direction:column;gap:10px;}
+.lock-card{border:2px solid var(--stone);border-radius:var(--rsm);padding:16px;cursor:pointer;transition:all .2s;position:relative;}
+.lock-card.active-unlock{border-color:#2e7d32;background:rgba(46,125,50,.05);}
+.lock-card.active-lock{border-color:#c62828;background:rgba(184,50,50,.05);}
+.lock-card:hover{opacity:.9;}
+.lock-card input[type="radio"]{position:absolute;opacity:0;width:0;height:0;}
+.lock-icon{font-size:24px;margin-bottom:6px;}
+.lock-title{font-size:13px;font-weight:700;color:var(--text);}
+.lock-desc{font-size:11px;color:var(--text3);margin-top:3px;line-height:1.5;}
+
+/* Sidebar */
+.tk-sidebar{position:sticky;top:20px;}
+.tk-actions{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);box-shadow:var(--shadow);padding:18px;display:flex;flex-direction:column;gap:8px;}
+.tk-btn-save{padding:11px;background:linear-gradient(135deg,var(--olive-dark),var(--olive));color:var(--sage);border:none;border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;text-transform:uppercase;cursor:pointer;transition:all .2s;text-align:center;}
+.tk-btn-save:hover{box-shadow:0 4px 14px rgba(75,103,45,.4);transform:translateY(-1px);}
+.tk-btn-del{display:flex;align-items:center;justify-content:center;gap:5px;padding:10px;background:rgba(184,50,50,.08);color:var(--danger);border:1.5px solid rgba(184,50,50,.2);border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;cursor:pointer;transition:.2s;text-decoration:none;}
+.tk-btn-del:hover{background:var(--danger);color:#fff;}
+.tk-btn-back{display:flex;align-items:center;justify-content:center;padding:10px;background:var(--parchment);color:var(--olive);border:1.5px solid rgba(75,103,45,.3);border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;text-transform:uppercase;text-decoration:none;text-align:center;}
+.tk-btn-back:hover{background:var(--sage);}
+
+/* Stats */
+.tk-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.tk-stat{padding:12px 8px;background:rgba(75,103,45,.05);border-radius:var(--rsm);text-align:center;}
+.tk-stat-val{font-family:var(--fd);font-size:20px;font-weight:600;color:var(--olive);}
+.tk-stat-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
+
+/* Warning banner */
+.lock-warning{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#fce4ec;border:1.5px solid rgba(184,50,50,.3);border-radius:var(--rsm);font-size:12px;color:#c62828;margin-bottom:16px;}
+
+ul.object-tools{list-style:none;padding:0;margin:0 0 14px;display:flex;gap:8px;justify-content:flex-end;}
+ul.object-tools a{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:40px;font-size:11px;font-weight:600;text-transform:uppercase;text-decoration:none;border:1.5px solid rgba(75,103,45,.3);color:var(--olive);background:var(--white);}
+ul.object-tools a:hover{background:var(--olive);color:var(--sage);}
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+<ul class="object-tools">
+  <li><a href="{% url opts|admin_urlname:'history' original.pk|admin_urlquote %}">📋 Lịch sử</a></li>
+</ul>
+
+<div class="ami-page-header" style="margin-bottom:20px;">
+  <div>
+    <h1 class="ami-page-title">Tài khoản <em>{{ original.TenDangNhap|default:original.Username }}</em></h1>
+    <p class="ami-page-sub"><a href="{% url opts|admin_urlname:'changelist' %}" style="color:var(--olive);">← Quay lại danh sách</a></p>
+  </div>
+</div>
+
+{% if original.TrangThai_TaiKhoan == 'locked' or original.TrangThai_TaiKhoan == 'banned' %}
+<div class="lock-warning">
+  🔒 <strong>Tài khoản này đang bị khóa.</strong> Admin có thể mở khóa bên dưới.
+</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data" novalidate>
+{% csrf_token %}
+
+<div class="tk-layout">
+  <!-- CỘT TRÁI -->
+  <div>
+    <!-- Profile -->
+    <div class="tk-card">
+      <div class="tk-head"><span class="tk-head-icon">👤</span><span class="tk-head-title">Thông tin tài khoản</span></div>
+      <div class="tk-body">
+        <!-- Avatar row -->
+        <div class="tk-avatar-wrap">
+          {% if original.AnhDaiDien %}
+          <img src="{{ original.AnhDaiDien.url }}" class="tk-avatar" alt="Avatar">
+          {% else %}
+          <div class="tk-avatar-placeholder">
+            {{ original.TenDangNhap|slice:":1"|upper|default:"?" }}
+          </div>
+          {% endif %}
+          <div>
+            <div class="tk-name">{{ original.TenDangNhap|default:"—" }}</div>
+            <div class="tk-username">@{{ original.Username|default:"—" }}</div>
+            <div style="margin-top:6px;">
+              <span class="tier-pill tier-{{ original.HangThanhVien|default:'Member' }}">
+                {% if original.HangThanhVien == 'Platinum' %}💎
+                {% elif original.HangThanhVien == 'Gold' %}🥇
+                {% elif original.HangThanhVien == 'Silver' %}🥈
+                {% else %}🥉{% endif %}
+                {{ original.HangThanhVien|default:'Member' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="tk-grid">
+          <div class="tk-field">
+            <label class="tk-label">Tên Đăng Nhập</label>
+            <input type="text" name="TenDangNhap" value="{{ original.TenDangNhap|default:'' }}" class="tk-input" placeholder="Họ và tên">
+          </div>
+          <div class="tk-field">
+            <label class="tk-label">Username</label>
+            <input type="text" name="Username" value="{{ original.Username|default:'' }}" class="tk-input" placeholder="Username">
+          </div>
+          <div class="tk-field">
+            <label class="tk-label">Email</label>
+            <input type="email" name="Email" value="{{ original.Email|default:'' }}" class="tk-input" placeholder="email@example.com">
+          </div>
+          <div class="tk-field">
+            <label class="tk-label">Số Điện Thoại</label>
+            <input type="text" name="SDT" value="{{ original.SDT|default:'' }}" class="tk-input" placeholder="0xxxxxxxxx">
+          </div>
+          <div class="tk-field">
+            <label class="tk-label">Loại Tài Khoản</label>
+            <select name="LoaiTaiKhoan" class="tk-input">
+              <option value="customer" {% if original.LoaiTaiKhoan == 'customer' %}selected{% endif %}>Khách hàng</option>
+              <option value="staff"    {% if original.LoaiTaiKhoan == 'staff'    %}selected{% endif %}>Nhân viên</option>
+              <option value="admin"    {% if original.LoaiTaiKhoan == 'admin'    %}selected{% endif %}>Admin</option>
+            </select>
+          </div>
+          <div class="tk-field">
+            <label class="tk-label">Ngày Tạo</label>
+            <input type="text" value="{{ original.NgayTao|date:'d/m/Y H:i'|default:'—' }}" class="tk-input" readonly>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Thành viên -->
+    <div class="tk-card">
+      <div class="tk-head"><span class="tk-head-icon">🏆</span><span class="tk-head-title">Thông tin thành viên</span></div>
+      <div class="tk-body">
+        <div class="tk-stats" style="margin-bottom:16px;">
+          <div class="tk-stat">
+            <div class="tk-stat-val">{{ original.DiemTichLuy|default:0 }}</div>
+            <div class="tk-stat-label">Điểm tích lũy</div>
+          </div>
+          <div class="tk-stat">
+            <div class="tk-stat-val">{{ original.TongChiTieu|floatformat:0|default:0 }}₫</div>
+            <div class="tk-stat-label">Tổng chi tiêu</div>
+          </div>
+          <div class="tk-stat">
+            <div class="tk-stat-val">{{ so_don_hang }}</div>
+            <div class="tk-stat-label">Đơn hàng</div>
+          </div>
+        </div>
+        <div class="tk-grid">
+          <div class="tk-field">
+            <label class="tk-label">Hạng thành viên</label>
+            <select name="HangThanhVien" class="tk-input">
+              <option value="Member"   {% if original.HangThanhVien == 'Member'   %}selected{% endif %}>🥉 Member</option>
+              <option value="Silver"   {% if original.HangThanhVien == 'Silver'   %}selected{% endif %}>🥈 Silver</option>
+              <option value="Gold"     {% if original.HangThanhVien == 'Gold'     %}selected{% endif %}>🥇 Gold</option>
+              <option value="Platinum" {% if original.HangThanhVien == 'Platinum' %}selected{% endif %}>💎 Platinum</option>
+            </select>
+          </div>
+          <div class="tk-field">
+            <label class="tk-label">Điểm tích lũy</label>
+            <input type="number" name="DiemTichLuy" value="{{ original.DiemTichLuy|default:0 }}" class="tk-input" min="0">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Khóa / Mở khóa tài khoản -->
+    <div class="tk-card">
+      <div class="tk-head"><span class="tk-head-icon">🔒</span><span class="tk-head-title">Trạng thái tài khoản</span></div>
+      <div class="tk-body">
+        <p style="font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.6;">
+          Khóa tài khoản khi phát hiện spam, hành vi bất thường hoặc vi phạm điều khoản sử dụng.
+          Tài khoản bị khóa sẽ không thể đăng nhập.
+        </p>
+        <div class="lock-toggle">
+          <label class="lock-card {% if original.TrangThai_TaiKhoan == 'active' %}active-unlock{% endif %}"
+                 onclick="selectLockState('active')">
+            <input type="radio" name="TrangThai_TaiKhoan" value="active"
+                   {% if original.TrangThai_TaiKhoan == 'active' %}checked{% endif %}>
+            <div class="lock-icon">✅</div>
+            <div class="lock-title">Đang hoạt động</div>
+            <div class="lock-desc">Tài khoản hoạt động bình thường. Khách hàng có thể đăng nhập và mua hàng.</div>
+          </label>
+          <label class="lock-card {% if original.TrangThai_TaiKhoan == 'locked' or original.TrangThai_TaiKhoan == 'banned' %}active-lock{% endif %}"
+                 onclick="selectLockState('locked')">
+            <input type="radio" name="TrangThai_TaiKhoan" value="locked"
+                   {% if original.TrangThai_TaiKhoan == 'locked' or original.TrangThai_TaiKhoan == 'banned' %}checked{% endif %}>
+            <div class="lock-icon">🔒</div>
+            <div class="lock-title">Khóa tài khoản</div>
+            <div class="lock-desc">Tài khoản bị tạm khóa do nghi ngờ spam hoặc vi phạm. Khách hàng không thể đăng nhập.</div>
+          </label>
+        </div>
+
+        <!-- Ghi chú khóa -->
+        <div style="margin-top:14px;" id="lockNoteWrap" {% if original.TrangThai_TaiKhoan == 'active' %}style="display:none;"{% endif %}>
+          <label class="tk-label" style="margin-bottom:5px;">Lý do khóa (ghi chú nội bộ)</label>
+          <textarea name="lock_reason" class="tk-input" style="min-height:70px;resize:vertical;"
+                    placeholder="VD: Phát hiện spam đánh giá, mua hàng bất thường...">{{ lock_reason|default:'' }}</textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CỘT PHẢI: Sidebar -->
+  <div class="tk-sidebar">
+    <div class="tk-actions">
+      <button type="submit" name="_save" class="tk-btn-save">💾 Lưu thay đổi</button>
+      <a href="{% url opts|admin_urlname:'changelist' %}" class="tk-btn-back">← Quay lại</a>
+      <a href="{% url opts|admin_urlname:'delete' original.pk|admin_urlquote %}"
+         class="tk-btn-del"
+         onclick="return confirm('Xóa tài khoản {{ original.TenDangNhap }}?')">
+        🗑 Xóa tài khoản
+      </a>
+    </div>
+
+    <!-- Voucher của TK -->
+    <div class="tk-card" style="margin-top:16px;">
+      <div class="tk-head"><span class="tk-head-icon">🎫</span><span class="tk-head-title">Voucher</span></div>
+      <div class="tk-body" style="padding:14px 18px;">
+        {% if vouchers %}
+          {% for v in vouchers %}
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(26,28,20,.05);">
+            <span style="font-family:monospace;font-size:12px;font-weight:700;color:var(--olive);">{{ v.id_KhuyenMai.MaKhuyenMai }}</span>
+            {% if v.DaSuDung %}
+            <span style="font-size:11px;color:#c62828;">Đã dùng</span>
+            {% else %}
+            <span style="font-size:11px;color:#2e7d32;">Còn hiệu lực</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        {% else %}
+          <p style="font-size:12px;color:var(--text4);text-align:center;padding:10px 0;">Chưa có voucher</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+</form>
+</div>
+
+<script>
+function selectLockState(val) {
+  document.querySelectorAll('.lock-card').forEach(function(c){
+    c.classList.remove('active-unlock','active-lock');
+  });
+  var chosen = document.querySelector('.lock-card input[value="'+val+'"]');
+  if (chosen) {
+    chosen.checked = true;
+    var card = chosen.closest('.lock-card');
+    card.classList.add(val === 'active' ? 'active-unlock' : 'active-lock');
+  }
+  var noteWrap = document.getElementById('lockNoteWrap');
+  if (noteWrap) {
+    noteWrap.style.display = val === 'active' ? 'none' : 'block';
+  }
+}
+</script>
+{% endblock %}

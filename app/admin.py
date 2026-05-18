@@ -5,6 +5,10 @@ from django import forms
 from django.utils.safestring import mark_safe
 from django.utils import timezone
 import nested_admin
+from django import forms as django_forms
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.conf import settings as django_settings
 
 from .models import (
     BienThe, BienTheThuocTinh, GiaTriThuocTinh,
@@ -863,42 +867,285 @@ class DanhGiaAdmin(admin.ModelAdmin):
 # ═══════════════════════════════════════
 #  KhuyenMai
 # ═══════════════════════════════════════
+class KhuyenMaiForm(django_forms.ModelForm):
+    """Form với datetime picker HTML5 thay vì nhập tay."""
+    NgayBatDau = django_forms.DateTimeField(
+        required=False,
+        widget=django_forms.DateTimeInput(
+            attrs={'type': 'datetime-local', 'class': 'km-input'},
+            format='%Y-%m-%dT%H:%M',
+        ),
+        input_formats=['%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M'],
+        label='Ngày Bắt Đầu',
+    )
+    NgayKetThuc = django_forms.DateTimeField(
+        required=False,
+        widget=django_forms.DateTimeInput(
+            attrs={'type': 'datetime-local', 'class': 'km-input'},
+            format='%Y-%m-%dT%H:%M',
+        ),
+        input_formats=['%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M'],
+        label='Ngày Kết Thúc',
+    )
+ 
+    class Meta:
+        model = KhuyenMai
+        fields = '__all__'
+
+
 @admin.register(KhuyenMai, site=admin_site)
 class KhuyenMaiAdmin(admin.ModelAdmin):
-    list_display  = ('MaKhuyenMai', 'TenKhuyenMai', 'LoaiKhuyenMai', 'LoaiGiam', 'gia_tri_fmt', 'SoLuong', 'DaSuDung', 'trang_thai_badge', 'NgayBatDau', 'NgayKetThuc')
-    search_fields = ('MaKhuyenMai', 'TenKhuyenMai')
-    list_filter   = ('TrangThai', 'LoaiKhuyenMai', 'LoaiGiam')
-    ordering = ('-id_KhuyenMai',)
-
-    def gia_tri_fmt(self, obj):
-        if not obj.GiaTriGiam: return "—"
+    form = KhuyenMaiForm
+    change_form_template = "admin/khuyenmai_change_form.html"
+    add_form_template    = "admin/khuyenmai_change_form.html"
+ 
+    list_display   = ('MaKhuyenMai', 'TenKhuyenMai', 'LoaiKhuyenMai',
+                      'loai_giam_badge', 'gia_tri_display', 'SoLuong',
+                      'DaSuDung', 'trang_thai_badge', 'NgayBatDau', 'NgayKetThuc')
+    list_display_links = ('MaKhuyenMai',)
+    search_fields  = ('MaKhuyenMai', 'TenKhuyenMai', 'MoTa')
+    list_filter    = ('TrangThai', 'LoaiKhuyenMai', 'LoaiGiam')
+    ordering       = ('-id_KhuyenMai',)
+    list_per_page  = 20
+ 
+    # ── Context ──
+    def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        from .models import TaiKhoan as TK
+        extra_context['total_accounts'] = TK.objects.filter(TrangThai_TaiKhoan='active').count()
+        extra_context['count_member']   = TK.objects.filter(TrangThai_TaiKhoan='active', HangThanhVien='Member').count()
+        extra_context['count_silver']   = TK.objects.filter(TrangThai_TaiKhoan='active', HangThanhVien='Silver').count()
+        extra_context['count_gold']     = TK.objects.filter(TrangThai_TaiKhoan='active', HangThanhVien='Gold').count()
+        extra_context['count_platinum'] = TK.objects.filter(TrangThai_TaiKhoan='active', HangThanhVien='Platinum').count()
+        if object_id:
+            try:
+                extra_context['da_phat_so_luong'] = KhuyenMaiTaiKhoan.objects.filter(
+                    id_KhuyenMai_id=int(object_id)
+                ).count()
+            except (ValueError, TypeError):
+                extra_context['da_phat_so_luong'] = 0
+        else:
+            extra_context['da_phat_so_luong'] = 0
+        return super().changeform_view(request, object_id, form_url, extra_context)
+ 
+    # ── Save + distribute ──
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+ 
+        action_type = request.POST.get('action_type', 'save')
+        if action_type != 'send':
+            return
+ 
+        from .models import TaiKhoan as TK
+        send_all   = request.POST.get('send_all') == '1'
+        send_tiers = request.POST.getlist('send_tier')
+ 
+        if send_all:
+            accounts = list(TK.objects.filter(TrangThai_TaiKhoan='active'))
+        elif send_tiers:
+            accounts = list(TK.objects.filter(
+                TrangThai_TaiKhoan='active',
+                HangThanhVien__in=send_tiers
+            ))
+        else:
+            from django.contrib import messages
+            messages.warning(request, '⚠️ Chưa chọn đối tượng nhận voucher!')
+            return
+ 
+        sent = 0
+        emails_to_notify = []
+ 
+        for acc in accounts:
+            exists = KhuyenMaiTaiKhoan.objects.filter(
+                id_TaiKhoan=acc, id_KhuyenMai=obj
+            ).exists()
+            if not exists:
+                KhuyenMaiTaiKhoan.objects.create(
+                    id_TaiKhoan=acc,
+                    id_KhuyenMai=obj,
+                    DaSuDung=False,
+                    NgayNhan=timezone.now(),
+                )
+                sent += 1
+                if acc.Email:
+                    emails_to_notify.append((acc.TenDangNhap or acc.Username or 'Khách hàng', acc.Email))
+ 
+        # Gửi email thông báo
+        email_sent = 0
+        for ten, email_addr in emails_to_notify:
+            try:
+                subject = f'🎁 Ami Perfumery — Voucher ưu đãi dành cho bạn: {obj.MaKhuyenMai}'
+ 
+                if obj.LoaiGiam == 'percent':
+                    discount_text = f'Giảm {int(obj.GiaTriGiam or 0)}%'
+                elif obj.LoaiGiam == 'fixed':
+                    discount_text = f'Giảm {int(obj.GiaTriGiam or 0):,}₫'.replace(',', '.')
+                else:
+                    discount_text = 'Miễn phí vận chuyển'
+ 
+                han_su_dung = obj.NgayKetThuc.strftime('%d/%m/%Y %H:%M') if obj.NgayKetThuc else 'Không giới hạn'
+                don_toi_thieu = f'{int(obj.DonHangToiThieu or 0):,}₫'.replace(',', '.') if obj.DonHangToiThieu else 'Không yêu cầu'
+ 
+                body = f"""Xin chào {ten},
+ 
+Ami Perfumery gửi tặng bạn voucher ưu đãi đặc biệt:
+ 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  MÃ VOUCHER:  {obj.MaKhuyenMai}
+  ƯU ĐÃI:      {discount_text}
+  ĐƠN TỐI THIỂU: {don_toi_thieu}
+  HẠN SỬ DỤNG: {han_su_dung}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ 
+{obj.MoTa or ''}
+ 
+Voucher đã được thêm vào tài khoản của bạn.
+Đăng nhập tại http://localhost:8000 để sử dụng ngay!
+ 
+Trân trọng,
+Ami Perfumery Team 🌸
+"""
+                send_mail(
+                    subject=subject,
+                    message=body,
+                    from_email=getattr(django_settings, 'DEFAULT_FROM_EMAIL', 'noreply@ami.com'),
+                    recipient_list=[email_addr],
+                    fail_silently=True,
+                )
+                email_sent += 1
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f'Email error to {email_addr}: {e}')
+ 
+        from django.contrib import messages
+        messages.success(
+            request,
+            f'✅ Đã phân phối voucher "{obj.MaKhuyenMai}" cho {sent} tài khoản. '
+            f'Đã gửi {email_sent} email thông báo.'
+        )
+ 
+    # ── List display ──
+    def loai_giam_badge(self, obj):
+        icons = {'percent': '% Phần trăm', 'fixed': '₫ Cố định', 'free_ship': '🚚 Miễn ship'}
+        return icons.get(obj.LoaiGiam or '', obj.LoaiGiam or '—')
+    loai_giam_badge.short_description = "Loại giảm"
+ 
+    def gia_tri_display(self, obj):
+        if not obj.GiaTriGiam:
+            return '—'
         if obj.LoaiGiam == 'percent':
-            return f"{obj.GiaTriGiam:.0f}%"
-        return f"{int(obj.GiaTriGiam):,}".replace(",", ".") + "₫"
-    gia_tri_fmt.short_description = "Giá trị giảm"
-
+            return format_html('<strong>{}%</strong>', int(obj.GiaTriGiam))
+        elif obj.LoaiGiam == 'fixed':
+            val = f'{int(obj.GiaTriGiam):,}'.replace(',', '.')
+            return format_html('<strong>{}₫</strong>', val)
+        return '—'
+    gia_tri_display.short_description = "Giá trị giảm"
+ 
     def trang_thai_badge(self, obj):
-        colors = {'active': ('#e8f5e9', '#2e7d32', 'Hoạt động'), 'inactive': ('#fce4ec', '#c62828', 'Tắt'), 'expired': ('#f5f5f5', '#9e9e9e', 'Hết hạn')}
-        bg, fg, label = colors.get(obj.TrangThai or '', ('#f5f5f5', '#9e9e9e', obj.TrangThai or '—'))
-        return format_html('<span style="background:{};color:{};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;">{}</span>', bg, fg, label)
+        if (obj.TrangThai or '').lower() == 'active':
+            return mark_safe('<span style="color:#2e7d32;font-weight:600;">● Hoạt động</span>')
+        return mark_safe('<span style="color:#9e9e9e;font-weight:600;">● Tạm dừng</span>')
     trang_thai_badge.short_description = "Trạng thái"
-
 
 @admin.register(KhuyenMaiTaiKhoan, site=admin_site)
 class KhuyenMaiTaiKhoanAdmin(admin.ModelAdmin):
-    list_display  = ('id', 'get_user', 'get_voucher', 'DaSuDung', 'NgayNhan')
-    list_filter   = ('DaSuDung',)
-    search_fields = ('id_TaiKhoan__TenDangNhap', 'id_KhuyenMai__MaKhuyenMai')
-
-    def get_user(self, obj):
-        try: return obj.id_TaiKhoan.TenDangNhap
-        except: return "—"
-    get_user.short_description = "Tài khoản"
-
-    def get_voucher(self, obj):
-        try: return obj.id_KhuyenMai.MaKhuyenMai
-        except: return "—"
-    get_voucher.short_description = "Voucher"
+    # Template chỉ xem — không có form chỉnh sửa
+    change_form_template = "admin/khuyenmaitaikhoan_change_form.html"
+ 
+    list_display   = ('ma_voucher', 'ten_khach_hang', 'hang_thanh_vien',
+                      'da_su_dung_badge', 'NgayNhan', 'han_su_dung')
+    list_display_links = ('ma_voucher', 'ten_khach_hang')
+    list_filter    = ('DaSuDung', 'id_KhuyenMai', 'id_TaiKhoan__HangThanhVien')
+    search_fields  = ('id_TaiKhoan__TenDangNhap', 'id_TaiKhoan__Email',
+                      'id_KhuyenMai__MaKhuyenMai', 'id_KhuyenMai__TenKhuyenMai')
+    ordering       = ('-NgayNhan',)
+    list_per_page  = 30
+ 
+    # Không cho thêm mới — chỉ phân phối qua form KhuyenMai
+    def has_add_permission(self, request):
+        return False
+ 
+    # Không cho chỉnh sửa — chỉ xem + xóa
+    def has_change_permission(self, request, obj=None):
+        # Vẫn trả về True để Django cho phép truy cập URL change
+        # nhưng template sẽ hiển thị read-only
+        return True
+ 
+    def get_readonly_fields(self, request, obj=None):
+        # Tất cả field đều read-only
+        if obj:
+            return [f.name for f in obj._meta.fields]
+        return []
+ 
+    # ── List display ──
+    def ma_voucher(self, obj):
+        if not obj.id_KhuyenMai:
+            return '—'
+        return format_html(
+            '<span style="font-family:monospace;font-weight:700;color:var(--olive,#4B672D);'
+            'background:rgba(75,103,45,.08);padding:3px 10px;border-radius:20px;">{}</span>',
+            obj.id_KhuyenMai.MaKhuyenMai
+        )
+    ma_voucher.short_description = "Mã voucher"
+ 
+    def ten_khach_hang(self, obj):
+        if not obj.id_TaiKhoan:
+            return '—'
+        ten = obj.id_TaiKhoan.TenDangNhap or obj.id_TaiKhoan.Username or '—'
+        email = obj.id_TaiKhoan.Email or ''
+        return format_html(
+            '<div style="line-height:1.4;">'
+            '<strong style="font-size:13px;">{}</strong>'
+            '<div style="font-size:11px;color:#9e9e9e;">{}</div>'
+            '</div>',
+            ten, email
+        )
+    ten_khach_hang.short_description = "Khách hàng"
+ 
+    def hang_thanh_vien(self, obj):
+        if not obj.id_TaiKhoan:
+            return '—'
+        hang = obj.id_TaiKhoan.HangThanhVien or 'Member'
+        colors = {
+            'Member':   ('#eceff1', '#546e7a', '🥉'),
+            'Silver':   ('#e3f2fd', '#1565c0', '🥈'),
+            'Gold':     ('#fff8e1', '#f57f17', '🥇'),
+            'Platinum': ('#f3e5f5', '#6a1b9a', '💎'),
+        }
+        bg, fg, icon = colors.get(hang, ('#f5f5f5', '#616161', ''))
+        return format_html(
+            '<span style="background:{};color:{};padding:3px 10px;border-radius:20px;'
+            'font-size:11px;font-weight:600;">{} {}</span>',
+            bg, fg, icon, hang
+        )
+    hang_thanh_vien.short_description = "Hạng"
+ 
+    def da_su_dung_badge(self, obj):
+        if obj.DaSuDung:
+            return mark_safe('<span style="background:#fce4ec;color:#c62828;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;">✗ Đã sử dụng</span>')
+        return mark_safe('<span style="background:#e8f5e9;color:#2e7d32;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;">✓ Chưa dùng</span>')
+    da_su_dung_badge.short_description = "Tình trạng"
+ 
+    def han_su_dung(self, obj):
+        if not obj.id_KhuyenMai:
+            return '—'
+        ngay = obj.id_KhuyenMai.NgayKetThuc
+        if not ngay:
+            return mark_safe('<span style="color:#9e9e9e;">Không giới hạn</span>')
+        from django.utils import timezone
+        if ngay < timezone.now():
+            return format_html(
+                '<span style="color:#c62828;">{}</span>',
+                ngay.strftime('%d/%m/%Y')
+            )
+        return format_html(
+            '<span style="color:#2e7d32;">{}</span>',
+            ngay.strftime('%d/%m/%Y')
+        )
+    han_su_dung.short_description = "Hạn dùng"
+ 
+    class Media:
+        css = {'all': ('admin/css/ami_luxury.css',)}
 
 
 # ═══════════════════════════════════════
@@ -906,44 +1153,218 @@ class KhuyenMaiTaiKhoanAdmin(admin.ModelAdmin):
 # ═══════════════════════════════════════
 @admin.register(TaiKhoan, site=admin_site)
 class TaiKhoanAdmin(admin.ModelAdmin):
-    list_display  = ('id_TaiKhoan', 'avatar_chip', 'TenDangNhap', 'Username', 'Email', 'SDT', 'loai_badge', 'trang_thai_badge', 'diem_display', 'NgayTao')
-    list_filter   = ('LoaiTaiKhoan', 'TrangThai_TaiKhoan')
-    search_fields = ('Username', 'TenDangNhap', 'Email', 'SDT')
-    readonly_fields = ('NgayTao',)
-    ordering = ('-id_TaiKhoan',)
-    list_per_page = 25
-    fields = ('Username', 'TenDangNhap', 'Email', 'SDT', 'LoaiTaiKhoan', 'TrangThai_TaiKhoan', 'DiemTichLuy', 'HangThanhVien', 'NgayTao')
-
-    def avatar_chip(self, obj):
-        initials = (obj.TenDangNhap or obj.Username or '?')[0].upper()
-        return format_html(
-            '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#344e1f,#5a7b35);'
-            'display:flex;align-items:center;justify-content:center;font-family:Georgia,serif;font-size:15px;color:#EBF6C4;font-weight:600;">{}</div>',
-            initials
+    change_form_template = "admin/taikhoan_change_form.html"
+ 
+    # Cột hiển thị: Email · Họ tên · SĐT · Hạng · Toggle trạng thái · Ngày tạo
+    list_display   = ('Email', 'ten_dang_nhap', 'SDT',
+                      'hang_badge', 'trang_thai_toggle', 'NgayTao')
+    list_display_links = ('Email', 'ten_dang_nhap')
+    search_fields  = ('TenDangNhap', 'Username', 'Email', 'SDT')
+    list_filter    = ('TrangThai_TaiKhoan', 'HangThanhVien', 'LoaiTaiKhoan')
+    ordering       = ('-NgayTao',)
+    list_per_page  = 25
+ 
+    # ── Context cho form ──
+    def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        if object_id:
+            try:
+                oid = int(object_id)
+                from .models import KhachHang, DonHang, KhuyenMaiTaiKhoan as KMTK
+                customer = KhachHang.objects.filter(id_TaiKhoan_id=oid).first()
+                so_don   = DonHang.objects.filter(id_KhachHang=customer).count() if customer else 0
+                extra_context['so_don_hang'] = so_don
+                extra_context['vouchers']    = KMTK.objects.filter(
+                    id_TaiKhoan_id=oid
+                ).select_related('id_KhuyenMai').order_by('-NgayNhan')[:10]
+                extra_context['lock_reason'] = ''
+            except (ValueError, TypeError):
+                extra_context['so_don_hang'] = 0
+                extra_context['vouchers']    = []
+        else:
+            extra_context['so_don_hang'] = 0
+            extra_context['vouchers']    = []
+        return super().changeform_view(request, object_id, form_url, extra_context)
+ 
+    # ── Save — lưu đúng tất cả field từ form ──
+    def save_model(self, request, obj, form, change):
+        # Lấy các field từ POST
+        for field in ('TenDangNhap', 'Username', 'Email', 'SDT',
+                      'LoaiTaiKhoan', 'HangThanhVien', 'DiemTichLuy',
+                      'TrangThai_TaiKhoan'):
+            val = request.POST.get(field, '').strip()
+            if val:
+                setattr(obj, field, val)
+ 
+        # DiemTichLuy convert sang int
+        try:
+            obj.DiemTichLuy = int(request.POST.get('DiemTichLuy', obj.DiemTichLuy or 0))
+        except (ValueError, TypeError):
+            pass
+ 
+        obj.save()
+        self.log_change(request, obj, f'Cập nhật thông tin tài khoản')
+ 
+    # ── FK-safe delete ──
+    def delete_model(self, request, obj):
+        """Xóa theo thứ tự để tránh FK constraint SQL Server."""
+        from .models import (KhachHang, DonHang, DonHangChiTiet,
+                             GiaoHang, KhuyenMaiTaiKhoan as KMTK,
+                             HoiDap, DanhGia)
+        try:
+            customer = KhachHang.objects.filter(id_TaiKhoan=obj).first()
+            if customer:
+                orders = DonHang.objects.filter(id_KhachHang=customer)
+                for order in orders:
+                    DonHangChiTiet.objects.filter(id_DonHang=order).delete()
+                    GiaoHang.objects.filter(id_DonHang=order).delete()
+                orders.delete()
+                customer.delete()
+        except Exception:
+            pass
+        try:
+            KMTK.objects.filter(id_TaiKhoan=obj).delete()
+        except Exception:
+            pass
+        try:
+            HoiDap.objects.filter(id_TaiKhoan=obj).delete()
+        except Exception:
+            pass
+        try:
+            DanhGia.objects.filter(id_TaiKhoan=obj).delete()
+        except Exception:
+            pass
+        obj.delete()
+ 
+    def delete_queryset(self, request, queryset):
+        for obj in queryset:
+            self.delete_model(request, obj)
+ 
+    # ── Toggle trạng thái — AJAX endpoint ──
+    def get_urls(self):
+        from django.urls import path
+        urls = super().get_urls()
+        custom = [
+            path('toggle/<int:pk>/',
+                 self.admin_site.admin_view(self.toggle_view),
+                 name='taikhoan_toggle'),
+        ]
+        return custom + urls
+ 
+    def toggle_view(self, request, pk):
+        """
+        AJAX toggle trạng thái tài khoản.
+        Chỉ cho phép: active ↔ locked.
+        Không cho phép tắt tài khoản admin/staff qua toggle.
+        """
+        from django.http import JsonResponse
+        from django.views.decorators.http import require_POST
+        if request.method != 'POST':
+            return JsonResponse({'ok': False, 'msg': 'Method not allowed'}, status=405)
+ 
+        try:
+            acc = TaiKhoan.objects.get(pk=pk)
+        except TaiKhoan.DoesNotExist:
+            return JsonResponse({'ok': False, 'msg': 'Không tìm thấy tài khoản'}, status=404)
+ 
+        # Bảo vệ: không cho toggle tài khoản admin/staff qua nút này
+        if acc.LoaiTaiKhoan in ('admin', 'staff'):
+            return JsonResponse({
+                'ok': False,
+                'msg': 'Không thể khóa tài khoản Admin/Staff qua toggle. '
+                       'Vui lòng vào trang chi tiết để thay đổi.'
+            }, status=403)
+ 
+        # Chỉ toggle giữa active ↔ locked
+        if acc.TrangThai_TaiKhoan == 'active':
+            acc.TrangThai_TaiKhoan = 'locked'
+            new_state = 'locked'
+        else:
+            acc.TrangThai_TaiKhoan = 'active'
+            new_state = 'active'
+ 
+        acc.save(update_fields=['TrangThai_TaiKhoan'])
+        self.log_change(
+            request, acc,
+            f'Toggle trạng thái → {new_state}'
         )
-    avatar_chip.short_description = ""
-
-    def loai_badge(self, obj):
+        return JsonResponse({'ok': True, 'new_state': new_state})
+ 
+    # ── List display methods ──
+    def ten_dang_nhap(self, obj):
+        return format_html(
+            '<div style="line-height:1.4;">'
+            '<strong style="font-size:13px;">{}</strong>'
+            '<div style="font-size:11px;color:#9e9e9e;">@{}</div>'
+            '</div>',
+            obj.TenDangNhap or '—', obj.Username or '—'
+        )
+    ten_dang_nhap.short_description = "Họ tên"
+ 
+    def hang_badge(self, obj):
+        hang = obj.HangThanhVien or 'Member'
         colors = {
-            'admin':    ('#fce4ec', '#c62828', '🔐 Admin'),
-            'staff':    ('#e3f2fd', '#1565c0', '👔 Staff'),
-            'customer': ('#e8f5e9', '#2e7d32', '👤 KH'),
+            'Member':   ('#eceff1', '#546e7a', '🥉'),
+            'Silver':   ('#e3f2fd', '#1565c0', '🥈'),
+            'Gold':     ('#fff8e1', '#f57f17', '🥇'),
+            'Platinum': ('#f3e5f5', '#6a1b9a', '💎'),
         }
-        bg, fg, label = colors.get(obj.LoaiTaiKhoan or '', ('#f5f5f5', '#9e9e9e', obj.LoaiTaiKhoan or '—'))
-        return format_html('<span style="background:{};color:{};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;">{}</span>', bg, fg, label)
-    loai_badge.short_description = "Loại"
-
-    def trang_thai_badge(self, obj):
-        is_active = (obj.TrangThai_TaiKhoan or '').lower() == 'active'
-        if is_active:
-            return format_html('<span style="background:#e8f5e9;color:#2e7d32;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;">● Hoạt động</span>')
-        return format_html('<span style="background:#fce4ec;color:#c62828;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;">● Khóa</span>')
-    trang_thai_badge.short_description = "Trạng thái"
-
-    def diem_display(self, obj):
-        pts = int(obj.DiemTichLuy or 0)
-        return format_html('<span style="font-weight:600;color:#4B672D;">{} 🌿</span>', f"{pts:,}".replace(",", "."))
-    diem_display.short_description = "Điểm"
+        bg, fg, icon = colors.get(hang, ('#f5f5f5', '#616161', ''))
+        return format_html(
+            '<span style="background:{};color:{};padding:3px 10px;'
+            'border-radius:20px;font-size:11px;font-weight:600;">{} {}</span>',
+            bg, fg, icon, hang
+        )
+    hang_badge.short_description = "Hạng"
+ 
+    def trang_thai_toggle(self, obj):
+        """
+        Toggle switch hiển thị trực quan.
+        - Màu xanh = active, màu đỏ = locked
+        - Admin/Staff: hiển thị badge tĩnh, KHÔNG có toggle (bảo vệ)
+        - Customer: có toggle AJAX
+        """
+        is_active = (obj.TrangThai_TaiKhoan or 'active') == 'active'
+ 
+        # Bảo vệ admin/staff — không có toggle
+        if obj.LoaiTaiKhoan in ('admin', 'staff'):
+            label = '🛡️ Admin' if obj.LoaiTaiKhoan == 'admin' else '👔 Staff'
+            return mark_safe(
+                f'<span style="background:#f3e5f5;color:#6a1b9a;padding:3px 10px;'
+                f'border-radius:20px;font-size:11px;font-weight:600;">{label}</span>'
+            )
+ 
+        checked    = 'checked' if is_active else ''
+        toggle_css = (
+            'display:inline-flex;align-items:center;gap:6px;cursor:pointer;'
+        )
+        switch_css = (
+            'position:relative;width:44px;height:24px;border-radius:12px;'
+            'transition:background .25s;flex-shrink:0;'
+            + ('background:#4B672D;' if is_active else 'background:#ccc;')
+        )
+        knob_css = (
+            'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;'
+            'background:#fff;transition:left .25s;box-shadow:0 1px 3px rgba(0,0,0,.2);'
+            + ('left:23px;' if is_active else 'left:3px;')
+        )
+        label_css = f'font-size:11px;font-weight:600;color:{"#2e7d32" if is_active else "#c62828"};'
+        label_txt  = 'Hoạt động' if is_active else 'Đã khóa'
+ 
+        return mark_safe(
+            f'<label class="tk-toggle-wrap" style="{toggle_css}" '
+            f'onclick="tkToggle(event, {obj.pk}, this)">'
+            f'  <span style="{switch_css}" id="sw-{obj.pk}">'
+            f'    <span style="{knob_css}" id="knob-{obj.pk}"></span>'
+            f'  </span>'
+            f'  <span style="{label_css}" id="lbl-{obj.pk}">{label_txt}</span>'
+            f'</label>'
+        )
+    trang_thai_toggle.short_description = "Trạng thái"
+ 
+    class Media:
+        css = {'all': ('admin/css/ami_luxury.css',)}
+        js  = ('admin/js/taikhoan_toggle.js',)
 
 
 # ═══════════════════════════════════════

@@ -66,7 +66,7 @@ const I18N = {
 (function initAvatar() {
   const wrap  = document.getElementById('avatarWrap');
   const input = document.getElementById('avatarInput');
-  const img   = document.getElementById('avatarImg');
+  const img   = document.getElementById('profileAvatar');
   if (!wrap || !input || !img) return;
 
   wrap.addEventListener('click', () => input.click());
@@ -519,6 +519,92 @@ let editingReviewId = null;
 //   setTimeout(() => { btn.classList.remove('success'); btn.querySelector('.btn-text').textContent = 'Lưu thay đổi'; btn.disabled = false; }, 2200);
 //   showToast('Thông tin cá nhân đã được cập nhật ✓');
 // });
+
+/* ─── PROFILE FORM ─── */
+document.getElementById('profileForm')?.addEventListener('submit', async e => {
+  e.preventDefault();
+
+  const form = e.currentTarget;
+  const btn = document.getElementById('profileSaveBtn');
+  const btnText = btn?.querySelector('.btn-text');
+  const originalText = btnText?.textContent || 'Lưu thay đổi';
+
+  const fullName = document.getElementById('pName')?.value.trim() || '';
+  const username = document.getElementById('pUsername')?.value.trim() || '';
+  const email = document.getElementById('pEmail')?.value.trim() || '';
+  const phone = document.getElementById('pPhone')?.value.trim() || '';
+  const gender = document.getElementById('pGender')?.value || '';
+  const avatarFile = document.getElementById('avatarInput')?.files?.[0];
+
+  form.querySelectorAll('.field-error').forEach(el => { el.textContent = ''; });
+
+  if (!fullName) {
+    document.getElementById('pName')?.closest('.field-group')?.querySelector('.field-error')?.replaceChildren(document.createTextNode('Vui lòng nhập họ và tên.'));
+    showToast('Vui lòng nhập họ và tên.');
+    return;
+  }
+
+  if (!username) {
+    document.getElementById('pUsername')?.closest('.field-group')?.querySelector('.field-error')?.replaceChildren(document.createTextNode('Vui lòng nhập tên đăng nhập.'));
+    showToast('Vui lòng nhập tên đăng nhập.');
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append('full_name', fullName);
+  fd.append('username', username);
+  fd.append('email', email);
+  fd.append('phone', phone);
+  fd.append('gender', gender);
+  if (avatarFile) fd.append('avatar', avatarFile);
+
+  btn?.classList.add('loading');
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/update-profile/', {
+      method: 'POST',
+      body: fd,
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok || !data.ok) {
+      showToast(data.message || 'Không thể cập nhật thông tin. Vui lòng thử lại.');
+      return;
+    }
+
+    const profile = data.profile || {};
+    const displayName = profile.full_name || fullName;
+    const displayUsername = profile.username || username;
+
+    document.querySelectorAll('.profile-name').forEach(el => { el.textContent = displayName; });
+    document.querySelectorAll('.profile-username').forEach(el => { el.textContent = `@${displayUsername}`; });
+
+    const accountMenuName = document.querySelector('.account-dropdown a[href$="/tai-khoan/"]');
+    if (accountMenuName) {
+      const icon = accountMenuName.querySelector('i');
+      accountMenuName.textContent = displayName;
+      if (icon) accountMenuName.prepend(icon);
+    }
+
+    if ((profile.avatar || data.avatar) && document.getElementById('profileAvatar')) {
+      document.getElementById('profileAvatar').src = profile.avatar || data.avatar;
+    }
+
+    btn?.classList.add('success');
+    if (btnText) btnText.textContent = '✓ Đã lưu';
+    showToast(data.message || 'Thông tin cá nhân đã được cập nhật ✓');
+  } catch (err) {
+    showToast('Có lỗi kết nối. Vui lòng thử lại.');
+  } finally {
+    btn?.classList.remove('loading');
+    setTimeout(() => {
+      btn?.classList.remove('success');
+      if (btnText) btnText.textContent = originalText;
+      if (btn) btn.disabled = false;
+    }, 1800);
+  }
+});
 
 /* ─── PASSWORD FORM ─── */
 document.getElementById('passwordForm')?.addEventListener('submit', async e => {
@@ -1126,33 +1212,33 @@ function updateOrderCardUI(orderId, newStatus) {
 })();
 
 
-const avatarWrap = document.getElementById("avatarWrap");
-const avatarInput = document.getElementById("avatarInput");
+// const avatarWrap = document.getElementById("avatarWrap");
+// const avatarInput = document.getElementById("avatarInput");
 
-avatarWrap.addEventListener("click", function(e){
+// avatarWrap.addEventListener("click", function(e){
 
-    e.preventDefault();
-    e.stopPropagation();
+//     e.preventDefault();
+//     e.stopPropagation();
 
-    avatarInput.click();
+//     avatarInput.click();
 
-});
+// });
 
-avatarInput.addEventListener("change", function(){
+// avatarInput.addEventListener("change", function(){
 
-    const file = this.files[0];
+//     const file = this.files[0];
 
-    if(file){
+//     if(file){
 
-        const reader = new FileReader();
+//         const reader = new FileReader();
 
-        reader.onload = function(e){
+//         reader.onload = function(e){
 
-            avatarWrap.querySelector("img").src =
-                e.target.result;
+//             avatarWrap.querySelector("img").src =
+//                 e.target.result;
 
-        };
+//         };
 
-        reader.readAsDataURL(file);
-    }
-});
+//         reader.readAsDataURL(file);
+//     }
+// });

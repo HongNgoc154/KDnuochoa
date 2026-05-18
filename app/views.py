@@ -2549,54 +2549,110 @@ def admin_order_detail_api(request):
 def update_profile_api(request):
 
     account_id = request.session.get("account_id")
+    def profile_json(payload, status=200):
+        return JsonResponse(
+            payload,
+            status=status,
+            json_dumps_params={"ensure_ascii": False},
+        )
 
     if not account_id:
-        return JsonResponse({
+        return profile_json({
             "ok": False,
-            "need_login": True
-        })
+            "need_login": True,
+            "message": "Vui lòng đăng nhập để cập nhật hồ sơ."
+        }, status=401)
 
     account = TaiKhoan.objects.filter(
         id_TaiKhoan=account_id
     ).first()
 
-    customer = KhachHang.objects.filter(
-        id_TaiKhoan_id=account_id
-    ).first()
+    # customer = KhachHang.objects.filter(
+    #     id_TaiKhoan_id=account_id
+    # ).first()
 
     if not account:
-        return JsonResponse({
+        return profile_json({
             "ok": False,
             "message": "Không tìm thấy tài khoản."
-        })
+        }, status=404)
 
-    full_name = request.POST.get("full_name")
-    email = request.POST.get("email")
-    phone = request.POST.get("phone")
-    gender = request.POST.get("gender")
+    full_name = (request.POST.get("full_name") or "").strip()
+    username = (request.POST.get("username") or "").strip()
+    email = (request.POST.get("email") or "").strip()
+    phone = (request.POST.get("phone") or "").strip()
+    gender = (request.POST.get("gender") or "").strip()
+
+    if not full_name:
+        return profile_json({
+            "ok": False,
+            "message": "Vui lòng nhập họ và tên."
+        }, status=400)
+
+    if not username:
+        return profile_json({
+            "ok": False,
+            "message": "Vui lòng nhập tên đăng nhập."
+        }, status=400)
+
+    duplicated_username = TaiKhoan.objects.filter(
+        Username__iexact=username
+    ).exclude(id_TaiKhoan=account.id_TaiKhoan).exists()
+    if duplicated_username:
+        return profile_json({
+            "ok": False,
+            "message": "Tên đăng nhập đã tồn tại."
+        }, status=409)
 
     avatar = request.FILES.get("avatar")
 
     # cập nhật tài khoản
     account.TenDangNhap = full_name
+    account.Username = username
     account.Email = email
     account.SDT = phone
 
     if avatar:
         account.AnhDaiDien = avatar
 
-    account.save()
+    account.save(update_fields=[
+        "TenDangNhap",
+        "Username",
+        "Email",
+        "SDT",
+        "AnhDaiDien",
+    ])
 
-    # cập nhật khách hàng
-    if customer:
+    # Cập nhật hoặc tạo bảng KhachHang để lần tải trang sau vẫn thấy dữ liệu mới.
+    customer = KhachHang.objects.filter(id_TaiKhoan=account).first()
+    if not customer:
+        customer = KhachHang.objects.create(
+            id_TaiKhoan=account,
+            TenKhachHang=full_name,
+            DiaChi="",
+            GioiTinh=gender,
+        )
+    else:
         customer.TenKhachHang = full_name
         customer.GioiTinh = gender
-        customer.save()
+        customer.save(update_fields=["TenKhachHang", "GioiTinh"])
 
-    return JsonResponse({
+    request.session["account_name"] = full_name
+
+    avatar_url = account.AnhDaiDien.url if account.AnhDaiDien else ""
+
+    return profile_json({
         "ok": True,
-        "message": "Cập nhật thành công.",
-        "avatar": account.AnhDaiDien.url if account.AnhDaiDien else ""
+        "message": "Cập nhật thông tin cá nhân thành công.",
+        "profile": {
+            "full_name": full_name,
+            "username": username,
+            "email": email,
+            "phone": phone,
+            "gender": gender,
+            "avatar": avatar_url,
+        },
+        "avatar": avatar_url,
     })
 
 def api_thuoc_tinh_list(request):

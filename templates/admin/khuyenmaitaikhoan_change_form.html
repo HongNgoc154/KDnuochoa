@@ -1,0 +1,256 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block title %}Voucher khách hàng #{{ original.pk }}{% endblock %}
+{% block breadcrumb_title %}Chi tiết{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'myadmin:index' %}">Admin</a>
+<span class="topbar-sep">›</span>
+<a href="{% url opts|admin_urlname:'changelist' %}">Voucher khách hàng</a>
+<span class="topbar-sep">›</span>
+<span>#{{ original.pk }}</span>
+{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'admin/css/ami_luxury.css' %}">
+<style>
+#content-main{background:transparent!important;box-shadow:none!important;border:none!important;padding:0!important;}
+
+.vk-layout{display:grid;grid-template-columns:1fr 280px;gap:20px;align-items:start;}
+@media(max-width:800px){.vk-layout{grid-template-columns:1fr;}}
+
+/* Card */
+.vk-card{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px;}
+.vk-card:last-child{margin-bottom:0;}
+.vk-head{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--stone);background:linear-gradient(135deg,rgba(75,103,45,.04),rgba(235,246,196,.14));}
+.vk-head-icon{font-size:18px;} .vk-head-title{font-family:var(--fd);font-size:17px;font-weight:400;color:var(--text);}
+.vk-body{padding:22px 24px;}
+
+/* Info rows */
+.vk-row{display:flex;align-items:flex-start;padding:12px 0;border-bottom:1px solid rgba(26,28,20,.05);}
+.vk-row:last-child{border-bottom:none;}
+.vk-row-label{width:180px;flex-shrink:0;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);padding-top:2px;}
+.vk-row-val{flex:1;font-size:14px;color:var(--text);line-height:1.5;}
+
+/* Voucher big display */
+.voucher-hero{background:linear-gradient(135deg,var(--olive-dark),var(--olive));border-radius:16px;padding:28px 24px;text-align:center;position:relative;overflow:hidden;margin-bottom:20px;}
+.voucher-hero::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.07);}
+.voucher-hero::after{content:'';position:absolute;bottom:-20px;left:-20px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.05);}
+.voucher-code{font-family:var(--fm,'monospace');font-size:28px;font-weight:700;color:#fff;letter-spacing:4px;margin-bottom:6px;position:relative;z-index:1;}
+.voucher-name{font-size:13px;color:rgba(255,255,255,.75);position:relative;z-index:1;}
+.voucher-discount{font-size:36px;font-weight:700;color:#EBF6C4;margin:12px 0 4px;position:relative;z-index:1;}
+.voucher-discount-label{font-size:11px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:1.5px;position:relative;z-index:1;}
+
+/* Status badge */
+.status-used{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;}
+.status-used.used{background:rgba(184,50,50,.1);color:#c62828;border:1px solid rgba(184,50,50,.2);}
+.status-used.unused{background:rgba(46,125,50,.1);color:#2e7d32;border:1px solid rgba(46,125,50,.2);}
+
+/* Tier badge */
+.tier-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;}
+.tier-Member{background:#eceff1;color:#546e7a;}
+.tier-Silver{background:#e3f2fd;color:#1565c0;}
+.tier-Gold{background:#fff8e1;color:#f57f17;}
+.tier-Platinum{background:#f3e5f5;color:#6a1b9a;}
+
+/* Sidebar */
+.vk-sidebar{position:sticky;top:20px;}
+.vk-actions{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);box-shadow:var(--shadow);padding:18px;}
+.vk-btn-del{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:12px;background:rgba(184,50,50,.08);color:var(--danger);border:1.5px solid rgba(184,50,50,.2);border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:.2s;text-decoration:none;}
+.vk-btn-del:hover{background:var(--danger);color:#fff;}
+.vk-btn-back{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:11px;background:var(--parchment);color:var(--olive);border:1.5px solid rgba(75,103,45,.3);border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;text-transform:uppercase;cursor:pointer;transition:.2s;text-decoration:none;margin-bottom:8px;}
+.vk-btn-back:hover{background:var(--sage);}
+
+/* Read-only notice */
+.readonly-notice{display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(75,103,45,.06);border:1px solid rgba(75,103,45,.15);border-radius:var(--rsm);font-size:12px;color:var(--text3);margin-bottom:16px;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+
+<div class="ami-page-header" style="margin-bottom:20px;">
+  <div>
+    <h1 class="ami-page-title">Voucher <em>#{{ original.pk }}</em></h1>
+    <p class="ami-page-sub"><a href="{% url opts|admin_urlname:'changelist' %}" style="color:var(--olive);">← Quay lại danh sách</a></p>
+  </div>
+</div>
+
+<div class="vk-layout">
+  <!-- CỘT TRÁI -->
+  <div>
+    <!-- Notice -->
+    <div class="readonly-notice">
+      🔒 Trang này chỉ xem thông tin. Để chỉnh sửa, vui lòng thao tác trực tiếp qua mục Khuyến mãi.
+    </div>
+
+    <!-- Voucher hero -->
+    <div class="vk-card">
+      <div class="vk-head"><span class="vk-head-icon">🎫</span><span class="vk-head-title">Thông tin voucher</span></div>
+      <div class="vk-body">
+        {% if original.id_KhuyenMai %}
+        <div class="voucher-hero">
+          <div class="voucher-code">{{ original.id_KhuyenMai.MaKhuyenMai }}</div>
+          <div class="voucher-name">{{ original.id_KhuyenMai.TenKhuyenMai|default:'' }}</div>
+          <div class="voucher-discount">
+            {% if original.id_KhuyenMai.LoaiGiam == 'percent' %}
+              {{ original.id_KhuyenMai.GiaTriGiam|floatformat:0 }}%
+            {% elif original.id_KhuyenMai.LoaiGiam == 'fixed' %}
+              {{ original.id_KhuyenMai.GiaTriGiam|floatformat:0 }}₫
+            {% else %}
+              🚚 Freeship
+            {% endif %}
+          </div>
+          <div class="voucher-discount-label">
+            {% if original.id_KhuyenMai.LoaiGiam == 'percent' %}Giảm phần trăm
+            {% elif original.id_KhuyenMai.LoaiGiam == 'fixed' %}Giảm cố định
+            {% else %}Miễn phí vận chuyển{% endif %}
+          </div>
+        </div>
+
+        <div class="vk-row">
+          <span class="vk-row-label">Tên KM</span>
+          <span class="vk-row-val">{{ original.id_KhuyenMai.TenKhuyenMai|default:'—' }}</span>
+        </div>
+        <div class="vk-row">
+          <span class="vk-row-label">Mô tả</span>
+          <span class="vk-row-val">{{ original.id_KhuyenMai.MoTa|default:'—' }}</span>
+        </div>
+        <div class="vk-row">
+          <span class="vk-row-label">Đơn tối thiểu</span>
+          <span class="vk-row-val">
+            {% if original.id_KhuyenMai.DonHangToiThieu %}
+              {{ original.id_KhuyenMai.DonHangToiThieu|floatformat:0 }}₫
+            {% else %}Không yêu cầu{% endif %}
+          </span>
+        </div>
+        <div class="vk-row">
+          <span class="vk-row-label">Hạn sử dụng</span>
+          <span class="vk-row-val">
+            {% if original.id_KhuyenMai.NgayKetThuc %}
+              {{ original.id_KhuyenMai.NgayKetThuc|date:"d/m/Y H:i" }}
+            {% else %}Không giới hạn{% endif %}
+          </span>
+        </div>
+        <div class="vk-row">
+          <span class="vk-row-label">Trạng thái KM</span>
+          <span class="vk-row-val">
+            {% if original.id_KhuyenMai.TrangThai == 'active' %}
+            <span style="color:#2e7d32;font-weight:600;">● Đang hoạt động</span>
+            {% else %}
+            <span style="color:#9e9e9e;font-weight:600;">● Tạm dừng</span>
+            {% endif %}
+          </span>
+        </div>
+        {% else %}
+        <p style="color:var(--text4);font-style:italic;">Khuyến mãi đã bị xóa</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Thông tin khách hàng -->
+    <div class="vk-card">
+      <div class="vk-head"><span class="vk-head-icon">👤</span><span class="vk-head-title">Thông tin khách hàng</span></div>
+      <div class="vk-body">
+        {% if original.id_TaiKhoan %}
+        <div class="vk-row">
+          <span class="vk-row-label">Tên đăng nhập</span>
+          <span class="vk-row-val" style="font-weight:600;">{{ original.id_TaiKhoan.TenDangNhap|default:original.id_TaiKhoan.Username|default:'—' }}</span>
+        </div>
+        <div class="vk-row">
+          <span class="vk-row-label">Email</span>
+          <span class="vk-row-val">{{ original.id_TaiKhoan.Email|default:'—' }}</span>
+        </div>
+        <div class="vk-row">
+          <span class="vk-row-label">Số điện thoại</span>
+          <span class="vk-row-val">{{ original.id_TaiKhoan.SDT|default:'—' }}</span>
+        </div>
+        <div class="vk-row">
+          <span class="vk-row-label">Hạng thành viên</span>
+          <span class="vk-row-val">
+            <span class="tier-pill tier-{{ original.id_TaiKhoan.HangThanhVien|default:'Member' }}">
+              {% if original.id_TaiKhoan.HangThanhVien == 'Platinum' %}💎
+              {% elif original.id_TaiKhoan.HangThanhVien == 'Gold' %}🥇
+              {% elif original.id_TaiKhoan.HangThanhVien == 'Silver' %}🥈
+              {% else %}🥉{% endif %}
+              {{ original.id_TaiKhoan.HangThanhVien|default:'Member' }}
+            </span>
+          </span>
+        </div>
+        <div class="vk-row">
+          <span class="vk-row-label">Tổng chi tiêu</span>
+          <span class="vk-row-val" style="font-weight:600;color:var(--olive);">
+            {{ original.id_TaiKhoan.TongChiTieu|floatformat:0 }}₫
+          </span>
+        </div>
+        {% else %}
+        <p style="color:var(--text4);font-style:italic;">Tài khoản đã bị xóa</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Trạng thái voucher -->
+    <div class="vk-card">
+      <div class="vk-head"><span class="vk-head-icon">📋</span><span class="vk-head-title">Trạng thái sử dụng</span></div>
+      <div class="vk-body">
+        <div class="vk-row">
+          <span class="vk-row-label">Trạng thái</span>
+          <span class="vk-row-val">
+            {% if original.DaSuDung %}
+            <span class="status-used used">✗ Đã sử dụng</span>
+            {% else %}
+            <span class="status-used unused">✓ Chưa sử dụng</span>
+            {% endif %}
+          </span>
+        </div>
+        <div class="vk-row">
+          <span class="vk-row-label">Ngày nhận</span>
+          <span class="vk-row-val">{{ original.NgayNhan|date:"d/m/Y H:i"|default:'—' }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CỘT PHẢI -->
+  <div class="vk-sidebar">
+    <div class="vk-actions">
+      <a href="{% url opts|admin_urlname:'changelist' %}" class="vk-btn-back">← Quay lại danh sách</a>
+      <a href="{% url opts|admin_urlname:'delete' original.pk|admin_urlquote %}"
+         class="vk-btn-del"
+         onclick="return confirm('Xóa voucher này khỏi tài khoản {{ original.id_TaiKhoan.TenDangNhap|default:original.pk }}?')">
+        🗑 Xóa voucher
+      </a>
+    </div>
+
+    <!-- Quick info -->
+    <div class="vk-card" style="margin-top:16px;">
+      <div class="vk-head"><span class="vk-head-icon">⚡</span><span class="vk-head-title">Tóm tắt</span></div>
+      <div class="vk-body" style="padding:16px 20px;">
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;">
+            <span style="color:var(--text3);">Mã voucher</span>
+            <strong style="font-family:monospace;color:var(--olive);">{{ original.id_KhuyenMai.MaKhuyenMai|default:'—' }}</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;">
+            <span style="color:var(--text3);">Khách hàng</span>
+            <strong>{{ original.id_TaiKhoan.TenDangNhap|default:'—' }}</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;">
+            <span style="color:var(--text3);">Tình trạng</span>
+            <strong style="color:{% if original.DaSuDung %}#c62828{% else %}#2e7d32{% endif %};">
+              {% if original.DaSuDung %}Đã dùng{% else %}Còn hiệu lực{% endif %}
+            </strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;">
+            <span style="color:var(--text3);">Ngày nhận</span>
+            <span>{{ original.NgayNhan|date:"d/m/Y"|default:'—' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}

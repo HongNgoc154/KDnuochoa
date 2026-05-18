@@ -150,3 +150,15 @@ MOMO_SECRET_KEY   = "K951B6PE1waDMi640xX08PD3vg6EkVlz"
 MOMO_ENDPOINT     = "https://test-payment.momo.vn/v2/gateway/api/create"
 MOMO_RETURN_URL   = "http://localhost:8000/thanh-toan/momo-return/"
 MOMO_NOTIFY_URL   = "http://localhost:8000/api/momo-ipn/"
+
+
+# Cấu hình email — dùng Gmail SMTP
+# ═══════════════════════════════════════════════════════════════
+ 
+EMAIL_BACKEND      = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST         = 'smtp.gmail.com'
+EMAIL_PORT         = 587
+EMAIL_USE_TLS      = True
+EMAIL_HOST_USER    = 'lhngocc1304@gmail.com'      # ← đổi thành email của bạn
+EMAIL_HOST_PASSWORD = 'drtp jeuw vnim ztqb'         # ← App Password (không phải mk thường)
+DEFAULT_FROM_EMAIL = 'Ami Perfumery <your_gmail@gmail.com>'

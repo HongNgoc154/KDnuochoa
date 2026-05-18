@@ -1,0 +1,345 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block title %}{% if add %}Thêm Khuyến mãi{% else %}Sửa: {{ original.MaKhuyenMai }}{% endif %}{% endblock %}
+{% block breadcrumb_title %}{% if add %}Thêm mới{% else %}Chỉnh sửa{% endif %}{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'myadmin:index' %}">Admin</a>
+<span class="topbar-sep">›</span>
+<a href="{% url opts|admin_urlname:'changelist' %}">Khuyến mãi</a>
+<span class="topbar-sep">›</span>
+<span>{% if add %}Thêm mới{% else %}{{ original.MaKhuyenMai }}{% endif %}</span>
+{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'admin/css/ami_luxury.css' %}">
+<style>
+#content-main{background:transparent!important;box-shadow:none!important;border:none!important;padding:0!important;}
+.km-layout{display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start;}
+@media(max-width:960px){.km-layout{grid-template-columns:1fr;}}
+.km-section{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin-bottom:18px;}
+.km-section:last-child{margin-bottom:0;}
+.km-head{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--stone);background:linear-gradient(135deg,rgba(75,103,45,.04),rgba(235,246,196,.14));}
+.km-head-icon{font-size:18px;}.km-head-title{font-family:var(--fd);font-size:17px;font-weight:400;color:var(--text);}
+.km-body{padding:20px 22px;}
+.km-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;}
+.km-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px 18px;}
+.km-field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
+.km-field:last-child{margin-bottom:0;}
+.km-label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);}
+.km-label .req{color:var(--danger);}
+.km-input,.km-select,.km-textarea{width:100%;padding:9px 12px;border:1.5px solid var(--stone);border-radius:var(--rsm);font-family:var(--fb);font-size:13px;color:var(--text);background:var(--white);outline:none;transition:.2s;}
+.km-input:focus,.km-select:focus,.km-textarea:focus{border-color:var(--olive);box-shadow:0 0 0 3px rgba(75,103,45,.1);}
+.km-textarea{min-height:80px;resize:vertical;}
+.km-hint{font-size:11px;color:var(--text4);}
+/* Loại giảm */
+.loai-giam-group{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.loai-giam-card{border:2px solid var(--stone);border-radius:var(--rsm);padding:12px 10px;text-align:center;cursor:pointer;transition:all .2s;position:relative;}
+.loai-giam-card:hover,.loai-giam-card.selected{border-color:var(--olive);background:rgba(75,103,45,.06);}
+.loai-giam-card input[type="radio"]{position:absolute;opacity:0;width:0;height:0;}
+.loai-giam-icon{font-size:22px;display:block;margin-bottom:5px;}
+.loai-giam-label{font-size:11px;font-weight:600;color:var(--text2);}
+.loai-giam-card.selected .loai-giam-label{color:var(--olive);}
+/* Tier */
+.tier-group{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.tier-card{border:1.5px solid var(--stone);border-radius:var(--rsm);padding:10px 12px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:10px;}
+.tier-card:hover,.tier-card.active{border-color:var(--olive);background:rgba(75,103,45,.05);}
+.tier-card input[type="checkbox"]{accent-color:var(--olive);width:15px;height:15px;flex-shrink:0;cursor:pointer;}
+.tier-info{display:flex;flex-direction:column;gap:1px;}
+.tier-name{font-size:13px;font-weight:600;color:var(--text);}
+.tier-desc{font-size:10px;color:var(--text4);}
+.tier-badge{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.send-all-wrap{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:rgba(75,103,45,.04);border-radius:var(--rsm);border:1.5px solid rgba(75,103,45,.15);cursor:pointer;transition:.15s;}
+.send-all-wrap:hover{background:rgba(75,103,45,.08);}
+.send-all-wrap input{accent-color:var(--olive);width:16px;height:16px;cursor:pointer;margin-top:1px;flex-shrink:0;}
+.account-preview{margin-top:10px;padding:10px 14px;background:var(--parchment);border-radius:var(--rsm);font-size:13px;color:var(--text2);display:flex;align-items:center;gap:8px;}
+.account-preview-count{font-weight:700;color:var(--olive);font-size:16px;}
+/* Sidebar */
+.km-sidebar{position:sticky;top:20px;}
+.km-submit{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);box-shadow:var(--shadow);padding:16px 18px;display:flex;flex-direction:column;gap:8px;}
+.km-btn-save{padding:11px;background:linear-gradient(135deg,var(--olive-dark),var(--olive));color:var(--sage);border:none;border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all .2s;text-align:center;}
+.km-btn-save:hover{box-shadow:0 4px 14px rgba(75,103,45,.4);transform:translateY(-1px);}
+.km-btn-send{padding:11px;background:linear-gradient(135deg,#1565c0,#1976d2);color:#fff;border:none;border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .2s;text-align:center;}
+.km-btn-send:hover{box-shadow:0 4px 14px rgba(21,101,192,.4);transform:translateY(-1px);}
+.km-btn-cont{padding:10px;background:var(--parchment);color:var(--olive);border:1.5px solid rgba(75,103,45,.3);border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;text-transform:uppercase;cursor:pointer;transition:.2s;text-align:center;}
+.km-btn-cont:hover{background:var(--sage);}
+.km-btn-del{padding:10px;background:rgba(184,50,50,.08);color:var(--danger);border:1.5px solid rgba(184,50,50,.2);border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;cursor:pointer;transition:.2s;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:5px;}
+.km-btn-del:hover{background:var(--danger);color:#fff;}
+.km-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.km-stat-card{padding:12px;background:rgba(75,103,45,.05);border-radius:var(--rsm);text-align:center;}
+.km-stat-val{font-family:var(--fd);font-size:22px;font-weight:600;color:var(--olive);}
+.km-stat-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
+ul.object-tools{list-style:none;padding:0;margin:0 0 16px;display:flex;gap:8px;justify-content:flex-end;}
+ul.object-tools a{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:40px;font-size:11px;font-weight:600;text-transform:uppercase;text-decoration:none;border:1.5px solid rgba(75,103,45,.3);color:var(--olive);background:var(--white);}
+ul.object-tools a:hover{background:var(--olive);color:var(--sage);}
+</style>
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<script src="{% url 'myadmin:jsi18n' %}"></script>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+{% if not add %}<ul class="object-tools">
+  <li><a href="{% url opts|admin_urlname:'history' original.pk|admin_urlquote %}">📋 Lịch sử</a></li>
+</ul>{% endif %}
+
+<div class="ami-page-header" style="margin-bottom:20px;">
+  <div>
+    <h1 class="ami-page-title">{% if add %}Thêm <em>Khuyến mãi</em>{% else %}Sửa <em>{{ original.MaKhuyenMai }}</em>{% endif %}</h1>
+    <p class="ami-page-sub">{% if add %}Thiết lập mã khuyến mãi và phân phối cho khách hàng{% else %}<a href="{% url opts|admin_urlname:'changelist' %}" style="color:var(--olive);">← Quay lại danh sách</a>{% endif %}</p>
+  </div>
+</div>
+
+<form id="kmForm" method="post" novalidate>
+{% csrf_token %}
+<input type="hidden" name="action_type" id="action_type" value="save">
+
+<div class="km-layout">
+  <!-- CỘT TRÁI -->
+  <div>
+    <!-- Thông tin -->
+    <div class="km-section">
+      <div class="km-head"><span class="km-head-icon">🏷️</span><span class="km-head-title">Thông tin khuyến mãi</span></div>
+      <div class="km-body">
+        <div class="km-grid">
+          <div class="km-field">
+            <label class="km-label">Mã Khuyến Mãi <span class="req">*</span></label>
+            <input type="text" name="MaKhuyenMai" value="{{ adminform.form.MaKhuyenMai.value|default:'' }}" class="km-input" placeholder="VD: GIAM10, VIP20…" maxlength="50" style="text-transform:uppercase;" autofocus>
+          </div>
+          <div class="km-field">
+            <label class="km-label">Tên Khuyến Mãi</label>
+            <input type="text" name="TenKhuyenMai" value="{{ adminform.form.TenKhuyenMai.value|default:'' }}" class="km-input" placeholder="VD: Giảm 10% thành viên" maxlength="255">
+          </div>
+        </div>
+        <div class="km-field">
+          <label class="km-label">Mô Tả</label>
+          <textarea name="MoTa" class="km-textarea" placeholder="Mô tả chi tiết…">{{ adminform.form.MoTa.value|default:'' }}</textarea>
+        </div>
+        <div class="km-grid">
+          <div class="km-field">
+            <label class="km-label">Loại Khuyến Mãi</label>
+            <select name="LoaiKhuyenMai" class="km-select">
+              <option value="">-- Chọn loại --</option>
+              <option value="vip" {% if adminform.form.LoaiKhuyenMai.value == 'vip' %}selected{% endif %}>🌟 VIP</option>
+              <option value="thanh vien moi" {% if adminform.form.LoaiKhuyenMai.value == 'thanh vien moi' %}selected{% endif %}>👤 Thành viên mới</option>
+              <option value="freeship" {% if adminform.form.LoaiKhuyenMai.value == 'freeship' %}selected{% endif %}>🚚 Freeship</option>
+              <option value="dip le" {% if adminform.form.LoaiKhuyenMai.value == 'dip le' %}selected{% endif %}>🎉 Dịp lễ</option>
+            </select>
+          </div>
+          <div class="km-field">
+            <label class="km-label">Trạng Thái</label>
+            <select name="TrangThai" class="km-select">
+              <option value="active" {% if adminform.form.TrangThai.value == 'active' %}selected{% endif %}>● Hoạt động</option>
+              <option value="inactive" {% if adminform.form.TrangThai.value == 'inactive' %}selected{% endif %}>● Tạm dừng</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Giảm giá -->
+    <div class="km-section">
+      <div class="km-head"><span class="km-head-icon">💰</span><span class="km-head-title">Thiết lập giảm giá</span></div>
+      <div class="km-body">
+        <div class="km-field" style="margin-bottom:16px;">
+          <label class="km-label">Loại Giảm</label>
+          <div class="loai-giam-group">
+            <label class="loai-giam-card {% if adminform.form.LoaiGiam.value == 'percent' %}selected{% endif %}" onclick="selectLoaiGiam('percent')">
+              <input type="radio" name="LoaiGiam" value="percent" {% if adminform.form.LoaiGiam.value == 'percent' %}checked{% endif %}>
+              <span class="loai-giam-icon">%</span><span class="loai-giam-label">Phần trăm</span>
+            </label>
+            <label class="loai-giam-card {% if adminform.form.LoaiGiam.value == 'fixed' %}selected{% endif %}" onclick="selectLoaiGiam('fixed')">
+              <input type="radio" name="LoaiGiam" value="fixed" {% if adminform.form.LoaiGiam.value == 'fixed' %}checked{% endif %}>
+              <span class="loai-giam-icon">₫</span><span class="loai-giam-label">Cố định</span>
+            </label>
+            <label class="loai-giam-card {% if adminform.form.LoaiGiam.value == 'free_ship' %}selected{% endif %}" onclick="selectLoaiGiam('free_ship')">
+              <input type="radio" name="LoaiGiam" value="free_ship" {% if adminform.form.LoaiGiam.value == 'free_ship' %}checked{% endif %}>
+              <span class="loai-giam-icon">🚚</span><span class="loai-giam-label">Miễn ship</span>
+            </label>
+          </div>
+        </div>
+        <div class="km-grid-3">
+          <div class="km-field">
+            <label class="km-label">Giá Trị Giảm</label>
+            <input type="number" name="GiaTriGiam" value="{{ adminform.form.GiaTriGiam.value|default:'' }}" class="km-input" placeholder="10" min="0" step="0.01">
+            <span class="km-hint" id="giamHint">VD: 10 = 10%</span>
+          </div>
+          <div class="km-field">
+            <label class="km-label">Giảm Tối Đa (₫)</label>
+            <input type="number" name="GiamToiDa" value="{{ adminform.form.GiamToiDa.value|default:'' }}" class="km-input" placeholder="100000" min="0">
+            <span class="km-hint">Tối đa bao nhiêu ₫</span>
+          </div>
+          <div class="km-field">
+            <label class="km-label">Đơn Tối Thiểu (₫)</label>
+            <input type="number" name="DonHangToiThieu" value="{{ adminform.form.DonHangToiThieu.value|default:'' }}" class="km-input" placeholder="0" min="0">
+            <span class="km-hint">Giá trị đơn hàng tối thiểu</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Thời hạn & Số lượng -->
+    <div class="km-section">
+      <div class="km-head"><span class="km-head-icon">📅</span><span class="km-head-title">Thời hạn & Số lượng</span></div>
+      <div class="km-body">
+        <div class="km-grid" style="margin-bottom:14px;">
+          <div class="km-field">
+            <label class="km-label">Ngày Bắt Đầu</label>
+            <input type="datetime-local" name="NgayBatDau" class="km-input"
+                   value="{{ adminform.form.NgayBatDau.value|date:'Y-m-d\TH:i'|default:'' }}">
+          </div>
+          <div class="km-field">
+            <label class="km-label">Ngày Kết Thúc</label>
+            <input type="datetime-local" name="NgayKetThuc" class="km-input"
+                   value="{{ adminform.form.NgayKetThuc.value|date:'Y-m-d\TH:i'|default:'' }}">
+          </div>
+        </div>
+        <div class="km-grid">
+          <div class="km-field">
+            <label class="km-label">Số Lượng Mã</label>
+            <input type="number" name="SoLuong" value="{{ adminform.form.SoLuong.value|default:'' }}" class="km-input" placeholder="100" min="1">
+          </div>
+          <div class="km-field">
+            <label class="km-label">Đã Sử Dụng</label>
+            <input type="number" name="DaSuDung" value="{{ adminform.form.DaSuDung.value|default:0 }}" class="km-input" min="0" readonly style="background:var(--cream);color:var(--text3);">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phân phối voucher -->
+    <div class="km-section">
+      <div class="km-head"><span class="km-head-icon">📤</span><span class="km-head-title">Phân phối voucher cho khách hàng</span></div>
+      <div class="km-body">
+        <p style="font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.6;">Chọn đối tượng nhận voucher. Nhấn <strong>"Lưu & Phân phối"</strong> để thực hiện.</p>
+
+        <label class="send-all-wrap" style="margin-bottom:12px;">
+          <input type="checkbox" name="send_all" id="sendAll" value="1" onchange="toggleSendAll(this)">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--text);">📨 Gửi cho tất cả tài khoản</div>
+            <div style="font-size:11px;color:var(--text4);">{{ total_accounts }} tài khoản đang hoạt động</div>
+          </div>
+        </label>
+
+        <div style="text-align:center;margin:10px 0;font-size:11px;color:var(--text4);position:relative;">
+          <span style="background:var(--white);padding:0 10px;position:relative;z-index:1;">Hoặc chọn theo hạng thành viên</span>
+          <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:var(--stone);z-index:0;"></div>
+        </div>
+
+        <div class="tier-group" id="tierGroup">
+          <label class="tier-card" onclick="toggleTier(this)">
+            <input type="checkbox" name="send_tier" value="Member" class="tier-cb">
+            <span class="tier-badge" style="background:#78909c;"></span>
+            <div class="tier-info"><span class="tier-name">Member</span><span class="tier-desc">&lt;2tr₫</span></div>
+            <span style="margin-left:auto;font-size:11px;color:var(--olive);font-weight:600;">{{ count_member }}</span>
+          </label>
+          <label class="tier-card" onclick="toggleTier(this)">
+            <input type="checkbox" name="send_tier" value="Silver" class="tier-cb">
+            <span class="tier-badge" style="background:#90a4ae;"></span>
+            <div class="tier-info"><span class="tier-name">🥈 Silver</span><span class="tier-desc">≥2tr₫</span></div>
+            <span style="margin-left:auto;font-size:11px;color:var(--olive);font-weight:600;">{{ count_silver }}</span>
+          </label>
+          <label class="tier-card" onclick="toggleTier(this)">
+            <input type="checkbox" name="send_tier" value="Gold" class="tier-cb">
+            <span class="tier-badge" style="background:#ffd54f;"></span>
+            <div class="tier-info"><span class="tier-name">🥇 Gold</span><span class="tier-desc">≥5tr₫</span></div>
+            <span style="margin-left:auto;font-size:11px;color:var(--olive);font-weight:600;">{{ count_gold }}</span>
+          </label>
+          <label class="tier-card" onclick="toggleTier(this)">
+            <input type="checkbox" name="send_tier" value="Platinum" class="tier-cb">
+            <span class="tier-badge" style="background:#b0bec5;"></span>
+            <div class="tier-info"><span class="tier-name">💎 Platinum</span><span class="tier-desc">≥10tr₫</span></div>
+            <span style="margin-left:auto;font-size:11px;color:var(--olive);font-weight:600;">{{ count_platinum }}</span>
+          </label>
+        </div>
+
+        <div class="account-preview" id="accountPreview" style="display:none;">
+          <span style="font-size:20px;">👥</span>
+          <div><span class="account-preview-count" id="previewCount">0</span><span style="color:var(--text3);"> tài khoản sẽ nhận voucher</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CỘT PHẢI -->
+  <div class="km-sidebar">
+    {% if not add and original %}
+    <div class="km-section" style="margin-bottom:16px;">
+      <div class="km-head"><span class="km-head-icon">📊</span><span class="km-head-title">Thống kê</span></div>
+      <div class="km-body" style="padding:16px;">
+        <div class="km-stats">
+          <div class="km-stat-card"><div class="km-stat-val">{{ original.SoLuong|default:0 }}</div><div class="km-stat-label">Tổng mã</div></div>
+          <div class="km-stat-card"><div class="km-stat-val" style="color:#f57f17;">{{ original.DaSuDung|default:0 }}</div><div class="km-stat-label">Đã dùng</div></div>
+          <div class="km-stat-card"><div class="km-stat-val" style="color:#2e7d32;">{{ da_phat_so_luong }}</div><div class="km-stat-label">Đã phát</div></div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="km-submit">
+      <button type="submit" name="_save" class="km-btn-save">💾 Lưu khuyến mãi</button>
+      <button type="button" class="km-btn-send" onclick="submitSend()">📤 Lưu & Phân phối voucher</button>
+      <button type="submit" name="_continue" class="km-btn-cont">✎ Lưu và tiếp tục</button>
+      <button type="submit" name="_addanother" class="km-btn-cont" style="background:transparent;color:var(--text3);border-color:var(--stone);">Lưu và thêm mới</button>
+      {% if not add and original %}
+      <a href="{% url opts|admin_urlname:'delete' original.pk|admin_urlquote %}" class="km-btn-del" onclick="return confirm('Xóa khuyến mãi?')">🗑 Xóa</a>
+      {% endif %}
+    </div>
+
+    <div class="km-section" style="margin-top:16px;">
+      <div class="km-head"><span class="km-head-icon">💡</span><span class="km-head-title">Hướng dẫn</span></div>
+      <div class="km-body" style="font-size:12px;color:var(--text3);line-height:1.8;">
+        <p><strong style="color:var(--text2);">📤 Lưu & Phân phối:</strong> Lưu và cấp voucher ngay cho tài khoản đã chọn.</p>
+        <p><strong style="color:var(--text2);">💾 Lưu:</strong> Chỉ lưu thông tin.</p>
+        <p style="margin-top:8px;padding-top:8px;border-top:1px solid var(--stone);">Tài khoản nhận sẽ thấy voucher trong trang cá nhân.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</form>
+</div>
+
+<script>
+function selectLoaiGiam(val) {
+  document.querySelectorAll('.loai-giam-card').forEach(function(c){c.classList.remove('selected');});
+  var r = document.querySelector('.loai-giam-card input[value="'+val+'"]');
+  if(r){r.checked=true;r.closest('.loai-giam-card').classList.add('selected');}
+  var h = document.getElementById('giamHint');
+  h.textContent = val==='percent'?'VD: 10 = 10%':val==='fixed'?'VD: 50000 = 50.000₫':'Miễn phí ship';
+}
+function toggleSendAll(cb) {
+  var g = document.getElementById('tierGroup');
+  if(cb.checked){
+    document.querySelectorAll('.tier-cb').forEach(function(t){t.checked=false;t.closest('.tier-card').classList.remove('active');});
+    g.style.opacity='0.4';g.style.pointerEvents='none';
+  } else {g.style.opacity='';g.style.pointerEvents='';}
+  updatePreview();
+}
+function toggleTier(label) {
+  setTimeout(function(){
+    var cb=label.querySelector('input[type="checkbox"]');
+    if(cb.checked)label.classList.add('active');else label.classList.remove('active');
+    updatePreview();
+  },0);
+}
+var TIER_COUNTS={'Member':{{ count_member }},'Silver':{{ count_silver }},'Gold':{{ count_gold }},'Platinum':{{ count_platinum }},'ALL':{{ total_accounts }}};
+function updatePreview(){
+  var all=document.getElementById('sendAll').checked, total=0;
+  if(all){total=TIER_COUNTS['ALL'];}
+  else{document.querySelectorAll('.tier-cb:checked').forEach(function(cb){total+=(TIER_COUNTS[cb.value]||0);});}
+  var pr=document.getElementById('accountPreview');
+  if(total>0){document.getElementById('previewCount').textContent=total;pr.style.display='flex';}else{pr.style.display='none';}
+}
+function submitSend(){
+  document.getElementById('action_type').value='send';
+  document.getElementById('kmForm').submit();
+}
+document.querySelectorAll('.tier-cb:checked').forEach(function(cb){cb.closest('.tier-card').classList.add('active');});
+updatePreview();
+</script>
+{% endblock %}
