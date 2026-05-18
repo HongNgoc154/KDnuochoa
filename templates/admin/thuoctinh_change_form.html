@@ -1,0 +1,361 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block title %}{% if add %}Thêm Thuộc tính{% else %}Sửa Thuộc tính{% endif %}{% endblock %}
+{% block breadcrumb_title %}{% if add %}Thêm mới{% else %}Chỉnh sửa{% endif %}{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'myadmin:index' %}">Admin</a>
+<span class="topbar-sep">›</span>
+<a href="{% url 'myadmin:app_list' app_label=opts.app_label %}">{{ opts.app_label|capfirst }}</a>
+<span class="topbar-sep">›</span>
+<a href="{% url opts|admin_urlname:'changelist' %}">Thuộc tính</a>
+<span class="topbar-sep">›</span>
+<span>{% if add %}Thêm mới{% else %}{{ original|default:"Chỉnh sửa" }}{% endif %}</span>
+{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'admin/css/ami_luxury.css' %}">
+<style>
+#content-main{background:transparent!important;box-shadow:none!important;border:none!important;padding:0!important;}
+
+/* ── 2-column layout ── */
+.tt-layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+/* Sticky left column */
+.tt-col-left { position: sticky; top: 20px; }
+
+/* Section card */
+.tt-section{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;}
+.tt-section-head{display:flex;align-items:center;gap:10px;padding:15px 22px;border-bottom:1px solid var(--stone);background:linear-gradient(135deg,rgba(75,103,45,.04),rgba(235,246,196,.14));}
+.tt-section-icon{font-size:18px;}
+.tt-section-title{font-family:var(--fd);font-size:18px;font-weight:400;color:var(--text);}
+.tt-section-body{padding:22px 24px;}
+
+/* Field */
+.tt-field{display:flex;flex-direction:column;gap:6px;max-width:480px;}
+.tt-label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:4px;}
+.tt-label .req{color:var(--danger);font-size:14px;line-height:1;}
+.tt-input{width:100%;padding:10px 14px;border:1.5px solid var(--stone);border-radius:var(--rsm);font-family:var(--fb);font-size:14px;color:var(--text);background:var(--white);outline:none;transition:.2s;}
+.tt-input:focus{border-color:var(--olive);box-shadow:0 0 0 3px rgba(75,103,45,.1);}
+
+/* Giá trị table */
+.gt-table{width:100%;border-collapse:collapse;font-size:13px;}
+.gt-table thead th{padding:10px 14px;background:rgba(75,103,45,.06);border-bottom:1px solid var(--stone);font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--olive);text-align:left;}
+.gt-table tbody tr{transition:background .1s;}
+.gt-table tbody tr:hover{background:rgba(75,103,45,.03);}
+.gt-table tbody td{padding:10px 14px;border-bottom:1px solid rgba(26,28,20,.05);vertical-align:middle;}
+.gt-table tbody tr:last-child td{border-bottom:none;}
+
+/* Input trong bảng */
+.gt-input{width:100%;padding:7px 10px;border:1.5px solid var(--stone);border-radius:var(--rsm);font-family:var(--fb);font-size:13px;color:var(--text);background:var(--cream);outline:none;transition:.2s;}
+.gt-input:focus{border-color:var(--olive);box-shadow:0 0 0 3px rgba(75,103,45,.1);background:var(--white);}
+
+/* Delete checkbox */
+.gt-delete-cell{text-align:center;width:60px;}
+.gt-delete-label{display:flex;align-items:center;justify-content:center;gap:5px;font-size:11px;color:var(--danger);cursor:pointer;}
+input[type="checkbox"].gt-del-cb{accent-color:var(--danger);width:15px;height:15px;cursor:pointer;}
+
+/* Add row */
+.gt-add-row td{background:rgba(75,103,45,.03);border-top:1px dashed rgba(75,103,45,.2);}
+.gt-add-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;background:transparent;border:1.5px dashed rgba(75,103,45,.4);border-radius:40px;color:var(--olive);font-family:var(--fb);font-size:12px;font-weight:600;letter-spacing:1px;cursor:pointer;transition:.2s;}
+.gt-add-btn:hover{background:rgba(75,103,45,.06);border-color:var(--olive);}
+
+/* Counter badge */
+.gt-count{margin-left:auto;background:var(--olive);color:var(--sage);border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700;}
+
+/* Empty state */
+.gt-empty{text-align:center;padding:32px 20px;color:var(--text4);font-style:italic;font-size:13px;}
+
+/* Submit */
+.tt-submit-row{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);box-shadow:var(--shadow);padding:18px 20px;display:flex;flex-direction:column;gap:8px;}
+.tt-btn-save{padding:11px 20px;background:linear-gradient(135deg,var(--olive-dark),var(--olive));color:var(--sage);border:none;border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all .2s;text-align:center;}
+.tt-btn-save:hover{box-shadow:0 4px 16px rgba(75,103,45,.4);transform:translateY(-1px);}
+.tt-btn-continue{padding:10px 20px;background:var(--parchment);color:var(--olive);border:1.5px solid rgba(75,103,45,.3);border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:.2s;text-align:center;}
+.tt-btn-continue:hover{background:var(--sage);}
+.tt-btn-delete{padding:10px 20px;background:rgba(184,50,50,.08);color:var(--danger);border:1.5px solid rgba(184,50,50,.2);border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:.2s;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;}
+.tt-btn-delete:hover{background:var(--danger);color:#fff;}
+
+/* Error toast */
+.tt-toast{position:fixed;bottom:28px;right:28px;z-index:9999;background:#b83232;color:#fff;font-size:13px;padding:14px 22px;border-radius:12px;transform:translateY(20px);opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;max-width:320px;box-shadow:0 8px 24px rgba(184,50,50,.35);}
+.tt-toast.show{opacity:1;transform:translateY(0);}
+
+ul.object-tools{list-style:none;padding:0;margin:0 0 16px;display:flex;gap:8px;justify-content:flex-end;}
+ul.object-tools a{display:inline-flex;align-items:center;gap:6px;padding:9px 22px;border-radius:40px;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;text-decoration:none;border:1.5px solid rgba(75,103,45,.3);color:var(--olive);background:var(--white);transition:.2s;}
+ul.object-tools a:hover{background:var(--olive);color:var(--sage);}
+
+/* Responsive */
+@media(max-width:900px){
+  .tt-layout{grid-template-columns:1fr;}
+  .tt-col-left{position:static;}
+}
+</style>
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<script src="{% url 'myadmin:jsi18n' %}"></script>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+
+{% if not add %}
+<ul class="object-tools">
+  <li><a href="{% url opts|admin_urlname:'history' original.pk|admin_urlquote %}">📋 Lịch sử</a></li>
+</ul>
+{% endif %}
+
+<!-- Page header -->
+<div class="ami-page-header" style="margin-bottom:20px;">
+  <div>
+    <h1 class="ami-page-title">
+      {% if add %}Thêm <em>Thuộc tính</em>{% else %}Sửa <em>Thuộc tính</em>{% endif %}
+    </h1>
+    <p class="ami-page-sub">
+      {% if add %}Tạo thuộc tính mới và thiết lập các giá trị
+      {% else %}<a href="{% url opts|admin_urlname:'changelist' %}" style="color:var(--olive);">← Quay lại danh sách</a>{% endif %}
+    </p>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="tt-toast" id="ttToast"></div>
+
+<form id="ttForm" method="post" novalidate>
+  {% csrf_token %}
+  {% if is_popup %}<input type="hidden" name="{{ is_popup_var }}" value="1">{% endif %}
+
+  <!-- ══ 2-COLUMN LAYOUT ══ -->
+  <div class="tt-layout">
+
+    <!-- ── CỘT TRÁI: Thông tin thuộc tính ── -->
+    <div class="tt-col-left">
+      <div class="tt-section">
+        <div class="tt-section-head">
+          <span class="tt-section-icon">🏷️</span>
+          <span class="tt-section-title">Thông tin thuộc tính</span>
+        </div>
+        <div class="tt-section-body">
+          <div class="tt-field">
+            <label class="tt-label" for="id_TenThuocTinh">
+              Tên Thuộc Tính <span class="req">*</span>
+            </label>
+            <input type="text" name="TenThuocTinh" id="id_TenThuocTinh"
+                   class="tt-input"
+                   value="{{ adminform.form.TenThuocTinh.value|default:'' }}"
+                   placeholder="VD: Dung tích, Màu sắc, Kích cỡ…"
+                   maxlength="255" autofocus>
+            <span id="err_Ten" style="font-size:11px;color:var(--danger);display:none;">
+              Vui lòng nhập tên thuộc tính.
+            </span>
+          </div>
+
+          <!-- Mô tả ngắn hướng dẫn -->
+          <div style="margin-top:20px;padding:14px 16px;background:rgba(75,103,45,.04);border-radius:var(--rsm);border-left:3px solid var(--olive);">
+            <p style="font-size:12px;color:var(--text3);line-height:1.7;margin:0;">
+              <strong style="color:var(--olive);display:block;margin-bottom:4px;">💡 Hướng dẫn</strong>
+              Thuộc tính dùng để phân loại biến thể sản phẩm.<br>
+              Ví dụ: <em>Dung tích</em> → 10ml, 50ml, 100ml
+            </p>
+          </div>
+
+          {% if not add and original %}
+          <!-- Thống kê nhanh -->
+          <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;justify-content:space-between;padding:10px 14px;background:var(--cream);border-radius:var(--rsm);font-size:13px;">
+              <span style="color:var(--text3);">Số giá trị</span>
+              <strong style="color:var(--olive);">{{ existing_values|length }}</strong>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Submit row nằm dưới cột trái -->
+      <div class="tt-submit-row" style="margin-top:16px;">
+        <button type="submit" name="_save" class="tt-btn-save">💾 Lưu thuộc tính</button>
+        <button type="submit" name="_continue" class="tt-btn-continue">✎ Lưu và tiếp tục</button>
+        <button type="submit" name="_addanother" class="tt-btn-continue"
+                style="background:transparent;color:var(--text3);border-color:var(--stone);">
+          Lưu và thêm mới
+        </button>
+        {% if not add and original %}
+        <a href="{% url opts|admin_urlname:'delete' original.pk|admin_urlquote %}"
+           class="tt-btn-delete" style="margin-left:0;margin-top:4px;"
+           onclick="return confirm('Xác nhận xóa thuộc tính và toàn bộ giá trị liên quan?')">
+          🗑 Xóa thuộc tính
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ── CỘT PHẢI: Giá trị thuộc tính ── -->
+    <div class="tt-col-right">
+      <div class="tt-section">
+        <div class="tt-section-head">
+          <span class="tt-section-icon">📋</span>
+          <span class="tt-section-title">Giá trị thuộc tính</span>
+          <span class="gt-count" id="gt-count">{{ existing_values|length }} giá trị</span>
+        </div>
+        <div class="tt-section-body" style="padding:0;">
+          <table class="gt-table">
+            <thead>
+              <tr>
+                <th style="width:50px;">#</th>
+                <th>Giá trị</th>
+                <th class="gt-delete-cell">Xóa</th>
+              </tr>
+            </thead>
+            <tbody id="gt-tbody">
+
+              {% for val in existing_values %}
+              <tr class="gt-existing-row" data-id="{{ val.pk }}">
+                <td style="color:var(--text4);font-size:12px;">{{ forloop.counter }}</td>
+                <td>
+                  <input type="text"
+                         name="gt_value_{{ val.pk }}"
+                         value="{{ val.GiaTri }}"
+                         class="gt-input"
+                         placeholder="Nhập giá trị…">
+                  <input type="hidden" name="gt_id_{{ val.pk }}" value="{{ val.pk }}">
+                </td>
+                <td class="gt-delete-cell">
+                  <label class="gt-delete-label">
+                    <input type="checkbox" name="gt_delete_{{ val.pk }}" class="gt-del-cb"
+                           onchange="toggleDeleteRow(this)">
+                    Xóa
+                  </label>
+                </td>
+              </tr>
+              {% empty %}
+              <tr id="gt-empty-row">
+                <td colspan="3" class="gt-empty">
+                  Chưa có giá trị nào. Nhấn "+ Thêm giá trị" để bắt đầu.
+                </td>
+              </tr>
+              {% endfor %}
+
+            </tbody>
+            <tfoot>
+              <tr class="gt-add-row">
+                <td colspan="3" style="padding:12px 14px;">
+                  <button type="button" class="gt-add-btn" onclick="addGiaTriRow()">
+                    ＋ Thêm giá trị mới
+                  </button>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <div id="gt-new-inputs" style="display:none;"></div>
+          <input type="hidden" name="gt_new_count" id="gt-new-count" value="0">
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tt-layout -->
+
+</form>
+</div>
+
+<script>
+var newRowCount = 0;
+
+function updateCount() {
+  var visible = document.querySelectorAll('#gt-tbody tr:not([style*="opacity: 0.3"]):not(#gt-empty-row)').length;
+  var newRows = document.querySelectorAll('.gt-new-row').length;
+  var existRows = document.querySelectorAll('.gt-existing-row:not([data-deleted])').length;
+  document.getElementById('gt-count').textContent = (existRows + newRows) + ' giá trị';
+  document.getElementById('gt-new-count').value = newRows;
+}
+
+function addGiaTriRow() {
+  var emptyRow = document.getElementById('gt-empty-row');
+  if (emptyRow) emptyRow.remove();
+
+  newRowCount++;
+  var tbody = document.getElementById('gt-tbody');
+  var total = tbody.querySelectorAll('tr').length;
+
+  var tr = document.createElement('tr');
+  tr.className = 'gt-new-row';
+  tr.dataset.newIdx = newRowCount;
+  tr.innerHTML =
+    '<td style="color:var(--text4);font-size:12px;">' + (total + 1) + '</td>' +
+    '<td>' +
+      '<input type="text" name="gt_new_' + newRowCount + '" class="gt-input"' +
+      ' placeholder="Nhập giá trị mới…" autofocus>' +
+    '</td>' +
+    '<td class="gt-delete-cell">' +
+      '<button type="button" onclick="removeNewRow(this)" ' +
+      'style="width:24px;height:24px;border-radius:50%;border:none;background:rgba(184,50,50,.1);color:var(--danger);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>' +
+    '</td>';
+  tbody.appendChild(tr);
+  updateCount();
+  tr.querySelector('input').focus();
+}
+
+function removeNewRow(btn) {
+  var row = btn.closest('tr');
+  row.remove();
+  updateCount();
+  if (document.querySelectorAll('#gt-tbody tr').length === 0) {
+    var empty = document.createElement('tr');
+    empty.id = 'gt-empty-row';
+    empty.innerHTML = '<td colspan="3" class="gt-empty">Chưa có giá trị nào.</td>';
+    document.getElementById('gt-tbody').appendChild(empty);
+  }
+}
+
+function toggleDeleteRow(cb) {
+  var row = cb.closest('tr');
+  if (cb.checked) {
+    row.style.opacity = '0.35';
+    row.style.textDecoration = 'line-through';
+    row.dataset.deleted = '1';
+  } else {
+    row.style.opacity = '';
+    row.style.textDecoration = '';
+    delete row.dataset.deleted;
+  }
+  updateCount();
+}
+
+/* Validate + submit */
+document.getElementById('ttForm').addEventListener('submit', function(e) {
+  var ten = document.getElementById('id_TenThuocTinh').value.trim();
+  var errEl = document.getElementById('err_Ten');
+  if (!ten) {
+    errEl.style.display = 'block';
+    document.getElementById('id_TenThuocTinh').style.borderColor = 'var(--danger)';
+    e.preventDefault();
+    showToast('Vui lòng nhập tên thuộc tính!');
+    return;
+  }
+  errEl.style.display = 'none';
+  /* Đồng bộ count */
+  var newRows = document.querySelectorAll('.gt-new-row');
+  document.getElementById('gt-new-count').value = newRows.length;
+});
+
+document.getElementById('id_TenThuocTinh').addEventListener('input', function() {
+  if (this.value.trim()) {
+    document.getElementById('err_Ten').style.display = 'none';
+    this.style.borderColor = '';
+  }
+});
+
+function showToast(msg) {
+  var t = document.getElementById('ttToast');
+  t.textContent = '⚠️ ' + msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 3500);
+}
+</script>
+{% endblock %}

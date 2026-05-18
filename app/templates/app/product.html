@@ -164,19 +164,77 @@
     </div>
 
     <div class="fragrance">
-    <h3 class="title">Nhóm hương</h3>
-
-    <div class="fragrance-items">
-        {% for h in nhom_huong_list %}
-            <span class="tag">
-                {% if h.icon %}
-                    <img src="{{ h.icon }}" class="icon" alt="{{ h.name }}">
-                {% endif %}
-                {{ h.name }}
-            </span>
+  <h3 class="title">Nhóm hương</h3>
+ 
+  {% comment %} {# ── Tất cả nhóm hương (flat tags) ── #}
+  <div class="fragrance-items" style="margin-bottom:20px;">
+    {% for h in nhom_huong_list %}
+    <span class="tag">
+      {% if h.icon %}<img src="{{ h.icon }}" class="icon" alt="{{ h.name }}">{% endif %}
+      {{ h.name }}
+    </span>
+    {% endfor %}
+  </div> {% endcomment %}
+ 
+  {# ── Kim tự tháp hương ── #}
+  {% if nhom_huong_pyramid %}
+  <div class="scent-pyramid">
+    {% if nhom_huong_pyramid.top %}
+    <div class="scent-layer scent-layer--top">
+      <div class="scent-layer-label">
+        <span class="scent-layer-dot scent-layer-dot--top"></span>
+        <span class="scent-layer-name">Top Notes</span>
+        <span class="scent-layer-sub">Hương đầu · bay sau 15–30 phút</span>
+      </div>
+      <div class="scent-layer-tags">
+        {% for h in nhom_huong_pyramid.top %}
+        <span class="scent-tag scent-tag--top">
+          {% if h.icon %}<img src="{{ h.icon }}" alt="" class="scent-tag-icon">{% endif %}
+          {{ h.name }}
+        </span>
         {% endfor %}
+      </div>
     </div>
+    {% endif %}
+ 
+    {% if nhom_huong_pyramid.heart %}
+    <div class="scent-layer scent-layer--heart">
+      <div class="scent-layer-label">
+        <span class="scent-layer-dot scent-layer-dot--heart"></span>
+        <span class="scent-layer-name">Heart Notes</span>
+        <span class="scent-layer-sub">Hương giữa · hiện diện 30 phút–4 giờ</span>
+      </div>
+      <div class="scent-layer-tags">
+        {% for h in nhom_huong_pyramid.heart %}
+        <span class="scent-tag scent-tag--heart">
+          {% if h.icon %}<img src="{{ h.icon }}" alt="" class="scent-tag-icon">{% endif %}
+          {{ h.name }}
+        </span>
+        {% endfor %}
+      </div>
     </div>
+    {% endif %}
+ 
+    {% if nhom_huong_pyramid.base %}
+    <div class="scent-layer scent-layer--base">
+      <div class="scent-layer-label">
+        <span class="scent-layer-dot scent-layer-dot--base"></span>
+        <span class="scent-layer-name">Base Notes</span>
+        <span class="scent-layer-sub">Hương nền · lưu lại 4–8 giờ</span>
+      </div>
+      <div class="scent-layer-tags">
+        {% for h in nhom_huong_pyramid.base %}
+        <span class="scent-tag scent-tag--base">
+          {% if h.icon %}<img src="{{ h.icon }}" alt="" class="scent-tag-icon">{% endif %}
+          {{ h.name }}
+        </span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
 
         <!-- Longevity + sillage bars -->
         <div class="pd-longevity reveal-up delay-7">

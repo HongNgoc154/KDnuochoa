@@ -1,0 +1,252 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block title %}{% if add %}Thêm Nhóm hương{% else %}Sửa: {{ original }}{% endif %}{% endblock %}
+{% block breadcrumb_title %}{% if add %}Thêm mới{% else %}Chỉnh sửa{% endif %}{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'myadmin:index' %}">Admin</a>
+<span class="topbar-sep">›</span>
+<a href="{% url opts|admin_urlname:'changelist' %}">Nhóm hương</a>
+<span class="topbar-sep">›</span>
+<span>{% if add %}Thêm mới{% else %}{{ original }}{% endif %}</span>
+{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'admin/css/ami_luxury.css' %}">
+<style>
+#content-main{background:transparent!important;box-shadow:none!important;border:none!important;padding:0!important;}
+
+.cf-layout{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start;}
+@media(max-width:900px){.cf-layout{grid-template-columns:1fr;}}
+
+.cf-section{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin-bottom:20px;}
+.cf-section:last-child{margin-bottom:0;}
+.cf-head{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--stone);background:linear-gradient(135deg,rgba(75,103,45,.04),rgba(235,246,196,.14));}
+.cf-head-icon{font-size:18px;}
+.cf-head-title{font-family:var(--fd);font-size:17px;font-weight:400;color:var(--text);}
+.cf-body{padding:20px 22px;}
+
+.cf-field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;}
+.cf-field:last-child{margin-bottom:0;}
+.cf-label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);}
+.cf-input,.cf-select{width:100%;padding:9px 13px;border:1.5px solid var(--stone);border-radius:var(--rsm);font-family:var(--fb);font-size:13px;color:var(--text);background:var(--white);outline:none;transition:.2s;}
+.cf-input:focus,.cf-select:focus{border-color:var(--olive);box-shadow:0 0 0 3px rgba(75,103,45,.1);}
+
+/* Color swatch */
+.color-field{display:flex;align-items:center;gap:10px;}
+.color-field input[type="color"]{width:44px;height:44px;border:1.5px solid var(--stone);border-radius:var(--rsm);cursor:pointer;padding:2px;background:var(--white);}
+.color-field .cf-input{flex:1;}
+
+/* Icon preview */
+.icon-preview-wrap{display:flex;align-items:center;gap:14px;margin-top:8px;}
+.icon-preview-box{width:80px;height:80px;object-fit:contain;border:1.5px solid var(--stone);border-radius:var(--rsm);background:var(--cream);padding:6px;}
+.icon-placeholder{width:80px;height:80px;border:2px dashed var(--stone);border-radius:var(--rsm);background:var(--cream);display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--text4);}
+.upload-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1.5px solid var(--stone);border-radius:40px;font-size:12px;font-weight:600;color:var(--olive);cursor:pointer;transition:.2s;background:var(--white);}
+.upload-btn:hover{border-color:var(--olive);background:rgba(75,103,45,.05);}
+
+/* Submit sidebar */
+.cf-submit-box{position:sticky;top:20px;}
+.cf-submit{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);box-shadow:var(--shadow);padding:16px 20px;display:flex;flex-direction:column;gap:8px;}
+.cf-btn-save{padding:11px 20px;background:linear-gradient(135deg,var(--olive-dark),var(--olive));color:var(--sage);border:none;border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all .2s;text-align:center;}
+.cf-btn-save:hover{box-shadow:0 4px 14px rgba(75,103,45,.4);transform:translateY(-1px);}
+.cf-btn-cont{padding:10px 20px;background:var(--parchment);color:var(--olive);border:1.5px solid rgba(75,103,45,.3);border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:.2s;text-align:center;}
+.cf-btn-cont:hover{background:var(--sage);}
+.cf-btn-del{padding:10px 20px;background:rgba(184,50,50,.08);color:var(--danger);border:1.5px solid rgba(184,50,50,.2);border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;cursor:pointer;transition:.2s;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:5px;}
+.cf-btn-del:hover{background:var(--danger);color:#fff;}
+
+ul.object-tools{list-style:none;padding:0;margin:0 0 16px;display:flex;gap:8px;justify-content:flex-end;}
+ul.object-tools a{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:40px;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;text-decoration:none;border:1.5px solid rgba(75,103,45,.3);color:var(--olive);background:var(--white);transition:.2s;}
+ul.object-tools a:hover{background:var(--olive);color:var(--sage);}
+</style>
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<script src="{% url 'myadmin:jsi18n' %}"></script>
+<script src="{% static 'ckeditor/ckeditor/ckeditor.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+{% if not add %}
+<ul class="object-tools">
+  <li><a href="{% url opts|admin_urlname:'history' original.pk|admin_urlquote %}">📋 Lịch sử</a></li>
+</ul>
+{% endif %}
+
+<div class="ami-page-header" style="margin-bottom:20px;">
+  <div>
+    <h1 class="ami-page-title">
+      {% if add %}Thêm <em>Nhóm hương</em>{% else %}Sửa <em>{{ original }}</em>{% endif %}
+    </h1>
+    <p class="ami-page-sub">
+      {% if add %}Điền thông tin và nhấn Lưu
+      {% else %}<a href="{% url opts|admin_urlname:'changelist' %}" style="color:var(--olive);">← Quay lại danh sách</a>{% endif %}
+    </p>
+  </div>
+</div>
+
+<form id="nhForm" method="post" enctype="multipart/form-data" novalidate>
+{% csrf_token %}
+
+<div class="cf-layout">
+
+  <!-- CỘT TRÁI -->
+  <div>
+    <!-- Thông tin cơ bản -->
+    <div class="cf-section">
+      <div class="cf-head">
+        <span class="cf-head-icon">🌸</span>
+        <span class="cf-head-title">Thông tin nhóm hương</span>
+      </div>
+      <div class="cf-body">
+        <div class="cf-field">
+          <label class="cf-label">Tên Nhóm Hương <span style="color:var(--danger);">*</span></label>
+          <input type="text" name="TenNhomHuong"
+                 value="{{ adminform.form.TenNhomHuong.value|default:'' }}"
+                 class="cf-input" placeholder="VD: Hương hoa, Hương gỗ, Hương cam chanh…"
+                 maxlength="255" autofocus required>
+        </div>
+
+        <div class="cf-field">
+          <label class="cf-label">Loại Hương</label>
+          <select name="LoaiHuong" class="cf-select">
+            <option value="">-- Chọn loại hương --</option>
+            {% for val in loai_huong_choices %}
+            <option value="{{ val }}"
+              {% if adminform.form.LoaiHuong.value == val %}selected{% endif %}>
+              {{ val }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="cf-field">
+          <label class="cf-label">Màu Sắc</label>
+          <div class="color-field">
+            <input type="color" id="colorPicker"
+                   value="{{ adminform.form.MauSac.value|default:'#4B672D' }}"
+                   oninput="document.getElementById('colorInput').value=this.value">
+            <input type="text" name="MauSac" id="colorInput"
+                   value="{{ adminform.form.MauSac.value|default:'' }}"
+                   class="cf-input" placeholder="#4B672D"
+                   oninput="syncColor(this)" maxlength="50">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mô tả với CKEditor -->
+    <div class="cf-section">
+      <div class="cf-head">
+        <span class="cf-head-icon">📝</span>
+        <span class="cf-head-title">Mô tả nhóm hương</span>
+      </div>
+      <div class="cf-body">
+        <textarea name="MoTa_NhomHuong" id="id_MoTa_nh" rows="8">{{ adminform.form.MoTa_NhomHuong.value|default:'' }}</textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- CỘT PHẢI -->
+  <div class="cf-submit-box">
+    <!-- Icon -->
+    <div class="cf-section">
+      <div class="cf-head">
+        <span class="cf-head-icon">🎨</span>
+        <span class="cf-head-title">Icon nhóm hương</span>
+      </div>
+      <div class="cf-body">
+        <div class="icon-preview-wrap" style="flex-direction:column;align-items:flex-start;gap:10px;">
+          {% if adminform.form.IconUrl.value %}
+          <img src="/media/{{ adminform.form.IconUrl.value }}" class="icon-preview-box"
+               id="nhIconPreview" alt="Icon" style="width:100%;height:120px;object-fit:contain;">
+          {% else %}
+          <div class="icon-placeholder" id="nhIconPlaceholder"
+               style="width:100%;height:120px;font-size:40px;">🌸</div>
+          <img src="" id="nhIconPreview" class="icon-preview-box"
+               style="width:100%;height:120px;object-fit:contain;display:none;" alt="">
+          {% endif %}
+          <label class="upload-btn" for="id_IconUrl" style="width:100%;justify-content:center;">
+            📁 Chọn icon
+          </label>
+          <input type="file" name="IconUrl" id="id_IconUrl"
+                 accept="image/*" style="display:none;"
+                 onchange="previewImg(this,'nhIconPreview','nhIconPlaceholder')">
+          {% if adminform.form.IconUrl.value %}
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--danger);cursor:pointer;">
+            <input type="checkbox" name="IconUrl-clear" style="accent-color:var(--danger);">
+            Xóa icon hiện tại
+          </label>
+          {% endif %}
+          <p style="font-size:11px;color:var(--text4);">PNG, SVG · Nền trong suốt tốt hơn</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <div class="cf-submit" style="margin-top:16px;">
+      <button type="submit" name="_save" class="cf-btn-save">💾 Lưu nhóm hương</button>
+      <button type="submit" name="_continue" class="cf-btn-cont">✎ Lưu và tiếp tục</button>
+      <button type="submit" name="_addanother" class="cf-btn-cont"
+              style="background:transparent;color:var(--text3);border-color:var(--stone);">
+        Lưu và thêm mới
+      </button>
+      {% if not add and original %}
+      <a href="{% url opts|admin_urlname:'delete' original.pk|admin_urlquote %}"
+         class="cf-btn-del"
+         onclick="return confirm('Xóa nhóm hương này?')">
+        🗑 Xóa nhóm hương
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+</form>
+</div>
+
+<script>
+function previewImg(input, imgId, phId) {
+  if (input.files && input.files[0]) {
+    var r = new FileReader();
+    r.onload = function(e) {
+      var img = document.getElementById(imgId);
+      var ph  = document.getElementById(phId);
+      img.src = e.target.result;
+      img.style.display = 'block';
+      if (ph) ph.style.display = 'none';
+    };
+    r.readAsDataURL(input.files[0]);
+  }
+}
+
+function syncColor(input) {
+  try { document.getElementById('colorPicker').value = input.value; } catch(e) {}
+}
+
+try {
+  CKEDITOR.replace('id_MoTa_nh', {
+    language: 'vi', height: 280,
+    filebrowserUploadUrl: '/ckeditor/upload/',
+    filebrowserUploadMethod: 'form',
+    removePlugins: 'exportpdf,image2,uploadimage',
+    toolbar: [
+      {name:'basicstyles', items:['Bold','Italic','Underline','Strike','-','RemoveFormat']},
+      {name:'paragraph',   items:['NumberedList','BulletedList','-','Blockquote','-','JustifyLeft','JustifyCenter','JustifyRight']},
+      {name:'links',       items:['Link','Unlink']},
+      {name:'insert',      items:['Image','Table','HorizontalRule']},
+      {name:'styles',      items:['Format','FontSize']},
+      {name:'colors',      items:['TextColor','BGColor']},
+      {name:'tools',       items:['Maximize']},
+    ],
+    allowedContent: true,
+  });
+  document.getElementById('nhForm').addEventListener('submit', function() {
+    try { if(CKEDITOR.instances['id_MoTa_nh']) document.querySelector('[name="MoTa_NhomHuong"]').value = CKEDITOR.instances['id_MoTa_nh'].getData(); } catch(e){}
+  });
+} catch(e) { console.warn('CKEditor:', e.message); }
+</script>
+{% endblock %}

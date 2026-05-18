@@ -1,0 +1,175 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block title %}Hỏi đáp #{{ original.pk|default:"Chi tiết" }}{% endblock %}
+{% block breadcrumb_title %}Chi tiết{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'myadmin:index' %}">Admin</a>
+<span class="topbar-sep">›</span>
+<a href="{% url opts|admin_urlname:'changelist' %}">Hỏi đáp</a>
+<span class="topbar-sep">›</span>
+<span>#{{ original.pk }}</span>
+{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'admin/css/ami_luxury.css' %}">
+<style>
+#content-main{background:transparent!important;box-shadow:none!important;border:none!important;padding:0!important;}
+.hd-layout{display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;}
+@media(max-width:860px){.hd-layout{grid-template-columns:1fr;}}
+.hd-section{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px;}
+.hd-section:last-child{margin-bottom:0;}
+.hd-head{display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid var(--stone);background:linear-gradient(135deg,rgba(75,103,45,.04),rgba(235,246,196,.14));}
+.hd-head-icon{font-size:17px;} .hd-head-title{font-family:var(--fd);font-size:16px;font-weight:400;color:var(--text);}
+.hd-body{padding:18px 20px;}
+.hd-field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
+.hd-field:last-child{margin-bottom:0;}
+.hd-label{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);}
+.hd-input,.hd-textarea,.hd-select{width:100%;padding:9px 12px;border:1.5px solid var(--stone);border-radius:var(--rsm);font-family:var(--fb);font-size:13px;color:var(--text);background:var(--cream);outline:none;transition:.2s;}
+.hd-input:focus,.hd-textarea:focus,.hd-select:focus{border-color:var(--olive);box-shadow:0 0 0 3px rgba(75,103,45,.1);background:var(--white);}
+.hd-textarea{min-height:100px;resize:vertical;}
+
+/* Question bubble */
+.question-bubble{background:rgba(75,103,45,.05);border:1.5px solid rgba(75,103,45,.15);border-radius:12px;padding:16px 18px;}
+.question-meta{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.question-avatar{width:36px;height:36px;border-radius:50%;background:var(--olive);color:var(--sage);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;}
+.question-author{font-size:13px;font-weight:600;color:var(--text);}
+.question-time{font-size:11px;color:var(--text4);}
+.question-content{font-size:14px;color:var(--text2);line-height:1.7;}
+
+/* Status badge */
+.status-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+.status-pending  {background:#fff8e1;color:#f57f17;}
+.status-answered {background:#e8f5e9;color:#2e7d32;}
+.status-hidden   {background:#fce4ec;color:#c62828;}
+
+/* Sidebar */
+.hd-sidebar{position:sticky;top:20px;}
+.hd-submit{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);box-shadow:var(--shadow);padding:16px 18px;display:flex;flex-direction:column;gap:8px;}
+.hd-btn-save{padding:10px;background:linear-gradient(135deg,var(--olive-dark),var(--olive));color:var(--sage);border:none;border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .2s;text-align:center;}
+.hd-btn-save:hover{box-shadow:0 4px 12px rgba(75,103,45,.4);transform:translateY(-1px);}
+.hd-btn-del{padding:10px;background:rgba(184,50,50,.08);color:var(--danger);border:1.5px solid rgba(184,50,50,.2);border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;cursor:pointer;transition:.2s;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:5px;}
+.hd-btn-del:hover{background:var(--danger);color:#fff;}
+
+/* Info row */
+.info-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(26,28,20,.05);font-size:13px;}
+.info-row:last-child{border-bottom:none;}
+.info-row-label{color:var(--text3);}
+.info-row-val{color:var(--text);font-weight:500;}
+
+ul.object-tools{list-style:none;padding:0;margin:0 0 14px;display:flex;gap:8px;justify-content:flex-end;}
+ul.object-tools a{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:40px;font-size:11px;font-weight:600;text-transform:uppercase;text-decoration:none;border:1.5px solid rgba(75,103,45,.3);color:var(--olive);background:var(--white);}
+ul.object-tools a:hover{background:var(--olive);color:var(--sage);}
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+<ul class="object-tools">
+  <li><a href="{% url opts|admin_urlname:'history' original.pk|admin_urlquote %}">📋 Lịch sử</a></li>
+</ul>
+
+<div class="ami-page-header" style="margin-bottom:18px;">
+  <div>
+    <h1 class="ami-page-title">Hỏi đáp <em>#{{ original.pk }}</em></h1>
+    <p class="ami-page-sub"><a href="{% url opts|admin_urlname:'changelist' %}" style="color:var(--olive);">← Quay lại danh sách</a></p>
+  </div>
+</div>
+
+<form method="post" novalidate>
+{% csrf_token %}
+
+<div class="hd-layout">
+  <!-- CỘT TRÁI -->
+  <div>
+    <!-- Câu hỏi từ khách -->
+    <div class="hd-section">
+      <div class="hd-head"><span class="hd-head-icon">💬</span><span class="hd-head-title">Câu hỏi từ khách hàng</span></div>
+      <div class="hd-body">
+        <div class="question-bubble">
+          <div class="question-meta">
+            <div class="question-avatar">
+              {{ original.id_TaiKhoan.TenDangNhap|slice:":1"|upper|default:"K" }}
+            </div>
+            <div>
+              <div class="question-author">
+                {{ original.id_TaiKhoan.TenDangNhap|default:"Khách hàng" }}
+              </div>
+              <div class="question-time">
+                {{ original.NgayTao|date:"d/m/Y H:i"|default:"—" }} ·
+                Sản phẩm: <strong>{{ original.id_SanPham.TenSanPham|default:"—" }}</strong>
+              </div>
+            </div>
+          </div>
+          <div class="question-content">{{ original.NoiDung|default:"(Không có nội dung)" }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trả lời của admin -->
+    <div class="hd-section">
+      <div class="hd-head"><span class="hd-head-icon">✍️</span><span class="hd-head-title">Trả lời / Chỉnh sửa nội dung</span></div>
+      <div class="hd-body">
+        <div class="hd-field">
+          <label class="hd-label">Nội dung</label>
+          <textarea name="NoiDung" class="hd-textarea" rows="5">{{ original.NoiDung|default:'' }}</textarea>
+          <span style="font-size:11px;color:var(--text4);">Admin có thể chỉnh sửa nội dung câu hỏi nếu cần.</span>
+        </div>
+        <div class="hd-field">
+          <label class="hd-label">Trạng thái</label>
+          <select name="TrangThai" class="hd-select">
+            <option value="pending"  {% if original.TrangThai == 'pending'  %}selected{% endif %}>⏳ Đang chờ</option>
+            <option value="answered" {% if original.TrangThai == 'answered' %}selected{% endif %}>✅ Đã trả lời</option>
+            <option value="hidden"   {% if original.TrangThai == 'hidden'   %}selected{% endif %}>🚫 Ẩn</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CỘT PHẢI: Thông tin + Actions -->
+  <div class="hd-sidebar">
+    <div class="hd-section">
+      <div class="hd-head"><span class="hd-head-icon">ℹ️</span><span class="hd-head-title">Thông tin</span></div>
+      <div class="hd-body">
+        <div class="info-row">
+          <span class="info-row-label">Trạng thái</span>
+          <span class="status-badge status-{{ original.TrangThai|default:'pending' }}">
+            {% if original.TrangThai == 'answered' %}✅ Đã trả lời
+            {% elif original.TrangThai == 'hidden' %}🚫 Ẩn
+            {% else %}⏳ Đang chờ{% endif %}
+          </span>
+        </div>
+        <div class="info-row">
+          <span class="info-row-label">Khách hàng</span>
+          <span class="info-row-val">{{ original.id_TaiKhoan.TenDangNhap|default:"—" }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-row-label">Sản phẩm</span>
+          <span class="info-row-val">{{ original.id_SanPham.TenSanPham|truncatewords:4|default:"—" }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-row-label">Ngày hỏi</span>
+          <span class="info-row-val">{{ original.NgayTao|date:"d/m/Y H:i"|default:"—" }}</span>
+        </div>
+        {% if original.parent_id %}
+        <div class="info-row">
+          <span class="info-row-label">Trả lời cho</span>
+          <span class="info-row-val">#{{ original.parent_id }}</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="hd-submit" style="margin-top:16px;">
+      <button type="submit" name="_save" class="hd-btn-save">💾 Lưu thay đổi</button>
+      <a href="{% url opts|admin_urlname:'delete' original.pk|admin_urlquote %}"
+         class="hd-btn-del" onclick="return confirm('Xóa câu hỏi này?')">🗑 Xóa câu hỏi</a>
+    </div>
+  </div>
+</div>
+</form>
+</div>
+{% endblock %}

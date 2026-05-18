@@ -23,6 +23,29 @@
 /* Reset Django */
 #content-main{background:transparent!important;box-shadow:none!important;border:none!important;padding:0!important;}
 
+/* ── Fix Django thead th text visibility ── */
+#result_list thead th,
+#result_list thead th div,
+#result_list thead th span,
+#result_list thead th .text {
+  color: var(--sage) !important;
+  display: revert;
+  visibility: visible !important;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+#result_list thead th a,
+#result_list thead th a span {
+  color: var(--sage) !important;
+  text-decoration: none;
+}
+/* Sort icons */
+#result_list thead th .sortedascending::after  { content: ' ↑'; }
+#result_list thead th .sorteddescending::after { content: ' ↓'; }
+
 /* ── TOOLBAR ROW: search + filter chips nằm ngang ── */
 #ami-toolbar-row{
   display:flex;align-items:center;gap:10px;flex-wrap:wrap;
@@ -31,12 +54,18 @@
   padding:12px 18px;margin-bottom:16px;
 }
 
-/* Search */
+/* Search — bỏ icon tìm kiếm */
 #toolbar{background:transparent;border:none;box-shadow:none;padding:0;margin:0;flex-shrink:0;}
 #toolbar form{display:flex;align-items:center;gap:8px;}
 .ami-search-wrap{position:relative;}
-.ami-search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text4);pointer-events:none;line-height:1;}
-#searchbar{padding:8px 12px 8px 30px;border:1.5px solid var(--stone);border-radius:var(--rsm);font-family:var(--fb);font-size:13px;color:var(--text);background:var(--cream);outline:none;transition:.2s;width:220px;}
+/* Ẩn icon tìm kiếm */
+.ami-search-icon{display:none;}
+#searchbar{
+  padding:8px 14px;  /* bỏ padding-left dành cho icon */
+  border:1.5px solid var(--stone);border-radius:var(--rsm);
+  font-family:var(--fb);font-size:13px;color:var(--text);
+  background:var(--cream);outline:none;transition:.2s;width:220px;
+}
 #searchbar:focus{border-color:var(--olive);box-shadow:0 0 0 3px rgba(75,103,45,.1);}
 .ami-search-btn{padding:8px 18px;background:var(--olive);color:var(--sage);border:none;border-radius:var(--rsm);font-family:var(--fb);font-size:12px;font-weight:600;letter-spacing:1px;cursor:pointer;white-space:nowrap;}
 .ami-search-btn:hover{background:var(--olive-dark);}

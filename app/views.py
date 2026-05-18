@@ -588,13 +588,35 @@ def product_detail(request, product_id=None):
     nhom_huongs = SanPhamNhomHuong.objects.select_related("id_NhomHuong").filter(
         id_SanPham=product_obj
     )
+     # ── Flat list (hiện tại) ──
     nhom_huong_list = [
         {
             "name": item.id_NhomHuong.TenNhomHuong,
             "icon": item.id_NhomHuong.IconUrl.url if item.id_NhomHuong.IconUrl else "",
+            "vai_tro": item.VaiTroHuong or "",
         }
         for item in nhom_huongs
     ]
+ 
+    # ── Kim tự tháp phân tầng ──
+    pyramid = {"top": [], "heart": [], "base": [], "other": []}
+    for item in nhom_huongs:
+        vai_tro = (item.VaiTroHuong or "").strip()
+        entry = {
+            "name": item.id_NhomHuong.TenNhomHuong,
+            "icon": item.id_NhomHuong.IconUrl.url if item.id_NhomHuong.IconUrl else "",
+        }
+        if vai_tro == "Top Notes":
+            pyramid["top"].append(entry)
+        elif vai_tro == "Heart Notes":
+            pyramid["heart"].append(entry)
+        elif vai_tro == "Base Notes":
+            pyramid["base"].append(entry)
+        else:
+            pyramid["other"].append(entry)
+ 
+    # Nếu không có vai trò → hiển thị tất cả ở "other" (không show pyramid)
+    nhom_huong_pyramid = pyramid if (pyramid["top"] or pyramid["heart"] or pyramid["base"]) else None
 
     variants = _safe_list(BienThe.objects.filter(id_SanPham=product_obj).order_by("id_BienThe"))
     variant_attr_rows = _safe_list(
@@ -783,6 +805,7 @@ def product_detail(request, product_id=None):
         "product_data": product_data,
         "product_images": product_images,
         "nhom_huong_list": nhom_huong_list,
+        "nhom_huong_pyramid": nhom_huong_pyramid,
         "related_products": related_products,
         "brand_slug": slugify(product_obj.id_ThuongHieu.TenThuongHieu),
         "similar_scent_products": similar_scent_products,

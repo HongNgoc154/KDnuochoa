@@ -420,8 +420,8 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       <a href="{% url 'myadmin:app_sanpham_changelist' %}" class="ami-nav-item{% if 'sanpham' in request.path and 'loai' not in request.path %} active{% endif %}">
         <span class="ami-nav-icon">🌿</span> Sản phẩm
       </a>
-      <a href="{% url 'myadmin:app_bienthe_changelist' %}" class="ami-nav-item{% if '/bienthe/' in request.path %} active{% endif %}">
-        <span class="ami-nav-icon">📐</span> Biến thể
+      <a href="{% url 'myadmin:app_thuoctinh_changelist' %}" class="ami-nav-item{% if '/thuoctinh/' in request.path %} active{% endif %}">
+        <span class="ami-nav-icon">🏷️</span> Thuộc tính
       </a>
       <a href="{% url 'myadmin:app_thuonghieu_changelist' %}" class="ami-nav-item{% if 'thuonghieu' in request.path %} active{% endif %}">
         <span class="ami-nav-icon">🏷</span> Thương hiệu

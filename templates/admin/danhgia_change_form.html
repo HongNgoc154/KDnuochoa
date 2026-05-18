@@ -1,0 +1,197 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block title %}Đánh giá #{{ original.pk|default:"Chi tiết" }}{% endblock %}
+{% block breadcrumb_title %}Chi tiết{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'myadmin:index' %}">Admin</a>
+<span class="topbar-sep">›</span>
+<a href="{% url opts|admin_urlname:'changelist' %}">Đánh giá</a>
+<span class="topbar-sep">›</span>
+<span>#{{ original.pk }}</span>
+{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'admin/css/ami_luxury.css' %}">
+<style>
+#content-main{background:transparent!important;box-shadow:none!important;border:none!important;padding:0!important;}
+.dg-layout{display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;}
+@media(max-width:860px){.dg-layout{grid-template-columns:1fr;}}
+.dg-section{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px;}
+.dg-section:last-child{margin-bottom:0;}
+.dg-head{display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid var(--stone);background:linear-gradient(135deg,rgba(75,103,45,.04),rgba(235,246,196,.14));}
+.dg-head-icon{font-size:17px;} .dg-head-title{font-family:var(--fd);font-size:16px;font-weight:400;color:var(--text);}
+.dg-body{padding:18px 20px;}
+.dg-field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
+.dg-field:last-child{margin-bottom:0;}
+.dg-label{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);}
+.dg-input,.dg-textarea{width:100%;padding:9px 12px;border:1.5px solid var(--stone);border-radius:var(--rsm);font-family:var(--fb);font-size:13px;color:var(--text);background:var(--cream);outline:none;transition:.2s;}
+.dg-input:focus,.dg-textarea:focus{border-color:var(--olive);box-shadow:0 0 0 3px rgba(75,103,45,.1);background:var(--white);}
+.dg-textarea{min-height:100px;resize:vertical;}
+
+/* Review card */
+.review-card{background:rgba(75,103,45,.04);border:1.5px solid rgba(75,103,45,.12);border-radius:12px;padding:16px 18px;}
+.review-header{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.review-avatar{width:40px;height:40px;border-radius:50%;background:var(--olive);color:var(--sage);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;}
+.review-author{font-size:13px;font-weight:600;color:var(--text);}
+.review-meta{font-size:11px;color:var(--text4);}
+.star-display{display:flex;gap:2px;margin-bottom:10px;}
+.star-display span{font-size:18px;color:#e8e2d8;}
+.star-display span.active{color:#f59e0b;}
+.review-content{font-size:14px;color:var(--text2);line-height:1.7;}
+
+/* Reply box */
+.reply-box{background:rgba(235,246,196,.3);border:1.5px solid rgba(75,103,45,.15);border-radius:12px;padding:14px 16px;margin-top:16px;}
+.reply-box-label{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--olive);margin-bottom:10px;}
+.existing-reply{font-size:13px;color:var(--text2);line-height:1.7;padding:10px 14px;background:var(--white);border-radius:8px;border:1px solid var(--stone);}
+
+/* Sidebar */
+.dg-sidebar{position:sticky;top:20px;}
+.dg-submit{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);box-shadow:var(--shadow);padding:16px 18px;display:flex;flex-direction:column;gap:8px;}
+.dg-btn-save{padding:10px;background:linear-gradient(135deg,var(--olive-dark),var(--olive));color:var(--sage);border:none;border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;text-transform:uppercase;cursor:pointer;transition:all .2s;text-align:center;}
+.dg-btn-save:hover{box-shadow:0 4px 12px rgba(75,103,45,.4);transform:translateY(-1px);}
+.dg-btn-del{padding:10px;background:rgba(184,50,50,.08);color:var(--danger);border:1.5px solid rgba(184,50,50,.2);border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;cursor:pointer;transition:.2s;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:5px;}
+.dg-btn-del:hover{background:var(--danger);color:#fff;}
+
+.info-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(26,28,20,.05);font-size:13px;}
+.info-row:last-child{border-bottom:none;}
+.info-row-label{color:var(--text3);}
+.info-row-val{color:var(--text);font-weight:500;}
+
+ul.object-tools{list-style:none;padding:0;margin:0 0 14px;display:flex;gap:8px;justify-content:flex-end;}
+ul.object-tools a{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:40px;font-size:11px;font-weight:600;text-transform:uppercase;text-decoration:none;border:1.5px solid rgba(75,103,45,.3);color:var(--olive);background:var(--white);}
+ul.object-tools a:hover{background:var(--olive);color:var(--sage);}
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+<ul class="object-tools">
+  <li><a href="{% url opts|admin_urlname:'history' original.pk|admin_urlquote %}">📋 Lịch sử</a></li>
+</ul>
+
+<div class="ami-page-header" style="margin-bottom:18px;">
+  <div>
+    <h1 class="ami-page-title">Đánh giá <em>#{{ original.pk }}</em></h1>
+    <p class="ami-page-sub"><a href="{% url opts|admin_urlname:'changelist' %}" style="color:var(--olive);">← Quay lại danh sách</a></p>
+  </div>
+</div>
+
+<form method="post" novalidate>
+{% csrf_token %}
+
+<div class="dg-layout">
+  <!-- CỘT TRÁI -->
+  <div>
+    <!-- Đánh giá của khách -->
+    <div class="dg-section">
+      <div class="dg-head"><span class="dg-head-icon">⭐</span><span class="dg-head-title">Đánh giá từ khách hàng</span></div>
+      <div class="dg-body">
+        <div class="review-card">
+          <div class="review-header">
+            <div class="review-avatar">
+              {{ original.id_TaiKhoan.TenDangNhap|slice:":1"|upper|default:"K" }}
+            </div>
+            <div>
+              <div class="review-author">{{ original.id_TaiKhoan.TenDangNhap|default:"Khách hàng" }}</div>
+              <div class="review-meta">
+                {{ original.NgayDanhGia|date:"d/m/Y H:i"|default:"—" }} ·
+                <strong>{{ original.id_SanPham.TenSanPham|truncatewords:4|default:"—" }}</strong>
+              </div>
+            </div>
+          </div>
+          <!-- Stars -->
+          <div class="star-display">
+            {% for i in "12345" %}
+            <span class="{% if forloop.counter <= original.SoSao|default:0 %}active{% endif %}">★</span>
+            {% endfor %}
+            <span style="font-size:12px;color:var(--text3);margin-left:6px;">
+              ({{ original.SoSao|default:0 }}/5)
+            </span>
+          </div>
+          <div class="review-content">{{ original.NoiDung|default:"(Không có nội dung)" }}</div>
+        </div>
+
+        <!-- Phản hồi hiện tại của admin nếu có -->
+        {% if admin_replies %}
+        <div class="reply-box">
+          <div class="reply-box-label">💬 Phản hồi hiện tại của Admin</div>
+          {% for reply in admin_replies %}
+          <div class="existing-reply" style="margin-bottom:8px;">
+            <div style="font-size:11px;color:var(--olive);font-weight:600;margin-bottom:4px;">
+              Admin · {{ reply.NgayDanhGia|date:"d/m/Y H:i" }}
+            </div>
+            {{ reply.NoiDung }}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Phản hồi mới / chỉnh sửa -->
+    <div class="dg-section">
+      <div class="dg-head"><span class="dg-head-icon">✍️</span><span class="dg-head-title">Phản hồi của Admin</span></div>
+      <div class="dg-body">
+        <div class="dg-field">
+          <label class="dg-label">Nội dung phản hồi</label>
+          <textarea name="admin_reply" class="dg-textarea" rows="5"
+                    placeholder="Nhập phản hồi của admin cho đánh giá này…">{{ current_admin_reply.NoiDung|default:'' }}</textarea>
+          <span style="font-size:11px;color:var(--text4);">
+            {% if current_admin_reply %}Chỉnh sửa phản hồi hiện tại.{% else %}Viết phản hồi mới cho đánh giá này.{% endif %}
+          </span>
+        </div>
+        <!-- Chỉnh sửa nội dung đánh giá gốc nếu cần -->
+        <div class="dg-field" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--stone);">
+          <label class="dg-label">Chỉnh sửa nội dung đánh giá gốc (nếu cần)</label>
+          <textarea name="NoiDung" class="dg-textarea" rows="3">{{ original.NoiDung|default:'' }}</textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CỘT PHẢI -->
+  <div class="dg-sidebar">
+    <div class="dg-section">
+      <div class="dg-head"><span class="dg-head-icon">ℹ️</span><span class="dg-head-title">Thông tin</span></div>
+      <div class="dg-body">
+        <div class="info-row">
+          <span class="info-row-label">Sản phẩm</span>
+          <span class="info-row-val">{{ original.id_SanPham.TenSanPham|truncatewords:3|default:"—" }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-row-label">Khách hàng</span>
+          <span class="info-row-val">{{ original.id_TaiKhoan.TenDangNhap|default:"—" }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-row-label">Số sao</span>
+          <span class="info-row-val">
+            {% for i in "12345" %}{% if forloop.counter <= original.SoSao|default:0 %}⭐{% endif %}{% endfor %}
+            {{ original.SoSao|default:0 }}/5
+          </span>
+        </div>
+        <div class="info-row">
+          <span class="info-row-label">Ngày đánh giá</span>
+          <span class="info-row-val">{{ original.NgayDanhGia|date:"d/m/Y"|default:"—" }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-row-label">Phản hồi</span>
+          <span class="info-row-val" style="color:{% if current_admin_reply %}#2e7d32{% else %}#9e9e9e{% endif %};">
+            {% if current_admin_reply %}✅ Đã phản hồi{% else %}⏳ Chưa phản hồi{% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="dg-submit" style="margin-top:16px;">
+      <button type="submit" name="_save" class="dg-btn-save">💾 Lưu phản hồi</button>
+      <a href="{% url opts|admin_urlname:'delete' original.pk|admin_urlquote %}"
+         class="dg-btn-del" onclick="return confirm('Xóa đánh giá này?')">🗑 Xóa đánh giá</a>
+    </div>
+  </div>
+</div>
+</form>
+</div>
+{% endblock %}

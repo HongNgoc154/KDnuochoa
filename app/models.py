@@ -4,16 +4,17 @@ from ckeditor_uploader.fields import RichTextUploadingField
 
 # ===================== NHÓM HƯƠNG =====================
 class NhomHuong(models.Model):
-    id_NhomHuong = models.AutoField(primary_key=True)
-
-    TenNhomHuong = models.CharField(max_length=255)
-    LoaiHuong = models.CharField(max_length=50, null=True, blank=True)
-    IconUrl = models.ImageField(upload_to='scents/', null=True, blank=True)
-
+    id_NhomHuong    = models.AutoField(primary_key=True)
+    TenNhomHuong    = models.CharField(max_length=255)
+    MoTa_NhomHuong  = models.TextField(null=True, blank=True)   # thêm
+    MauSac          = models.CharField(max_length=50, null=True, blank=True)  # thêm
+    IconUrl         = models.ImageField(upload_to='scents/', null=True, blank=True)
+    LoaiHuong       = models.CharField(max_length=50, null=True, blank=True)
+ 
     class Meta:
-        managed = False
+        managed  = False
         db_table = 'NhomHuong'
-
+ 
     def __str__(self):
         return self.TenNhomHuong
 
