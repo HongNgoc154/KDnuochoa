@@ -19,6 +19,9 @@ from datetime import datetime, timedelta
 from django.conf import settings
 import requests as http_requests
 import uuid
+from django.http import JsonResponse
+from .models import ThuocTinh, GiaTriThuocTinh
+import json as _json
 
 
 from .models import (
@@ -473,6 +476,8 @@ def _category_article_queryset(category=None):
 
 def category(request, segment='tat-ca'):
 
+    search_q = (request.GET.get("q") or "").strip()
+
     # lấy tất cả danh mục
     categories = LoaiSanPham.objects.all()
 
@@ -492,6 +497,13 @@ def category(request, segment='tat-ca'):
     # nếu không phải "tất cả" thì filter
     if segment != "tat-ca" and current_category:
         products = products.filter(id_LoaiSanPham=current_category)
+
+    if search_q:
+        products = products.filter(
+            Q(TenSanPham__icontains=search_q)
+            | Q(id_ThuongHieu__TenThuongHieu__icontains=search_q)
+            | Q(nhom_huongs__TenNhomHuong__icontains=search_q)
+        ).distinct()
 
     products = products.order_by("-id_SanPham")
 
@@ -519,6 +531,7 @@ def category(request, segment='tat-ca'):
         "breadcrumb": current_category.TenLoaiSanPham if current_category else "Tất cả",
         "brands": _safe_list(ThuongHieu.objects.order_by("TenThuongHieu")),
         "segment": segment,
+        "search_q": search_q,
         "products": _build_product_cards(products),
         "related_articles": related_articles,
         "recent_reviews": recent_reviews,
@@ -1374,6 +1387,11 @@ def profile_page(request):
 
         "total_spending": _format_currency(
             account.TongChiTieu if account else 0
+        ),
+        "profile_avatar": (
+            account.AnhDaiDien.url
+            if account and account.AnhDaiDien
+            else "/static/app/images/default-avatar.png"
         ),
     }
 
@@ -2502,3 +2520,108 @@ def admin_order_detail_api(request):
             "customer": kh.TenKhachHang if kh else "Khách vãng lai",
         }
     })
+
+@csrf_exempt
+@require_POST
+def update_profile_api(request):
+
+    account_id = request.session.get("account_id")
+
+    if not account_id:
+        return JsonResponse({
+            "ok": False,
+            "need_login": True
+        })
+
+    account = TaiKhoan.objects.filter(
+        id_TaiKhoan=account_id
+    ).first()
+
+    customer = KhachHang.objects.filter(
+        id_TaiKhoan_id=account_id
+    ).first()
+
+    if not account:
+        return JsonResponse({
+            "ok": False,
+            "message": "Không tìm thấy tài khoản."
+        })
+
+    full_name = request.POST.get("full_name")
+    email = request.POST.get("email")
+    phone = request.POST.get("phone")
+    gender = request.POST.get("gender")
+
+    avatar = request.FILES.get("avatar")
+
+    # cập nhật tài khoản
+    account.TenDangNhap = full_name
+    account.Email = email
+    account.SDT = phone
+
+    if avatar:
+        account.AnhDaiDien = avatar
+
+    account.save()
+
+    # cập nhật khách hàng
+    if customer:
+        customer.TenKhachHang = full_name
+        customer.GioiTinh = gender
+        customer.save()
+
+    return JsonResponse({
+        "ok": True,
+        "message": "Cập nhật thành công.",
+        "avatar": account.AnhDaiDien.url if account.AnhDaiDien else ""
+    })
+
+def api_thuoc_tinh_list(request):
+    """Trả về danh sách thuộc tính — không cần đăng nhập."""
+    try:
+        data = []
+        for tt in ThuocTinh.objects.all().order_by('TenThuocTinh'):
+            data.append({
+                'id': tt.pk,
+                'name': str(tt.TenThuocTinh or ''),
+            })
+        # ensure_ascii=False để tiếng Việt hiển thị đúng
+        return JsonResponse({'ok': True, 'data': data}, json_dumps_params={'ensure_ascii': False})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'message': str(e)}, status=500)
+ 
+ 
+def api_gia_tri_thuoc_tinh(request):
+    """Trả về giá trị thuộc tính theo id_ThuocTinh — không cần đăng nhập."""
+    tt_id = request.GET.get('thuoc_tinh_id', '').strip()
+ 
+    if not tt_id:
+        return JsonResponse({'ok': False, 'message': 'Thiếu thuoc_tinh_id'}, status=400)
+ 
+    try:
+        tt_id_int = int(tt_id)
+    except (ValueError, TypeError):
+        return JsonResponse({'ok': False, 'message': 'thuoc_tinh_id phải là số'}, status=400)
+ 
+    try:
+        rows = GiaTriThuocTinh.objects.filter(
+            id_ThuocTinh=tt_id_int
+        ).order_by('GiaTri')
+ 
+        data = []
+        for r in rows:
+            data.append({
+                'id': r.pk,
+                'name': str(r.GiaTri or ''),
+            })
+ 
+        print(f"[api_gia_tri] tt_id={tt_id_int}, found={len(data)} rows")
+ 
+        return JsonResponse(
+            {'ok': True, 'data': data},
+            json_dumps_params={'ensure_ascii': False}
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'ok': False, 'message': str(e)}, status=500)

@@ -1,0 +1,22 @@
+{% load i18n static %}
+{% if cl.search_fields %}
+<div id="toolbar">
+  <form id="changelist-search" method="get" role="search">
+    {% if cl.is_popup %}<input type="hidden" name="{{ is_popup_var }}" value="1">{% endif %}
+    {% if cl.to_field %}<input type="hidden" name="{{ to_field_var }}" value="{{ cl.to_field }}">{% endif %}
+    {% for pair in cl.params.items %}
+      {% if pair.0 != search_var %}<input type="hidden" name="{{ pair.0 }}" value="{{ pair.1 }}">{% endif %}
+    {% endfor %}
+    <div class="ami-search-wrap">
+      <span class="ami-search-icon">🔍</span>
+      <input type="text" id="searchbar" name="{{ search_var }}" value="{{ cl.query }}"
+             placeholder="Tìm kiếm {{ cl.opts.verbose_name_plural }}…"
+             autocomplete="off">
+    </div>
+    <button type="submit" class="ami-search-btn">Tìm kiếm</button>
+    {% if cl.query %}
+    <a href="?{% if cl.is_popup %}{{ is_popup_var }}=1{% endif %}" class="ami-search-clear">✕ Xóa</a>
+    {% endif %}
+  </form>
+</div>
+{% endif %}

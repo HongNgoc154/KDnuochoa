@@ -8,7 +8,9 @@ import django.template.loaders.filesystem as fs
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
 print("TEMPLATE DIRS:", BASE_DIR / 'templates')
+
 
 SECRET_KEY = 'django-insecure-5@ut1(^#=_=z%mmrbg%lkc&wr#@e&xp5qgpv^*6&0btenn7ux0'
 
@@ -99,9 +101,15 @@ DATABASES = {
 # STATIC & MEDIA
 # ═══════════════════════════════════════════════════════
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [
-    BASE_DIR / 'static',
-]
+# Thêm vào — nơi collectstatic gom file
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+_extra_static = BASE_DIR / 'app' / 'static'
+STATICFILES_DIRS = []
+if _extra_static.exists():
+    STATICFILES_DIRS.append(_extra_static)
+
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_URL = '/static/'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

@@ -132,76 +132,170 @@ class SanPhamNhomHuongInline(nested_admin.NestedStackedInline):
 # ═══════════════════════════════════════
 @admin.register(SanPham, site=admin_site)
 class SanPhamAdmin(nested_admin.NestedModelAdmin):
-    list_display  = ('product_card', 'TrangThai_badge', 'NongDo', 'DoLuuHuong', 'DoToaHuong', 'ten_thuong_hieu', 'ten_loai_san_pham', 'get_nhom_huong', 'so_bien_the')
+    change_form_template = "admin/sanpham_change_form.html"
+    add_form_template    = "admin/sanpham_change_form.html"
+ 
+    list_display       = ('product_card', 'TrangThai_badge', 'NongDo', 'DoLuuHuong',
+                          'DoToaHuong', 'ten_thuong_hieu', 'ten_loai_san_pham',
+                          'get_nhom_huong', 'so_bien_the')
     list_display_links = ('product_card',)
-    search_fields = ('TenSanPham',)
-    list_filter   = ('TrangThai_SanPham', 'id_ThuongHieu', 'id_LoaiSanPham', 'nhom_huongs')
-    list_per_page = 20
-    fieldsets = (
-        (None, {
-            'fields': (
-                'TenSanPham',
-                ('id_ThuongHieu', 'id_LoaiSanPham'),
-                'TrangThai_SanPham',
-                ('NongDo', 'NamPhatHanh', 'XuatXu'),
-                ('DoLuuHuong', 'DoToaHuong'),
-                ('MuaPhuHop', 'ThoiDiemSuDung'),
-                ('PhongCach', 'DoTuoiPhuHop'),
-                'MoTa_SanPham',
-            ),
-        }),
-    )
-    inlines = [SanPhamNhomHuongInline, BienTheInline, HinhAnhInline]
-
+    search_fields      = ('TenSanPham',)
+    list_filter        = ('TrangThai_SanPham', 'id_ThuongHieu', 'id_LoaiSanPham', 'nhom_huongs')
+    list_per_page      = 20
+    inlines            = []
+ 
+    def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['nhom_huong_list'] = NhomHuong.objects.all().order_by('TenNhomHuong')
+        extra_context['thuoc_tinh_list'] = (
+            ThuocTinh.objects.prefetch_related('giatrithuoctinh_set').order_by('TenThuocTinh')
+        )
+ 
+        # Validate object_id — phải là số nguyên hợp lệ
+        valid_id = None
+        if object_id:
+            try:
+                valid_id = int(object_id)
+            except (ValueError, TypeError):
+                valid_id = None  # object_id không hợp lệ (VD: 'styles.css.map')
+ 
+        if valid_id:
+            extra_context['existing_nhom_huong'] = (
+                SanPhamNhomHuong.objects.filter(id_SanPham_id=valid_id).select_related('id_NhomHuong')
+            )
+            bienthe_qs = BienThe.objects.filter(id_SanPham_id=valid_id)
+            bt_list = []
+            for bt in bienthe_qs:
+                btt = (BienTheThuocTinh.objects.filter(id_BienThe=bt)
+                       .select_related('id_GiaTriThuocTinh__id_ThuocTinh').first())
+                bt.thuoc_tinh_id   = btt.id_GiaTriThuocTinh.id_ThuocTinh.pk   if btt else ''
+                bt.thuoc_tinh_name = btt.id_GiaTriThuocTinh.id_ThuocTinh.TenThuocTinh if btt else ''
+                bt.gia_tri_id      = btt.id_GiaTriThuocTinh.pk                if btt else ''
+                bt.gia_tri_name    = btt.id_GiaTriThuocTinh.GiaTri            if btt else ''
+                bt_list.append(bt)
+            extra_context['existing_bienthe'] = bt_list
+            extra_context['existing_images']  = HinhAnh.objects.filter(id_SanPham_id=valid_id)
+        else:
+            extra_context['existing_nhom_huong'] = []
+            extra_context['existing_bienthe']    = []
+            extra_context['existing_images']     = []
+        return super().changeform_view(request, object_id, form_url, extra_context)
+ 
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        self._save_nhom_huong(request, obj)
+        self._save_bienthe(request, obj)
+        self._save_images(request, obj)
+ 
+    def _save_nhom_huong(self, request, obj):
+        try:
+            total = int(request.POST.get('sanphamnhomhuong_set-TOTAL_FORMS', 0))
+        except (ValueError, TypeError):
+            return
+        SanPhamNhomHuong.objects.filter(id_SanPham=obj).delete()
+        for i in range(total):
+            nh_id   = request.POST.get(f'sanphamnhomhuong_set-{i}-id_NhomHuong', '').strip()
+            vai_tro = request.POST.get(f'sanphamnhomhuong_set-{i}-VaiTroHuong', '').strip()
+            if nh_id:
+                try:
+                    SanPhamNhomHuong.objects.create(
+                        id_SanPham=obj,
+                        id_NhomHuong_id=int(nh_id),
+                        VaiTroHuong=vai_tro or None,
+                    )
+                except Exception:
+                    pass
+ 
+    def _save_bienthe(self, request, obj):
+        try:
+            total = int(request.POST.get('bienthe_set-TOTAL_FORMS', 0))
+        except (ValueError, TypeError):
+            return
+        if total == 0:
+            return
+        old_bts = BienThe.objects.filter(id_SanPham=obj)
+        for bt in old_bts:
+            BienTheThuocTinh.objects.filter(id_BienThe=bt).delete()
+        old_bts.delete()
+        for i in range(total):
+            gt_id    = request.POST.get(f'bienthe_set-{i}-giaTriId', '').strip()
+            sku      = request.POST.get(f'bienthe_set-{i}-sku',      '').strip()
+            gia_nhap = request.POST.get(f'bienthe_set-{i}-giaNhap',  '0').strip()
+            gia_ban  = request.POST.get(f'bienthe_set-{i}-giaBan',   '0').strip()
+            so_luong = request.POST.get(f'bienthe_set-{i}-soLuong',  '0').strip()
+            if not gt_id:
+                continue
+            try:
+                bt = BienThe.objects.create(
+                    id_SanPham=obj,
+                    Sku=sku or f'SP{obj.pk}-BT{i+1}',
+                    GiaNhap=float(gia_nhap) if gia_nhap else 0,
+                    GiaBan=float(gia_ban)   if gia_ban  else 0,
+                    SoLuong=int(so_luong)   if so_luong else 0,
+                )
+                BienTheThuocTinh.objects.create(
+                    id_BienThe=bt,
+                    id_GiaTriThuocTinh_id=int(gt_id),
+                )
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f'_save_bienthe error: {e}')
+ 
+    def _save_images(self, request, obj):
+        for key in request.POST:
+            if key.startswith('delete_image_'):
+                try:
+                    HinhAnh.objects.filter(pk=int(key.replace('delete_image_', '')),
+                                           id_SanPham=obj).delete()
+                except Exception:
+                    pass
+        for f in request.FILES.getlist('hinh_anh_files'):
+            try:
+                HinhAnh.objects.create(id_SanPham=obj, url=f)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f'_save_images error: {e}')
+ 
+    # ── List display ──
     def product_card(self, obj):
         img_tag = ""
         first_img = HinhAnh.objects.filter(id_SanPham=obj).first()
         if first_img and first_img.url:
             img_tag = format_html(
-                '<img src="{}" style="width:48px;height:48px;object-fit:cover;border-radius:8px;vertical-align:middle;margin-right:10px;border:1px solid #e0d9cc;"/>',
-                first_img.url.url,
-            )
+                '<img src="{}" style="width:48px;height:48px;object-fit:cover;'
+                'border-radius:8px;vertical-align:middle;margin-right:10px;border:1px solid #e0d9cc;"/>',
+                first_img.url.url)
         return format_html('{}<strong style="vertical-align:middle;">{}</strong>', img_tag, obj.TenSanPham)
     product_card.short_description = "Sản phẩm"
-
+ 
     def TrangThai_badge(self, obj):
-        colors = {
-            'active':   ('#e8f5e9', '#2e7d32', '● Đang bán'),
-            'inactive': ('#fce4ec', '#c62828', '● Ngừng bán'),
-            'draft':    ('#fff8e1', '#f57f17', '● Nháp'),
-        }
-        bg, fg, label = colors.get(obj.TrangThai_SanPham, ('#f5f5f5', '#616161', f'● {obj.TrangThai_SanPham or "—"}'))
-        return format_html('<span style="background:{};color:{};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;">{}</span>', bg, fg, label)
+        colors = {'active':('#e8f5e9','#2e7d32','● Đang bán'),'inactive':('#fce4ec','#c62828','● Ngừng bán'),'draft':('#fff8e1','#f57f17','● Nháp')}
+        bg,fg,label = colors.get(obj.TrangThai_SanPham,('#f5f5f5','#616161',f'● {obj.TrangThai_SanPham or "—"}'))
+        return format_html('<span style="background:{};color:{};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;">{}</span>',bg,fg,label)
     TrangThai_badge.short_description = "Trạng thái"
-
+ 
     def ten_thuong_hieu(self, obj):
         try: return obj.id_ThuongHieu.TenThuongHieu
         except: return "—"
     ten_thuong_hieu.short_description = "Thương hiệu"
-
+ 
     def ten_loai_san_pham(self, obj):
         try: return obj.id_LoaiSanPham.TenLoaiSanPham
         except: return "—"
     ten_loai_san_pham.short_description = "Loại"
-
+ 
     def get_nhom_huong(self, obj):
         huongs = SanPhamNhomHuong.objects.select_related('id_NhomHuong').filter(id_SanPham=obj)
         if not huongs.exists(): return "-"
-        return mark_safe("".join([
-            f'<span style="padding:3px 8px;background:#e8f5e9;border-radius:6px;margin-right:4px;font-size:11px;">'
-            f'{h.id_NhomHuong.TenNhomHuong}</span>' for h in huongs
-        ]))
+        return mark_safe("".join([f'<span style="padding:3px 8px;background:#e8f5e9;border-radius:6px;margin-right:4px;font-size:11px;">{h.id_NhomHuong.TenNhomHuong}</span>' for h in huongs]))
     get_nhom_huong.short_description = "Nhóm hương"
-
+ 
     def so_bien_the(self, obj):
         count = BienThe.objects.filter(id_SanPham=obj).count()
         color = "#2e7d32" if count > 0 else "#9e9e9e"
-        return format_html('<span style="color:{};font-weight:600;">{} biến thể</span>', color, count)
+        return format_html('<span style="color:{};font-weight:600;">{} biến thể</span>',color,count)
     so_bien_the.short_description = "Biến thể"
-
-    class Media:
-        css = {'all': ('admin/css/ami_admin.css',)}
-        js  = ('admin/js/ami_admin.js',)
+ 
 
 
 # ═══════════════════════════════════════

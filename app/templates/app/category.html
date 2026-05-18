@@ -107,7 +107,7 @@
     <div class="container">
       <div class="products-head reveal">
         <h2 class="section-title">Bộ sưu tập <em>signature</em></h2>
-        <p id="productResult">Hiển thị {{ product_count }} sản phẩm.</p>
+        <p id="productResult">Hiển thị {{ product_count }} sản phẩm{% if search_q %} cho từ khóa "{{ search_q }}"{% endif %}.</p>
       </div>
       {% comment %} <p class="fav-counter reveal">Wishlist: <strong id="favoriteCount">0</strong> sản phẩm</p> {% endcomment %}
 

@@ -17,39 +17,68 @@
   <aside class="sidebar" id="sidebar">
 
     <!-- Profile Card -->
+    
     <div class="profile-card">
-      <div class="avatar-wrap" id="avatarWrap">
-        <img src="https://i.pravatar.cc/150?img=68" alt="Avatar" class="avatar" id="avatarImg">
-        <div class="avatar-overlay" title="Đổi ảnh đại diện">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          <span>Đổi ảnh</span>
-        </div>
-        <input type="file" id="avatarInput" accept="image/*" aria-label="Chọn ảnh đại diện">
-      </div>
-      <div class="profile-info">
-        <h2 class="profile-name">{{ profile.full_name }}</h2>
-        <p class="profile-username">@{{ profile.username }}</p>
-        <div class="profile-badges">
-          {% comment %} <div class="member-progress">
 
-            <p class="member-spending">
-              Tổng chi tiêu:
-              <strong>{{ profile.total_spending }}</strong>
+        <!-- Avatar -->
+        <div class="avatar-wrap" id="avatarWrap">
+
+            <img
+                id="profileAvatar"
+                src="{% if profile.profile_avatar %}{{ profile.profile_avatar }}{% else %}{% static 'app/images/default-avatar.png' %}{% endif %}"
+                alt="Avatar"
+            >
+
+            <div class="avatar-overlay">
+                <svg
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                >
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                </svg>
+
+                <span>Đổi ảnh</span>
+            </div>
+
+            <!-- INPUT FILE -->
+            <input
+                type="file"
+                id="avatarInput"
+                accept="image/*"
+            >
+
+        </div>
+
+        <!-- Profile Info -->
+        <div class="profile-info">
+
+            <h2 class="profile-name">
+                {{ profile.full_name }}
+            </h2>
+
+            <p class="profile-username">
+                @{{ profile.username }}
             </p>
 
-            <p class="member-next">
-              {{ profile.next_level_message }}
-            </p>
+            <div class="profile-badges">
 
-          </div> {% endcomment %}
-          <span class="badge-vip">
-              ⭐ {{ profile.level|default:"Member" }}
-          </span>
-          <span class="badge-pts">
-              {{ profile.points|default:0 }} điểm
-          </span>
+                <span class="badge-vip">
+                    ⭐ {{ profile.level|default:"Member" }}
+                </span>
+
+                <span class="badge-pts">
+                    {{ profile.points|default:0 }} điểm
+                </span>
+
+            </div>
+
         </div>
-      </div>
+
     </div>
 
     <!-- Navigation Menu -->
@@ -510,5 +539,5 @@
 {% block extra_js %}
 {{ voucher_data|json_script:"profileVoucherData" }}
 <script src="{% static 'app/js/profile.js' %}"></script>
-<script src="{% static 'app/js/profile_orders.js' %}"></script>
+{% comment %} <script src="{% static 'app/js/profile_orders.js' %}"></script> {% endcomment %}
 {% endblock %}

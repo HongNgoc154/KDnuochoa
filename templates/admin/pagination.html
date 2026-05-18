@@ -1,0 +1,12 @@
+{% load admin_list i18n %}
+{% if pagination_required or cl.result_count %}
+<p class="paginator">
+  {% if pagination_required %}
+    {% for i in page_range %}{% paginator_number cl i %}{% endfor %}
+  {% endif %}
+  <span style="margin-left:auto;font-size:12px;color:var(--text4);">
+    {{ cl.result_count }}&nbsp;{{ cl.result_count|pluralize:"bản ghi,bản ghi" }}
+    {% if show_all_url %}&nbsp;·&nbsp;<a href="{{ show_all_url }}" style="color:var(--olive);">Xem tất cả</a>{% endif %}
+  </span>
+</p>
+{% endif %}

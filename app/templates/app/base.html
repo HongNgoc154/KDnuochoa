@@ -21,10 +21,10 @@
   <div class="header-inner">
     <a href="{% url 'home' %}" class="logo">ami <span>perfumery</span></a>
     <div class="header-right">
-      <div class="search-wrap">
-        <input type="text" placeholder="Tìm kiếm nước hoa...">
-        <span class="search-icon"><i class="bi bi-search"></i></span>
-      </div>
+      <form class="search-wrap" action="{% url 'category-all' %}" method="get" role="search">
+        <input type="search" name="q" value="{{ request.GET.q|default:'' }}" placeholder="Tìm kiếm theo tên, thương hiệu, mùi hương..." aria-label="Tìm kiếm sản phẩm">
+        <button type="submit" class="search-icon" aria-label="Tìm kiếm"><i class="bi bi-search"></i></button>
+      </form>
       <div class="header-icons">
         <a href="{% url 'profile-page' %}#tab-wishlist" class="icon-btn" title="Yêu thích">
           <i class="bi bi-heart"></i>

@@ -14,136 +14,136 @@
 
 {% block extrastyle %}
 {{ block.super }}
+<link rel="stylesheet" href="{% static 'admin/css/ami_luxury.css' %}">
 {% if cl.formset or action_form %}
 <script src="{% url 'myadmin:jsi18n' %}" defer></script>
 {% endif %}
 {{ media.css }}
 <style>
-/* ══════════════════════════════════
-   CHANGELIST — Luxury Full Layout
-   ══════════════════════════════════ */
+/* Reset Django */
+#content-main{background:transparent!important;box-shadow:none!important;border:none!important;padding:0!important;}
 
-/* Reset Django defaults */
-#content-main { background:transparent!important; box-shadow:none!important; border:none!important; padding:0!important; }
-#changelist { background:transparent; width:100%; }
-.changelist-form-container { display:flex; gap:20px; align-items:flex-start; width:100%; }
-
-/* ── Filter sidebar ── */
-#changelist-filter {
-  width: 220px; flex-shrink: 0;
-  background: var(--white); border: 1px solid var(--stone); border-radius: var(--r);
-  box-shadow: var(--shadow); padding: 18px; position: sticky; top: 80px;
-}
-#changelist-filter h2 {
-  font-family: var(--fd); font-size: 15px; font-weight: 400; color: var(--text);
-  margin: 0 0 12px; padding-bottom: 10px; border-bottom: 1px solid var(--stone);
-}
-#changelist-filter h3 {
-  font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
-  color: var(--text3); margin: 14px 0 6px; padding: 0;
-}
-#changelist-filter ul { list-style: none; padding: 0; margin: 0; }
-#changelist-filter ul li a {
-  display: block; padding: 6px 10px; border-radius: 8px;
-  font-size: 13px; color: var(--text2); text-decoration: none; transition: .15s;
-}
-#changelist-filter ul li a:hover { background: rgba(75,103,45,.06); color: var(--olive); }
-#changelist-filter ul li.selected a {
-  background: rgba(75,103,45,.1); color: var(--olive); font-weight: 600;
+/* ── TOOLBAR ROW: search + filter chips nằm ngang ── */
+#ami-toolbar-row{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  background:var(--white);border:1px solid var(--stone);
+  border-radius:var(--r);box-shadow:var(--shadow);
+  padding:12px 18px;margin-bottom:16px;
 }
 
-/* ── Main table area ── */
-#changelist > div:last-child,
-.changelist-form-container > div:last-child { flex: 1; min-width: 0; }
+/* Search */
+#toolbar{background:transparent;border:none;box-shadow:none;padding:0;margin:0;flex-shrink:0;}
+#toolbar form{display:flex;align-items:center;gap:8px;}
+.ami-search-wrap{position:relative;}
+.ami-search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text4);pointer-events:none;line-height:1;}
+#searchbar{padding:8px 12px 8px 30px;border:1.5px solid var(--stone);border-radius:var(--rsm);font-family:var(--fb);font-size:13px;color:var(--text);background:var(--cream);outline:none;transition:.2s;width:220px;}
+#searchbar:focus{border-color:var(--olive);box-shadow:0 0 0 3px rgba(75,103,45,.1);}
+.ami-search-btn{padding:8px 18px;background:var(--olive);color:var(--sage);border:none;border-radius:var(--rsm);font-family:var(--fb);font-size:12px;font-weight:600;letter-spacing:1px;cursor:pointer;white-space:nowrap;}
+.ami-search-btn:hover{background:var(--olive-dark);}
+.ami-search-clear{font-size:12px;color:var(--danger);text-decoration:none;padding:6px 12px;border:1px solid rgba(184,50,50,.3);border-radius:var(--rsm);}
 
-/* ── Results wrapper ── */
-#changelist .results, .results {
-  background: var(--white); border-radius: var(--r);
-  border: 1px solid var(--stone); box-shadow: var(--shadow); overflow: hidden; width: 100%;
+/* Divider */
+.ami-toolbar-divider{width:1px;height:28px;background:var(--stone);flex-shrink:0;}
+
+/* Filter chips wrapper */
+#ami-filter-chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1;}
+
+/* Each chip */
+.ami-chip{
+  position:relative;display:inline-block;
+}
+.ami-chip-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:7px 13px;border:1.5px solid var(--stone);border-radius:40px;
+  font-family:var(--fb);font-size:12px;font-weight:500;color:var(--text2);
+  background:var(--white);cursor:pointer;transition:all .15s;white-space:nowrap;
+  user-select:none;
+}
+.ami-chip-btn:hover{border-color:var(--olive);color:var(--olive);background:rgba(75,103,45,.04);}
+.ami-chip-btn.active{border-color:var(--olive);background:rgba(75,103,45,.1);color:var(--olive);font-weight:600;}
+.ami-chip-arrow{font-size:8px;opacity:.5;transition:transform .15s;}
+.ami-chip.open .ami-chip-arrow{transform:rotate(180deg);}
+.ami-chip-active-val{
+  font-size:10px;font-weight:700;
+  background:var(--olive);color:var(--sage);
+  border-radius:20px;padding:1px 7px;
 }
 
-/* ── Table ── */
-#result_list {
-  width: 100%; border-collapse: collapse; font-size: 13px; table-layout: auto;
+/* Dropdown */
+.ami-chip-dropdown{
+  display:none;position:absolute;top:calc(100% + 6px);left:0;
+  min-width:170px;max-height:280px;overflow-y:auto;
+  background:var(--white);border:1.5px solid var(--stone);
+  border-radius:var(--rsm);box-shadow:0 8px 24px rgba(26,28,20,.13);
+  z-index:600;
 }
-#result_list thead th {
-  padding: 11px 14px; text-align: left;
-  font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
-  color: var(--sage); background: var(--olive); border-bottom: none; white-space: nowrap;
+.ami-chip-dropdown::-webkit-scrollbar{width:3px;}
+.ami-chip-dropdown::-webkit-scrollbar-thumb{background:rgba(75,103,45,.2);border-radius:3px;}
+.ami-chip.open .ami-chip-dropdown{display:block;}
+.ami-chip-dropdown a{
+  display:block;padding:9px 15px;font-size:13px;color:var(--text2);
+  text-decoration:none;border-bottom:1px solid rgba(26,28,20,.05);
+  transition:background .1s;white-space:nowrap;
 }
-#result_list thead th:first-child { border-radius: 0; }
-#result_list thead th a { color: var(--sage); text-decoration: none; display:inline-flex; align-items:center; gap:4px; }
-#result_list thead th a:hover { opacity: .85; }
-#result_list thead th.sorted { background: var(--olive-dark); }
-#result_list thead th.action-checkbox-column { width: 40px; text-align: center; }
+.ami-chip-dropdown a:last-child{border-bottom:none;}
+.ami-chip-dropdown a:hover{background:rgba(75,103,45,.06);color:var(--olive);}
+.ami-chip-dropdown a.is-selected{
+  background:rgba(75,103,45,.1);color:var(--olive);font-weight:600;
+}
+.ami-chip-dropdown a.is-selected::before{content:'✓ ';}
 
-#result_list tbody tr { transition: background .12s; }
-#result_list tbody tr:nth-child(even) { background: rgba(75,103,45,.02); }
-#result_list tbody tr:hover td { background: rgba(75,103,45,.04)!important; }
-#result_list tbody tr.selected td { background: rgba(75,103,45,.08)!important; }
+/* Hide original Django filter sidebar */
+#changelist-filter{display:none!important;}
 
-#result_list tbody td {
-  padding: 13px 14px; border-bottom: 1px solid rgba(26,28,20,.06);
-  color: var(--text2); vertical-align: middle; max-width: 280px;
-}
-#result_list tbody tr:last-child td { border-bottom: none; }
-#result_list tbody td a { color: var(--olive); font-weight: 600; text-decoration: none; }
-#result_list tbody td a:hover { text-decoration: underline; }
-#result_list tbody td.action-checkbox { text-align: center; width: 40px; }
-input[type="checkbox"] { accent-color: var(--olive); width: 15px; height: 15px; cursor: pointer; }
+/* ── TABLE ── */
+.ami-results-wrap{background:var(--white);border:1px solid var(--stone);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;}
+#result_list{width:100%;border-collapse:collapse;font-size:13px;}
+#result_list thead{background:var(--olive);}
+#result_list thead th{padding:12px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--sage);border-bottom:none;white-space:nowrap;}
+#result_list thead th a{color:var(--sage);text-decoration:none;}
+#result_list thead th.sorted{background:var(--olive-dark);}
+#result_list thead th.action-checkbox-column{width:40px;text-align:center;}
+#result_list tbody tr:nth-child(even) td{background:rgba(75,103,45,.018);}
+#result_list tbody tr:hover td{background:rgba(75,103,45,.05)!important;cursor:pointer;}
+#result_list tbody tr.selected td{background:rgba(75,103,45,.09)!important;}
+#result_list tbody td{padding:13px 14px;border-bottom:1px solid rgba(26,28,20,.06);color:var(--text2);vertical-align:middle;}
+#result_list tbody tr:last-child td{border-bottom:none;}
+#result_list tbody td a{color:var(--olive);font-weight:600;text-decoration:none;}
+#result_list tbody td a:hover{text-decoration:underline;}
+#result_list tbody td.action-checkbox{text-align:center;width:40px;}
+input[type="checkbox"]{accent-color:var(--olive);width:15px;height:15px;cursor:pointer;}
 
-/* ── Actions bar ── */
-.actions {
-  display: flex; align-items: center; gap: 10px; padding: 10px 16px;
-  background: rgba(75,103,45,.04); border-bottom: 1px solid var(--stone); flex-wrap: wrap;
-}
-.actions label { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text3); }
-.actions select {
-  padding: 7px 12px; border: 1.5px solid var(--stone); border-radius: var(--rsm);
-  font-family: var(--fb); font-size: 13px; color: var(--text); background: var(--white); outline: none;
-}
-.actions button[type="submit"] {
-  padding: 7px 18px; border: 1.5px solid var(--stone); border-radius: 40px; font-family: var(--fb);
-  font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
-  background: var(--white); color: var(--text2); cursor: pointer; transition: .2s;
-}
-.actions button:hover { background: var(--parchment); color: var(--olive); border-color: rgba(75,103,45,.3); }
-.action-counter { font-size: 12px; color: var(--text3); padding: 4px 10px; background: rgba(75,103,45,.06); border-radius: 20px; }
+/* Actions */
+.actions{display:flex;align-items:center;gap:10px;padding:10px 16px;background:rgba(75,103,45,.04);border-bottom:1px solid var(--stone);flex-wrap:wrap;border-radius:var(--r) var(--r) 0 0;}
+.actions label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3);}
+.actions select{padding:7px 12px;border:1.5px solid var(--stone);border-radius:var(--rsm);font-family:var(--fb);font-size:13px;color:var(--text);background:var(--white);outline:none;}
+.actions button[type="submit"]{padding:7px 18px;border:1.5px solid var(--stone);border-radius:40px;font-family:var(--fb);font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;background:var(--white);color:var(--text2);cursor:pointer;transition:.2s;}
+.actions button:hover{background:var(--parchment);color:var(--olive);}
+.action-counter{font-size:12px;color:var(--text3);padding:4px 10px;background:rgba(75,103,45,.06);border-radius:20px;}
 
-/* ── Pagination wrapper ── */
-.changelist-footer { padding: 12px 18px; border-top: 1px solid var(--stone); }
-/* paginator_number renders <a> and <span> directly */
-.paginator, p.paginator { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:0; font-size:13px; }
-.paginator a, .paginator .this-page, .paginator span.this-page {
-  display:inline-flex; align-items:center; justify-content:center;
-  min-width:32px; height:32px; padding:0 10px; border-radius:8px;
-  font-size:13px; font-weight:500; text-decoration:none; transition:.15s;
-  border: 1px solid var(--stone); background: var(--white); color: var(--text2);
-}
-.paginator a:hover { background: var(--parchment); color: var(--olive); border-color: rgba(75,103,45,.3); }
-.paginator .this-page, .paginator span.this-page {
-  background: var(--olive); color: var(--sage); border-color: var(--olive); font-weight: 700;
-}
-.paginator .end { display:none; }
+/* Pagination */
+.changelist-footer{padding:12px 18px;border-top:1px solid var(--stone);}
+p.paginator{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin:0;}
+p.paginator a,p.paginator .this-page{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:32px;padding:0 10px;border-radius:8px;font-size:13px;font-weight:500;text-decoration:none;transition:.15s;border:1px solid var(--stone);background:var(--white);color:var(--text2);}
+p.paginator a:hover{background:var(--parchment);color:var(--olive);}
+p.paginator .this-page{background:var(--olive);color:var(--sage);border-color:var(--olive);font-weight:700;}
+p.paginator .end,p.paginator .showall{display:none;}
 
-/* ── Object tools ── */
-ul.object-tools {
-  list-style: none; padding: 0; margin: 0 0 16px;
-  display: flex; gap: 8px; justify-content: flex-end;
-}
-ul.object-tools a {
-  display: inline-flex; align-items: center; gap: 6px; padding: 9px 22px; border-radius: 40px;
-  font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase;
-  text-decoration: none; background: linear-gradient(135deg, var(--olive-dark), var(--olive));
-  color: var(--sage)!important; box-shadow: 0 2px 8px rgba(75,103,45,.25); transition: all .2s;
-}
-ul.object-tools a:hover { box-shadow: 0 4px 14px rgba(75,103,45,.4); transform: translateY(-1px); }
+/* Add button */
+.ami-btn-add{display:inline-flex;align-items:center;padding:11px 26px;background:linear-gradient(135deg,var(--olive-dark),var(--olive));color:var(--sage);border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;text-decoration:none;box-shadow:0 2px 10px rgba(75,103,45,.3);transition:all .2s;}
+.ami-btn-add:hover{box-shadow:0 4px 18px rgba(75,103,45,.45);transform:translateY(-1px);color:var(--sage);}
 
-/* ── Visually hidden (accessibility) ── */
-.visually-hidden {
-  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
-}
+/* Empty state */
+.ami-empty-state{text-align:center;padding:72px 20px;background:var(--white);border:1px solid var(--stone);border-radius:var(--r);box-shadow:var(--shadow);}
+.ami-empty-icon{font-size:52px;margin-bottom:16px;opacity:.15;}
+.ami-empty-title{font-family:var(--fd);font-size:22px;font-weight:300;color:var(--text3);margin-bottom:8px;}
+.ami-empty-sub{font-size:13px;color:var(--text4);margin-bottom:24px;}
+.ami-add-first{display:inline-flex;align-items:center;gap:8px;padding:12px 28px;background:linear-gradient(135deg,var(--olive-dark),var(--olive));color:var(--sage);border-radius:40px;font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;text-decoration:none;}
+
+/* Object tools */
+ul.object-tools{list-style:none;padding:0;margin:0 0 16px;display:flex;gap:8px;justify-content:flex-end;}
+ul.object-tools a{display:inline-flex;align-items:center;gap:6px;padding:9px 22px;border-radius:40px;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;text-decoration:none;background:linear-gradient(135deg,var(--olive-dark),var(--olive));color:var(--sage)!important;box-shadow:0 2px 8px rgba(75,103,45,.25);transition:all .2s;}
+ul.object-tools a:hover{box-shadow:0 4px 14px rgba(75,103,45,.4);transform:translateY(-1px);}
 </style>
 {% endblock %}
 
@@ -159,80 +159,186 @@ ul.object-tools a:hover { box-shadow: 0 4px 14px rgba(75,103,45,.4); transform: 
   </div>
   <div class="ami-page-actions">
     {% if has_add_permission %}
-    <a href="{% url cl.opts|admin_urlname:'add' %}"
-       style="background:linear-gradient(135deg,var(--olive-dark),var(--olive));color:var(--sage);padding:11px 26px;border-radius:40px;font-family:var(--fb);font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;text-decoration:none;display:inline-flex;align-items:center;gap:8px;box-shadow:0 2px 10px rgba(75,103,45,.3);transition:all .2s;"
-       onmouseover="this.style.boxShadow='0 4px 18px rgba(75,103,45,.45)';this.style.transform='translateY(-1px)'"
-       onmouseout="this.style.boxShadow='0 2px 10px rgba(75,103,45,.3)';this.style.transform='none'">
-      + Thêm {{ cl.opts.verbose_name }}
+    <a href="{% url cl.opts|admin_urlname:'add' %}" class="ami-btn-add">
+      Thêm {{ cl.opts.verbose_name }}
     </a>
     {% endif %}
   </div>
 </div>
 
 <div id="content-main">
-  <!-- Search -->
-  {% block search %}{% search_form cl %}{% endblock %}
 
-  <div class="module{% if cl.has_filters %} filtered{% endif %}" id="changelist">
-    <div class="changelist-form-container">
+  <!-- TOOLBAR ROW: search + filter chips ngang hàng -->
+  <div id="ami-toolbar-row">
 
-      <!-- Filter sidebar -->
-      {% block filters %}
-      {% if cl.has_filters %}
-      <div id="changelist-filter">
-        <h2>Bộ lọc</h2>
-        {% for spec in cl.filter_specs %}{% admin_list_filter cl spec %}{% endfor %}
+    <!-- Search -->
+    {% block search %}{% search_form cl %}{% endblock %}
+
+    <!-- Divider -->
+    {% if cl.has_filters %}<div class="ami-toolbar-divider"></div>{% endif %}
+
+    <!-- Filter chips — render Django filter HTML ẩn, JS đọc và tạo chip -->
+    {% if cl.has_filters %}
+    <div id="ami-filter-chips">
+      <!-- Placeholder chips — JS sẽ điền vào -->
+    </div>
+
+    <!-- Hidden filter sidebar — JS đọc dữ liệu từ đây -->
+    <div id="ami-filter-source" style="display:none;">
+      {% for spec in cl.filter_specs %}
+        {% admin_list_filter cl spec %}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- TABLE AREA -->
+  <div>
+    {% block date_hierarchy %}{% if cl.date_hierarchy %}{% date_hierarchy cl %}{% endif %}{% endblock %}
+
+    <form id="changelist-form" method="post"
+          {% if cl.formset and cl.formset.is_multipart %}enctype="multipart/form-data"{% endif %} novalidate>
+      {% csrf_token %}
+      {% if cl.formset %}<div>{{ cl.formset.management_form }}</div>{% endif %}
+
+      {% block result_list %}
+      {% if cl.result_count %}
+      <div class="ami-results-wrap">
+        {% if action_form and actions_on_top and cl.show_admin_actions %}{% admin_actions %}{% endif %}
+        {% result_list cl %}
+        {% if action_form and actions_on_bottom and cl.show_admin_actions %}{% admin_actions %}{% endif %}
       </div>
       {% endif %}
       {% endblock %}
 
-      <!-- Table + form -->
-      <div style="flex:1;min-width:0;overflow:hidden;">
-        {% block date_hierarchy %}{% if cl.date_hierarchy %}{% date_hierarchy cl %}{% endif %}{% endblock %}
+      {% block pagination %}
+      {% if cl.result_count %}
+      <div class="changelist-footer">{% pagination cl %}</div>
+      {% endif %}
+      {% endblock %}
+    </form>
 
-        <form id="changelist-form" method="post"
-              {% if cl.formset and cl.formset.is_multipart %}enctype="multipart/form-data"{% endif %} novalidate>
-          {% csrf_token %}
-          {% if cl.formset %}<div>{{ cl.formset.management_form }}</div>{% endif %}
-
-          {% block result_list %}
-          <div class="results">
-            {% if action_form and actions_on_top and cl.show_admin_actions %}{% admin_actions %}{% endif %}
-            {% result_list cl %}
-            {% if action_form and actions_on_bottom and cl.show_admin_actions %}{% admin_actions %}{% endif %}
-          </div>
-          {% endblock %}
-
-          {% block pagination %}
-          {% if cl.result_count %}
-          <div class="changelist-footer">{% pagination cl %}</div>
-          {% endif %}
-          {% endblock %}
-        </form>
-
-        <!-- Empty state (no results) -->
-        {% if cl.result_count == 0 %}
-        <div style="text-align:center;padding:72px 20px;background:var(--white);border:1px solid var(--stone);border-radius:var(--r);box-shadow:var(--shadow);margin-top:{% if cl.has_filters %}0{% else %}-1px{% endif %};">
-          <div style="font-size:52px;margin-bottom:16px;opacity:.15;">🌿</div>
-          <p style="font-family:var(--fd);font-size:24px;font-weight:300;color:var(--text3);margin-bottom:8px;">
-            {% if cl.query %}Không tìm thấy kết quả{% else %}Chưa có dữ liệu{% endif %}
-          </p>
-          <p style="font-size:13px;color:var(--text4);margin-bottom:24px;">
-            {% if cl.query %}Không tìm thấy {{ cl.opts.verbose_name_plural }} nào khớp với "<strong>{{ cl.query }}</strong>"
-            {% else %}Chưa có {{ cl.opts.verbose_name_plural }} nào. Hãy thêm bản ghi đầu tiên!{% endif %}
-          </p>
-          {% if has_add_permission and not cl.query %}
-          <a href="{% url cl.opts|admin_urlname:'add' %}"
-             style="display:inline-flex;align-items:center;gap:8px;padding:12px 28px;background:linear-gradient(135deg,var(--olive-dark),var(--olive));color:var(--sage);border-radius:40px;font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;text-decoration:none;box-shadow:0 2px 10px rgba(75,103,45,.3);">
-            + Thêm {{ cl.opts.verbose_name }} đầu tiên
-          </a>
-          {% endif %}
-        </div>
-        {% endif %}
-
-      </div>
+    {% if cl.result_count == 0 %}
+    <div class="ami-empty-state">
+      <div class="ami-empty-icon">🌿</div>
+      <p class="ami-empty-title">{% if cl.query %}Không tìm thấy kết quả{% else %}Chưa có dữ liệu{% endif %}</p>
+      <p class="ami-empty-sub">{% if cl.query %}Không tìm thấy "<strong>{{ cl.query }}</strong>"{% else %}Chưa có {{ cl.opts.verbose_name_plural }} nào.{% endif %}</p>
+      {% if has_add_permission and not cl.query %}
+      <a href="{% url cl.opts|admin_urlname:'add' %}" class="ami-add-first">Thêm {{ cl.opts.verbose_name }} đầu tiên</a>
+      {% endif %}
     </div>
+    {% endif %}
   </div>
-</div>
 
+</div><!-- /content-main -->
+
+<script>
+(function() {
+  // ── Build filter chips từ Django's hidden filter HTML ──
+  var source = document.getElementById('ami-filter-source');
+  var chipsWrap = document.getElementById('ami-filter-chips');
+  if (!source || !chipsWrap) return;
+
+  // Django renders <details> or <ul> for each filter spec
+  // Lấy từng filter group (details element)
+  var filterGroups = source.querySelectorAll('details, ul');
+
+  // Nếu không có details, thử lấy theo h3 + ul pattern
+  var allLinks = source.querySelectorAll('a');
+  if (allLinks.length === 0) return;
+
+  // Parse filter groups: mỗi <details> là 1 filter
+  var details = source.querySelectorAll('details');
+
+  if (details.length > 0) {
+    // Django 4.x dùng <details> tag
+    details.forEach(function(det) {
+      var title = det.querySelector('summary');
+      var titleText = title ? title.textContent.trim().replace(/^\s*By\s*/i, '') : 'Lọc';
+      var links = det.querySelectorAll('a');
+      var activeLink = det.querySelector('li.selected a');
+      var activeText = activeLink ? activeLink.textContent.trim() : null;
+
+      buildChip(titleText, links, activeText, activeLink);
+    });
+  } else {
+    // Fallback: parse h3 + ul pattern (older Django)
+    var h3s = source.querySelectorAll('h3');
+    h3s.forEach(function(h3) {
+      var titleText = h3.textContent.trim().replace(/^\s*By\s*/i, '');
+      var ul = h3.nextElementSibling;
+      if (!ul || ul.tagName !== 'UL') return;
+      var links = ul.querySelectorAll('a');
+      var activeEl = ul.querySelector('li.selected a');
+      var activeText = activeEl ? activeEl.textContent.trim() : null;
+
+      buildChip(titleText, links, activeText, activeEl);
+    });
+  }
+
+  function buildChip(title, links, activeText, activeEl) {
+    if (links.length === 0) return;
+
+    var chip = document.createElement('div');
+    chip.className = 'ami-chip';
+
+    // Button
+    var btn = document.createElement('div');
+    btn.className = 'ami-chip-btn' + (activeText && activeText !== 'Tất cả' && activeText !== 'All' ? ' active' : '');
+    btn.innerHTML = '<span>' + title + '</span>';
+    if (activeText && activeText !== 'Tất cả' && activeText !== 'All') {
+      btn.innerHTML += '<span class="ami-chip-active-val">' + activeText + '</span>';
+    }
+    btn.innerHTML += '<span class="ami-chip-arrow">▼</span>';
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      // Close others
+      document.querySelectorAll('.ami-chip.open').forEach(function(c) {
+        if (c !== chip) c.classList.remove('open');
+      });
+      chip.classList.toggle('open');
+    });
+
+    // Dropdown
+    var dropdown = document.createElement('div');
+    dropdown.className = 'ami-chip-dropdown';
+    links.forEach(function(a) {
+      var item = document.createElement('a');
+      item.href = a.href;
+      item.textContent = a.textContent.trim();
+      // Detect selected: parent li has class 'selected'
+      var li = a.parentElement;
+      if (li && li.classList.contains('selected')) {
+        item.className = 'is-selected';
+      }
+      dropdown.appendChild(item);
+    });
+
+    chip.appendChild(btn);
+    chip.appendChild(dropdown);
+    chipsWrap.appendChild(chip);
+  }
+
+  // Close on outside click
+  document.addEventListener('click', function() {
+    document.querySelectorAll('.ami-chip.open').forEach(function(c) {
+      c.classList.remove('open');
+    });
+  });
+
+  // Row click to navigate
+  document.querySelectorAll('#result_list tbody tr').forEach(function(row) {
+    var link = row.querySelector('td:not(.action-checkbox) a');
+    if (!link) return;
+    row.addEventListener('click', function(e) {
+      if (e.target.closest('.action-checkbox') || e.target.tagName === 'A' || e.target.tagName === 'INPUT') return;
+      link.click();
+    });
+  });
+
+})();
+</script>
+
+<script src="{% static 'admin/js/ami_admin.js' %}" defer></script>
 {% endblock %}

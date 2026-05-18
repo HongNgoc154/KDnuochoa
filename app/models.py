@@ -248,6 +248,11 @@ class TaiKhoan(models.Model):
     DiemTichLuy = models.IntegerField(default=0)
     TongChiTieu = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     HangThanhVien = models.CharField(max_length=50, default='Silver')
+    AnhDaiDien = models.ImageField(
+        upload_to='avatars/',
+        null=True,
+        blank=True
+    )
 
     class Meta:
         managed = False
