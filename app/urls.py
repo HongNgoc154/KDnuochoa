@@ -53,6 +53,7 @@ urlpatterns = [
     path('admin-orders/',                  views.admin_orders_view,         name='admin-orders'),
     path('api/admin/update-order-status/', views.admin_update_order_status, name='admin-update-order-status'),
     path('api/admin/order-detail/',        views.admin_order_detail_api,    name='admin-order-detail'),
+    path('api/admin/new-orders-count/', views.admin_new_orders_count, name='admin-new-orders-count'),
 
     # ── Admin helper: Thuộc tính & Giá trị thuộc tính ──
     path('api/admin/thuoc-tinh/',          views.api_thuoc_tinh_list,       name='api-thuoc-tinh'),

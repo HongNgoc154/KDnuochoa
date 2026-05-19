@@ -792,14 +792,18 @@ body {
 /* ═══════════════════════════════════════════════════════════
    MODALS
    ═══════════════════════════════════════════════════════════ */
+.modal-overlay[hidden] { display: none !important; }
 .modal-overlay {
-  position: fixed; inset: 0; z-index: 500;
-  background: rgba(20,24,12,.55);
+  display: flex;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(26,28,20,.55);
   backdrop-filter: blur(8px);
-  display: grid; place-items: center;
+  align-items: center;
+  justify-content: center;
   padding: 24px;
 }
-.modal-overlay[hidden] { display: none; }
 .modal-card {
   background: var(--surface);
   border-radius: 24px;

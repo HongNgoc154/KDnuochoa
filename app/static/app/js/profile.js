@@ -184,8 +184,14 @@ function openCancelModal(orderId) {
   modal.hidden = false;
 }
 
+// Đặt SAU hàm openProfileOrderModal, THAY cho đoạn cũ
 document.getElementById('orderModalClose')?.addEventListener('click', () => {
   document.getElementById('orderModal').hidden = true;
+});
+document.getElementById('orderModal')?.addEventListener('click', (e) => {
+  if (e.target === document.getElementById('orderModal')) {
+    document.getElementById('orderModal').hidden = true;
+  }
 });
 document.getElementById('cancelModalClose')?.addEventListener('click', () => {
   document.getElementById('cancelModal').hidden = true;
@@ -839,18 +845,20 @@ function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 })();
 
 const STATUS_STEP_MAP = {
-  "Chờ xác nhận": 0,
-  "Đã xác nhận":  1,
-  "Đang giao":    2,
-  "Hoàn tất":     3,
-  "Đã hủy":       -1,
-  "Đã giao":      3,
-  "Đã thanh toán": 1,
+  "Chờ xác nhận":        0,
+  "Đã xác nhận":         1,
+  "Đang giao":           2,
+  "Khách đã nhận hàng":  3,
+  "Hoàn tất":            4,
+  "Đã hủy":             -1,
+  "Đã giao":             3,
+  "Đã thanh toán":       1,
 };
 const STATUS_CSS = {
   "Chờ xác nhận": "status-processing",
   "Đã xác nhận":  "status-shipped",
   "Đang giao":    "status-shipped",
+  "Khách đã nhận hàng": "status-shipped",
   "Hoàn tất":     "status-delivered",
   "Đã hủy":       "status-cancelled",
   "Đã giao":      "status-delivered",
@@ -859,11 +867,12 @@ const STATUS_LABEL_MAP = {
   "Chờ xác nhận": "Chờ xác nhận",
   "Đã xác nhận":  "Đã xác nhận",
   "Đang giao":    "Đang giao",
+  "Khách đã nhận hàng": "Chờ admin hoàn tất",
   "Hoàn tất":     "Hoàn tất",
   "Đã hủy":       "Đã hủy",
   "Đã giao":      "Đã giao",
 };
-const ORDER_STEPS = ["Đặt hàng", "Xác nhận", "Đang giao", "Hoàn tất"];
+const ORDER_STEPS = ["Đặt hàng", "Xác nhận", "Đang giao", "Đã nhận", "Hoàn tất"];
  
 function buildProgressHTML(step, status) {
   if (status === "Đã hủy") {
@@ -892,7 +901,7 @@ function buildOrderCard(order) {
   if (order.status === "Chờ xác nhận") {
     btns += `<button class="btn-order btn-order-cancel" data-order-id="${order.id}">Hủy đơn</button>`;
   }
-  if (order.status === "Đang giao") {
+  if (order.status === "Đã xác nhận" || order.status === "Đang giao") {
     btns += `<button class="btn-order btn-order-received" data-order-id="${order.id}">✓ Đã nhận được hàng</button>`;
   }
  
@@ -988,8 +997,14 @@ function attachOrderEvents(container, ordersData) {
     const receivedBtn = e.target.closest('.btn-order-received');
  
     if (detailBtn) {
-      const order = ordersData.find(o => String(o.id) === String(detailBtn.dataset.orderId));
-      if (order) openProfileOrderModal(order);
+      const orderId = detailBtn.dataset.orderId;
+      const order = ordersData.find(o => String(o.id) === String(orderId));
+      if (order) {
+        // Đồng bộ status mới nhất từ DOM vào cache
+        const cardStatus = detailBtn.closest('.order-card')?.dataset.status;
+        if (cardStatus) order.status = cardStatus;
+        openProfileOrderModal(order);
+      }
     }
     if (cancelBtn) openCancelOrderModal(cancelBtn.dataset.orderId);
     if (receivedBtn) await confirmReceived(receivedBtn.dataset.orderId, receivedBtn);
@@ -1044,7 +1059,24 @@ function openProfileOrderModal(order) {
     <p class="od-section-title">Sản phẩm</p>
     <div class="order-detail-items">${itemsHTML}</div>
     <div class="od-totals">
-      <div class="od-row"><span>Thanh toán</span><span>${(order.payment || 'COD').toUpperCase()}</span></div>
+      // Sau dòng </div> của od-totals, thêm:
+        ${order.status === 'Đang giao' ? `
+          <div style="margin-top:16px;text-align:right;">
+            <button class="btn-order-received" 
+                    onclick="confirmReceived('${order.id}', this); document.getElementById('orderModal').hidden=true;"
+                    style="padding:11px 28px;">
+              ✓ Xác nhận đã nhận hàng
+            </button>
+          </div>` : ''}
+        ${order.status === 'Chờ xác nhận' ? `
+          <div style="margin-top:16px;text-align:right;">
+            <button class="btn-order btn-order-cancel" 
+                    onclick="document.getElementById('orderModal').hidden=true; openCancelOrderModal('${order.id}');">
+              Hủy đơn
+            </button>
+          </div>` : ''}
+        ;
+      <div class="od-row"><span>Trạng thái thanh toán</span><span>${order.payment_status || '—'}</span></div>
       <div class="od-row total"><span>Tổng cộng</span><span>${order.total}</span></div>
     </div>`;
  
@@ -1112,8 +1144,8 @@ async function confirmReceived(orderId, btn) {
     const data = await res.json();
  
     if (data.ok) {
-      updateOrderCardUI(orderId, 'Hoàn tất');
-      if (typeof showToast === 'function') showToast(data.message || 'Đơn hàng hoàn tất. Cảm ơn bạn! 🎉');
+      updateOrderCardUI(orderId, data.new_status || 'Khách đã nhận hàng');
+      if (typeof showToast === 'function') showToast(data.message || 'Đã xác nhận nhận hàng. Cảm ơn bạn! 🎉');
     } else {
       if (typeof showToast === 'function') showToast(data.message || 'Có lỗi xảy ra.');
       btn.disabled = false;
@@ -1152,7 +1184,7 @@ function updateOrderCardUI(orderId, newStatus) {
     if (newStatus === 'Chờ xác nhận') {
       html += `<button class="btn-order btn-order-cancel" data-order-id="${orderId}">Hủy đơn</button>`;
     }
-    if (newStatus === 'Đang giao') {
+    if (newStatus === 'Đã xác nhận' || newStatus === 'Đang giao') {
       html += `<button class="btn-order btn-order-received" data-order-id="${orderId}">✓ Đã nhận được hàng</button>`;
     }
     footer.innerHTML = html;

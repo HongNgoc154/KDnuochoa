@@ -5,6 +5,7 @@ from django import forms
 from django.utils.safestring import mark_safe
 from django.utils import timezone
 import nested_admin
+from django.db import connection
 from django import forms as django_forms
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
@@ -1154,17 +1155,28 @@ class KhuyenMaiTaiKhoanAdmin(admin.ModelAdmin):
 @admin.register(TaiKhoan, site=admin_site)
 class TaiKhoanAdmin(admin.ModelAdmin):
     change_form_template = "admin/taikhoan_change_form.html"
- 
-    # Cột hiển thị: Email · Họ tên · SĐT · Hạng · Toggle trạng thái · Ngày tạo
-    list_display   = ('Email', 'ten_dang_nhap', 'SDT',
-                      'hang_badge', 'trang_thai_toggle', 'NgayTao')
-    list_display_links = ('Email', 'ten_dang_nhap')
-    search_fields  = ('TenDangNhap', 'Username', 'Email', 'SDT')
-    list_filter    = ('TrangThai_TaiKhoan', 'HangThanhVien', 'LoaiTaiKhoan')
-    ordering       = ('-NgayTao',)
-    list_per_page  = 25
- 
-    # ── Context cho form ──
+    add_form_template    = "admin/taikhoan_change_form.html"
+
+    list_display       = ('email_with_avatar', 'ten_dang_nhap', 'SDT', 'hang_badge', 'trang_thai_toggle', 'NgayTao')
+    # list_display_links = ('email_with_avatar', 'ten_dang_nhap')
+    search_fields      = ('TenDangNhap', 'Username', 'Email', 'SDT')
+    list_filter        = ('TrangThai_TaiKhoan', 'LoaiTaiKhoan', 'HangThanhVien')
+    ordering           = ('-NgayTao',)
+    list_per_page      = 25
+    actions            = ['action_lock', 'action_unlock']
+
+    # ── Actions ──────────────────────────────────────────────────
+    def action_lock(self, request, queryset):
+        queryset.update(TrangThai_TaiKhoan='locked')
+        self.message_user(request, f'Đã khóa {queryset.count()} tài khoản.')
+    action_lock.short_description = 'Khóa tài khoản đã chọn'
+
+    def action_unlock(self, request, queryset):
+        queryset.update(TrangThai_TaiKhoan='active')
+        self.message_user(request, f'Đã mở khóa {queryset.count()} tài khoản.')
+    action_unlock.short_description = 'Mở khóa tài khoản đã chọn'
+
+    # ── Context cho form chi tiết ─────────────────────────────────
     def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
         extra_context = extra_context or {}
         if object_id:
@@ -1185,112 +1197,158 @@ class TaiKhoanAdmin(admin.ModelAdmin):
             extra_context['so_don_hang'] = 0
             extra_context['vouchers']    = []
         return super().changeform_view(request, object_id, form_url, extra_context)
- 
-    # ── Save — lưu đúng tất cả field từ form ──
+
+    # ── Save — ghi LogEntry ───────────────────────────────────────
     def save_model(self, request, obj, form, change):
-        # Lấy các field từ POST
-        for field in ('TenDangNhap', 'Username', 'Email', 'SDT',
-                      'LoaiTaiKhoan', 'HangThanhVien', 'DiemTichLuy',
-                      'TrangThai_TaiKhoan'):
-            val = request.POST.get(field, '').strip()
-            if val:
-                setattr(obj, field, val)
- 
-        # DiemTichLuy convert sang int
-        try:
-            obj.DiemTichLuy = int(request.POST.get('DiemTichLuy', obj.DiemTichLuy or 0))
-        except (ValueError, TypeError):
-            pass
- 
-        obj.save()
-        self.log_change(request, obj, f'Cập nhật thông tin tài khoản')
- 
-    # ── FK-safe delete ──
+        old_status = None
+        if change and obj.pk:
+            try:
+                old_status = TaiKhoan.objects.filter(pk=obj.pk).values_list(
+                    'TrangThai_TaiKhoan', flat=True
+                ).first()
+            except Exception:
+                pass
+
+        super().save_model(request, obj, form, change)
+
+        new_status = obj.TrangThai_TaiKhoan
+        if old_status and old_status != new_status:
+            from django.contrib.admin.models import LogEntry, CHANGE
+            from django.contrib.contenttypes.models import ContentType
+            LogEntry.objects.log_action(
+                user_id         = request.user.pk,
+                content_type_id = ContentType.objects.get_for_model(obj).pk,
+                object_id       = obj.pk,
+                object_repr     = str(obj),
+                action_flag     = CHANGE,
+                change_message  = f'Đổi trạng thái: {old_status} → {new_status}',
+            )
+            from django.contrib import messages as dj_msg
+            lbl = 'Đã khóa' if new_status == 'locked' else 'Đã mở khóa'
+            dj_msg.success(request, f'{lbl} tài khoản {obj.TenDangNhap}.')
+
+    # ── Xóa ──────────────────────────────────────────────────────
     def delete_model(self, request, obj):
-        """Xóa theo thứ tự để tránh FK constraint SQL Server."""
-        from .models import (KhachHang, DonHang, DonHangChiTiet,
-                             GiaoHang, KhuyenMaiTaiKhoan as KMTK,
-                             HoiDap, DanhGia)
-        try:
-            customer = KhachHang.objects.filter(id_TaiKhoan=obj).first()
-            if customer:
-                orders = DonHang.objects.filter(id_KhachHang=customer)
-                for order in orders:
-                    DonHangChiTiet.objects.filter(id_DonHang=order).delete()
-                    GiaoHang.objects.filter(id_DonHang=order).delete()
-                orders.delete()
-                customer.delete()
-        except Exception:
-            pass
-        try:
-            KMTK.objects.filter(id_TaiKhoan=obj).delete()
-        except Exception:
-            pass
-        try:
-            HoiDap.objects.filter(id_TaiKhoan=obj).delete()
-        except Exception:
-            pass
-        try:
-            DanhGia.objects.filter(id_TaiKhoan=obj).delete()
-        except Exception:
-            pass
-        obj.delete()
- 
+        self._do_delete(obj)
+
     def delete_queryset(self, request, queryset):
         for obj in queryset:
-            self.delete_model(request, obj)
- 
-    # ── Toggle trạng thái — AJAX endpoint ──
-    def get_urls(self):
-        from django.urls import path
-        urls = super().get_urls()
-        custom = [
-            path('toggle/<int:pk>/',
-                 self.admin_site.admin_view(self.toggle_view),
-                 name='taikhoan_toggle'),
-        ]
-        return custom + urls
- 
-    def toggle_view(self, request, pk):
-        """
-        AJAX toggle trạng thái tài khoản.
-        Chỉ cho phép: active ↔ locked.
-        Không cho phép tắt tài khoản admin/staff qua toggle.
-        """
-        from django.http import JsonResponse
-        from django.views.decorators.http import require_POST
-        if request.method != 'POST':
-            return JsonResponse({'ok': False, 'msg': 'Method not allowed'}, status=405)
- 
-        try:
-            acc = TaiKhoan.objects.get(pk=pk)
-        except TaiKhoan.DoesNotExist:
-            return JsonResponse({'ok': False, 'msg': 'Không tìm thấy tài khoản'}, status=404)
- 
-        # Bảo vệ: không cho toggle tài khoản admin/staff qua nút này
-        if acc.LoaiTaiKhoan in ('admin', 'staff'):
-            return JsonResponse({
-                'ok': False,
-                'msg': 'Không thể khóa tài khoản Admin/Staff qua toggle. '
-                       'Vui lòng vào trang chi tiết để thay đổi.'
-            }, status=403)
- 
-        # Chỉ toggle giữa active ↔ locked
-        if acc.TrangThai_TaiKhoan == 'active':
-            acc.TrangThai_TaiKhoan = 'locked'
-            new_state = 'locked'
-        else:
-            acc.TrangThai_TaiKhoan = 'active'
-            new_state = 'active'
- 
-        acc.save(update_fields=['TrangThai_TaiKhoan'])
-        self.log_change(
-            request, acc,
-            f'Toggle trạng thái → {new_state}'
-        )
-        return JsonResponse({'ok': True, 'new_state': new_state})
- 
-    # ── List display methods ──
+            self._do_delete(obj)
+
+    def response_delete(self, request, obj_display, obj_id):
+        from django.contrib import messages as dj_msg
+        from django.http import HttpResponseRedirect
+        from django.urls import reverse
+        dj_msg.success(request, f'Đã xóa tài khoản "{obj_display}" thành công.')
+        return HttpResponseRedirect(reverse('myadmin:app_taikhoan_changelist'))
+
+    def _do_delete(self, obj):
+        from django.db import connection
+        pk = obj.pk
+
+        # ── 1. Bảng độc lập ──────────────────────────────────────
+        for table in ('BinhLuan', 'NhanVien', 'PhieuNhap',
+                      'LichSuDiem', 'YeuThich', 'KhuyenMai_TaiKhoan'):
+            with connection.cursor() as c:
+                c.execute(f"DELETE FROM {table} WHERE id_TaiKhoan = %s", [pk])
+
+        # ── 2. HoiDap — self-ref parent_id ───────────────────────
+        # 2a. NULL hoá parent_id của reply do chính user này viết
+        with connection.cursor() as c:
+            c.execute(
+                "UPDATE HoiDap SET parent_id = NULL "
+                "WHERE id_TaiKhoan = %s AND parent_id IS NOT NULL", [pk]
+            )
+        # 2b. Xóa reply (con) của các câu hỏi do user này đặt
+        with connection.cursor() as c:
+            c.execute(
+                "DELETE FROM HoiDap WHERE parent_id IN "
+                "(SELECT id_HoiDap FROM HoiDap WHERE id_TaiKhoan = %s)", [pk]
+            )
+        # 2c. Xóa toàn bộ HoiDap còn lại của user
+        with connection.cursor() as c:
+            c.execute("DELETE FROM HoiDap WHERE id_TaiKhoan = %s", [pk])
+
+        # ── 3. DanhGia — self-ref parent_id ──────────────────────
+        with connection.cursor() as c:
+            c.execute(
+                "UPDATE DanhGia SET parent_id = NULL "
+                "WHERE id_TaiKhoan = %s AND parent_id IS NOT NULL", [pk]
+            )
+        with connection.cursor() as c:
+            c.execute(
+                "DELETE FROM DanhGia WHERE parent_id IN "
+                "(SELECT id_DanhGia FROM DanhGia WHERE id_TaiKhoan = %s)", [pk]
+            )
+        with connection.cursor() as c:
+            c.execute("DELETE FROM DanhGia WHERE id_TaiKhoan = %s", [pk])
+
+        # ── 4. Thu thập id_GiaoHang của user (trực tiếp) ─────────
+        giao_hang_ids = set()
+        with connection.cursor() as c:
+            c.execute(
+                "SELECT id_GiaoHang FROM GiaoHang WHERE id_TaiKhoan = %s", [pk]
+            )
+            for r in c.fetchall():
+                giao_hang_ids.add(r[0])
+
+        # ── 5. Lấy id_KhachHang ──────────────────────────────────
+        id_kh = None
+        with connection.cursor() as c:
+            c.execute(
+                "SELECT id_KhachHang FROM KhachHang WHERE id_TaiKhoan = %s", [pk]
+            )
+            row = c.fetchone()
+            if row:
+                id_kh = row[0]
+
+        if id_kh:
+            # 5a. Thu thập thêm id_GiaoHang từ DonHang của khách
+            with connection.cursor() as c:
+                c.execute(
+                    "SELECT DISTINCT id_GiaoHang FROM DonHang "
+                    "WHERE id_KhachHang = %s AND id_GiaoHang IS NOT NULL", [id_kh]
+                )
+                for r in c.fetchall():
+                    giao_hang_ids.add(r[0])
+
+            # 5b. Xóa ChiTietDonHang
+            with connection.cursor() as c:
+                c.execute(
+                    "DELETE FROM ChiTietDonHang WHERE id_DonHang IN "
+                    "(SELECT id_DonHang FROM DonHang WHERE id_KhachHang = %s)", [id_kh]
+                )
+
+            # 5c. Xóa DonHang (chưa xóa GiaoHang)
+            with connection.cursor() as c:
+                c.execute("DELETE FROM DonHang WHERE id_KhachHang = %s", [id_kh])
+
+            # 5d. Xóa KhachHang
+            with connection.cursor() as c:
+                c.execute("DELETE FROM KhachHang WHERE id_KhachHang = %s", [id_kh])
+
+        # ── 6. NULL hoá MỌI DonHang còn lại trỏ vào GiaoHang ────
+        #    (DonHang của KhachHang khác nhưng dùng GiaoHang của user này)
+        if giao_hang_ids:
+            placeholders = ','.join(['%s'] * len(giao_hang_ids))
+            ids = list(giao_hang_ids)
+            with connection.cursor() as c:
+                c.execute(
+                    f"UPDATE DonHang SET id_GiaoHang = NULL "
+                    f"WHERE id_GiaoHang IN ({placeholders})",
+                    ids
+                )
+            # 6b. Bây giờ mới an toàn xóa GiaoHang
+            with connection.cursor() as c:
+                c.execute(
+                    f"DELETE FROM GiaoHang WHERE id_GiaoHang IN ({placeholders})",
+                    ids
+                )
+
+        # ── 7. Xóa TaiKhoan sau cùng ─────────────────────────────
+        obj.delete()
+
+    # ── List display ─────────────────────────────────────────────
     def ten_dang_nhap(self, obj):
         return format_html(
             '<div style="line-height:1.4;">'
@@ -1300,71 +1358,106 @@ class TaiKhoanAdmin(admin.ModelAdmin):
             obj.TenDangNhap or '—', obj.Username or '—'
         )
     ten_dang_nhap.short_description = "Họ tên"
- 
+
+    def email_with_avatar(self, obj):
+        import hashlib
+        email = (obj.Email or '').strip().lower()
+        initials = (obj.TenDangNhap or email or '?')[0].upper()
+
+        mono_style = (
+            "width:36px;height:36px;border-radius:50%;"
+            "background:linear-gradient(135deg,#4B672D,#7a9e50);"
+            "color:#EBF6C4;font-size:13px;font-weight:700;"
+            "display:inline-flex;align-items:center;justify-content:center;"
+            "flex-shrink:0;font-family:sans-serif;vertical-align:middle;"
+            "border:2px solid rgba(75,103,45,.25);"
+        )
+        wrap_style = (
+            "display:inline-flex;align-items:center;justify-content:center;"
+            "width:36px;height:36px;border-radius:50%;flex-shrink:0;"
+            "overflow:hidden;border:2px solid rgba(75,103,45,.25);"
+            "vertical-align:middle;background:#f0f0f0;"
+        )
+        img_style = (
+            "width:36px;height:36px;object-fit:cover;"
+            "border-radius:50%;display:block;"
+        )
+
+        if email:
+            if email.endswith('@gmail.com'):
+                username = email.split('@')[0]
+                avatar_src = f"https://unavatar.io/gmail/{username}"
+            else:
+                md5 = hashlib.md5(email.encode()).hexdigest()
+                avatar_src = f"https://www.gravatar.com/avatar/{md5}?s=40&d=mp"
+
+            # onerror: thay toàn bộ wrap bằng monogram span
+            onerror = (
+                f"this.parentNode.outerHTML="
+                f"'<span style=&quot;{mono_style}&quot;>{initials}</span>'"
+            )
+            avatar_html = (
+                f'<span style="{wrap_style}" id="av-{hash(email)}">'
+                f'<img src="{avatar_src}" style="{img_style}" onerror="{onerror}">'
+                f'</span>'
+            )
+        else:
+            avatar_html = f'<span style="{mono_style}">?</span>'
+
+        return format_html(
+            '<div style="display:flex;align-items:center;gap:10px;padding:2px 0;">'
+            '{}'
+            '<span style="font-size:13px;color:#1a1c14;">{}</span>'
+            '</div>',
+            mark_safe(avatar_html),
+            email or '—'
+        )
+    email_with_avatar.short_description = "E-Mail"
+
     def hang_badge(self, obj):
         hang = obj.HangThanhVien or 'Member'
-        colors = {
+        cfg  = {
             'Member':   ('#eceff1', '#546e7a', '🥉'),
             'Silver':   ('#e3f2fd', '#1565c0', '🥈'),
             'Gold':     ('#fff8e1', '#f57f17', '🥇'),
             'Platinum': ('#f3e5f5', '#6a1b9a', '💎'),
         }
-        bg, fg, icon = colors.get(hang, ('#f5f5f5', '#616161', ''))
+        bg, fg, icon = cfg.get(hang, ('#f5f5f5', '#616161', ''))
         return format_html(
             '<span style="background:{};color:{};padding:3px 10px;'
             'border-radius:20px;font-size:11px;font-weight:600;">{} {}</span>',
             bg, fg, icon, hang
         )
     hang_badge.short_description = "Hạng"
- 
+
     def trang_thai_toggle(self, obj):
-        """
-        Toggle switch hiển thị trực quan.
-        - Màu xanh = active, màu đỏ = locked
-        - Admin/Staff: hiển thị badge tĩnh, KHÔNG có toggle (bảo vệ)
-        - Customer: có toggle AJAX
-        """
-        is_active = (obj.TrangThai_TaiKhoan or 'active') == 'active'
- 
-        # Bảo vệ admin/staff — không có toggle
-        if obj.LoaiTaiKhoan in ('admin', 'staff'):
-            label = '🛡️ Admin' if obj.LoaiTaiKhoan == 'admin' else '👔 Staff'
+        tt  = (obj.TrangThai_TaiKhoan or 'active').lower()
+        url = f'/admin/app/taikhoan/{obj.pk}/change/'
+        if tt == 'active':
             return mark_safe(
-                f'<span style="background:#f3e5f5;color:#6a1b9a;padding:3px 10px;'
-                f'border-radius:20px;font-size:11px;font-weight:600;">{label}</span>'
+                f'<a href="{url}" title="Đang hoạt động — click để vào form quản lý" '
+                f'style="display:inline-flex;align-items:center;gap:7px;text-decoration:none;">'
+                f'<span style="width:38px;height:22px;background:#2e7d32;border-radius:20px;'
+                f'display:inline-flex;align-items:center;padding:3px;flex-shrink:0;">'
+                f'<span style="width:16px;height:16px;background:#fff;border-radius:50%;'
+                f'margin-left:16px;box-shadow:0 1px 3px rgba(0,0,0,.25);"></span></span>'
+                f'<span style="font-size:11px;color:#2e7d32;font-weight:600;">Hoạt động</span>'
+                f'</a>'
             )
- 
-        checked    = 'checked' if is_active else ''
-        toggle_css = (
-            'display:inline-flex;align-items:center;gap:6px;cursor:pointer;'
-        )
-        switch_css = (
-            'position:relative;width:44px;height:24px;border-radius:12px;'
-            'transition:background .25s;flex-shrink:0;'
-            + ('background:#4B672D;' if is_active else 'background:#ccc;')
-        )
-        knob_css = (
-            'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;'
-            'background:#fff;transition:left .25s;box-shadow:0 1px 3px rgba(0,0,0,.2);'
-            + ('left:23px;' if is_active else 'left:3px;')
-        )
-        label_css = f'font-size:11px;font-weight:600;color:{"#2e7d32" if is_active else "#c62828"};'
-        label_txt  = 'Hoạt động' if is_active else 'Đã khóa'
- 
         return mark_safe(
-            f'<label class="tk-toggle-wrap" style="{toggle_css}" '
-            f'onclick="tkToggle(event, {obj.pk}, this)">'
-            f'  <span style="{switch_css}" id="sw-{obj.pk}">'
-            f'    <span style="{knob_css}" id="knob-{obj.pk}"></span>'
-            f'  </span>'
-            f'  <span style="{label_css}" id="lbl-{obj.pk}">{label_txt}</span>'
-            f'</label>'
+            f'<a href="{url}" title="Đã khóa — click để vào form quản lý" '
+            f'style="display:inline-flex;align-items:center;gap:7px;text-decoration:none;">'
+            f'<span style="width:38px;height:22px;background:#c62828;border-radius:20px;'
+            f'display:inline-flex;align-items:center;padding:3px;flex-shrink:0;">'
+            f'<span style="width:16px;height:16px;background:#fff;border-radius:50%;'
+            f'margin-left:2px;box-shadow:0 1px 3px rgba(0,0,0,.25);"></span></span>'
+            f'<span style="font-size:11px;color:#c62828;font-weight:600;">Đã khóa</span>'
+            f'</a>'
         )
     trang_thai_toggle.short_description = "Trạng thái"
- 
+
     class Media:
         css = {'all': ('admin/css/ami_luxury.css',)}
-        js  = ('admin/js/taikhoan_toggle.js',)
 
 
 # ═══════════════════════════════════════

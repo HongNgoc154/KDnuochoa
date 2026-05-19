@@ -1,9 +1,8 @@
 {% extends "admin/base_site.html" %}
-{% load static %}
-{% load custom_filters %}
+{% load i18n static %}
 
 {% block title %}Quản lý Đơn hàng{% endblock %}
-{% block breadcrumb_title %}Quản lý đơn hàng{% endblock %}
+{% block breadcrumb_title %}Đơn hàng{% endblock %}
 
 {% block breadcrumbs %}
 <a href="/admin/">Admin</a>
@@ -12,310 +11,585 @@
 {% endblock %}
 
 {% block content %}
+<style>
+/* ── Layout ── */
+.orders-wrap { padding: 0; }
 
-<div class="ami-page-header">
-  <div>
-    <h1 class="ami-page-title">Đơn hàng <em>khách hàng</em></h1>
-    <p class="ami-page-sub">
-      {% if orders %}{{ orders|length }} đơn hàng{% endif %}
-      {% if status_filter != 'all' %} · Đang lọc: <strong>{{ status_filter }}</strong>{% endif %}
-      {% if search_q %} · Tìm: "<strong>{{ search_q }}</strong>"{% endif %}
-    </p>
-  </div>
-  <div class="ami-page-actions">
-    <a href="?status=all" class="ami-btn ami-btn-secondary">↻ Làm mới</a>
-  </div>
-</div>
+/* ── Status tabs ── */
+.order-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:20px; }
+.order-tab {
+  padding:8px 18px; border-radius:40px; border:1.5px solid rgba(75,103,45,.2);
+  font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase;
+  text-decoration:none; color:var(--olive,#4B672D); background:var(--white,#fff);
+  display:inline-flex; align-items:center; gap:6px; transition:.15s;
+}
+.order-tab:hover { background:rgba(75,103,45,.07); }
+.order-tab.active { background:var(--olive,#4B672D); color:#EBF6C4; border-color:var(--olive,#4B672D); }
+.order-tab-count {
+  font-size:10px; padding:1px 7px; border-radius:20px;
+  background:rgba(0,0,0,.12); font-weight:700;
+}
 
-<!-- ── STATUS TABS ── -->
-<div style="display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; align-items:center;">
-  <a href="?status=all{% if search_q %}&q={{ search_q }}{% endif %}"
-     style="padding:9px 20px; border-radius:40px; border:1.5px solid; font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; text-decoration:none; transition:.2s;
-     {% if status_filter == 'all' %}background:var(--olive); color:var(--sage); border-color:var(--olive);{% else %}background:var(--white); color:var(--olive); border-color:rgba(75,103,45,.25);{% endif %}">
-    Tất cả
-  </a>
-  {% for s in STATUS_LIST %}
-  <a href="?status={{ s }}{% if search_q %}&q={{ search_q }}{% endif %}"
-     style="padding:9px 20px; border-radius:40px; border:1.5px solid; font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; text-decoration:none; transition:.2s; display:flex; align-items:center; gap:6px;
-     {% if status_filter == s %}background:var(--olive); color:var(--sage); border-color:var(--olive);{% else %}background:var(--white); color:var(--olive); border-color:rgba(75,103,45,.25);{% endif %}">
-    {{ s }}
-    {% with cnt=status_counts|get_item:s %}
-    {% if cnt %}
-    <span style="font-size:10px; padding:1px 7px; border-radius:20px; background:rgba(0,0,0,.12);">{{ cnt }}</span>
+/* ── Search ── */
+.orders-search { display:flex; gap:10px; margin-bottom:20px; align-items:center; }
+.orders-search input {
+  flex:1; max-width:400px; padding:10px 16px;
+  border:1.5px solid var(--stone,#ddd); border-radius:var(--rsm,8px);
+  font-size:13px; outline:none; background:var(--white,#fff);
+  font-family:var(--fb,'Jost',sans-serif);
+}
+.orders-search input:focus { border-color:var(--olive,#4B672D); box-shadow:0 0 0 3px rgba(75,103,45,.1); }
+
+/* ── Orders grid ── */
+.orders-grid { display:flex; flex-direction:column; gap:12px; }
+
+/* ── Order card ── */
+.order-card {
+  background:var(--white,#fff); border:1px solid var(--stone,#e8e2d8);
+  border-radius:var(--r,12px); box-shadow:0 2px 8px rgba(0,0,0,.04);
+  overflow:hidden; cursor:pointer; transition:box-shadow .2s, transform .15s;
+  position:relative;
+}
+.order-card:hover { box-shadow:0 6px 24px rgba(75,103,45,.12); transform:translateY(-1px); }
+.order-card.new-order { border-left:4px solid #f57f17; }
+.order-card.new-order::before {
+  content:'🔔 Đơn mới';
+  position:absolute; top:10px; right:14px;
+  background:#fff8e1; color:#f57f17; font-size:10px; font-weight:700;
+  padding:3px 10px; border-radius:20px; letter-spacing:1px;
+}
+
+.order-card-inner {
+  display:grid;
+  grid-template-columns: 56px 1fr auto auto auto;
+  align-items:center; gap:16px; padding:16px 20px;
+}
+@media(max-width:900px){ .order-card-inner{ grid-template-columns:56px 1fr auto; } }
+
+/* Thumbnail */
+.order-thumb {
+  width:56px; height:56px; border-radius:8px; object-fit:cover;
+  border:1px solid var(--stone,#e8e2d8); flex-shrink:0; background:#f5f5f5;
+}
+.order-thumb-placeholder {
+  width:56px; height:56px; border-radius:8px; background:rgba(75,103,45,.08);
+  display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0;
+}
+
+/* Info */
+.order-info { min-width:0; }
+.order-code { font-family:monospace; font-size:13px; font-weight:700; color:var(--olive,#4B672D); }
+.order-customer { font-size:13px; font-weight:600; color:var(--text,#1a1c14); margin-top:2px; }
+.order-meta { font-size:11px; color:#9e9e9e; margin-top:3px; }
+.order-products-preview { font-size:11px; color:#9e9e9e; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:280px; }
+
+/* Amount */
+.order-amount { font-family:var(--fd,'Cormorant Garamond',serif); font-size:20px; color:var(--text,#1a1c14); white-space:nowrap; text-align:right; }
+.order-qty { font-size:11px; color:#9e9e9e; text-align:right; margin-top:2px; }
+
+/* Status chip */
+.order-status-chip {
+  padding:5px 14px; border-radius:20px; font-size:10px; font-weight:800;
+  letter-spacing:1.2px; text-transform:uppercase; white-space:nowrap;
+}
+.st-cho    { background:rgba(245,127,23,.12); color:#f57f17; }
+.st-xn     { background:rgba(50,120,184,.12); color:#3278b8; }
+.st-giao   { background:rgba(64,112,192,.12); color:#4070c0; }
+.st-nhan   { background:rgba(75,103,45,.12);  color:#4B672D; }
+.st-hoan   { background:rgba(46,125,50,.12);  color:#2e7d32; }
+.st-huy    { background:rgba(198,40,40,.1);   color:#c62828; }
+
+/* Action btn inside card */
+.order-action-btn {
+  padding:7px 16px; border-radius:40px; font-size:11px; font-weight:700;
+  cursor:pointer; border:none; transition:.15s; white-space:nowrap;
+  font-family:var(--fb,'Jost',sans-serif);
+}
+.btn-confirm  { background:rgba(50,120,50,.12); color:#2e7d32; }
+.btn-ship     { background:rgba(50,120,184,.12); color:#3278b8; }
+.btn-complete { background:rgba(75,103,45,.12); color:#4B672D; }
+.btn-disabled { background:#f5f5f5; color:#bbb; cursor:not-allowed; }
+
+/* ── Detail modal ── */
+.od-modal-backdrop {
+  display:none; position:fixed; inset:0; z-index:9999;
+  background:rgba(26,28,20,.55); backdrop-filter:blur(8px);
+  align-items:center; justify-content:center; padding:24px;
+}
+.od-modal-backdrop.open { display:flex; }
+.od-modal {
+  background:var(--white,#fff); border-radius:var(--r,12px);
+  padding:36px; max-width:860px; width:100%;
+  box-shadow:0 20px 60px rgba(0,0,0,.2); position:relative;
+  max-height:90vh; overflow-y:auto;
+}
+.od-close {
+  position:absolute; top:16px; right:16px; width:32px; height:32px;
+  border-radius:50%; background:none; border:none; cursor:pointer;
+  font-size:18px; color:#9e9e9e; display:flex; align-items:center; justify-content:center;
+}
+.od-close:hover { background:var(--parchment,#f8f6f0); }
+
+/* Modal grid */
+.od-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:20px 0; }
+@media(max-width:700px){ .od-grid{ grid-template-columns:1fr; } }
+.od-section {
+  border:1px solid var(--stone,#e8e2d8); border-radius:var(--rsm,8px);
+  padding:16px; background:rgba(75,103,45,.02);
+}
+.od-section-title {
+  font-size:9px; font-weight:800; letter-spacing:2.5px; text-transform:uppercase;
+  color:var(--olive,#4B672D); margin-bottom:10px;
+}
+.od-row { display:flex; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px solid rgba(75,103,45,.07); font-size:13px; }
+.od-row:last-child { border-bottom:0; }
+.od-row span:first-child { color:#9e9e9e; }
+.od-row strong { text-align:right; }
+
+/* Items */
+.od-item { display:flex; gap:12px; align-items:center; padding:10px; background:var(--parchment,#f8f6f0); border-radius:8px; margin-bottom:8px; }
+.od-item img { width:52px; height:52px; border-radius:6px; object-fit:cover; border:1px solid var(--stone,#e8e2d8); }
+.od-item-name { font-family:var(--fd,'Cormorant Garamond',serif); font-size:16px; }
+.od-item-brand { font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--olive,#4B672D); font-weight:700; }
+.od-item-price { font-size:14px; font-weight:700; margin-left:auto; white-space:nowrap; }
+
+/* Progress steps */
+.od-steps { display:flex; align-items:center; margin-bottom:24px; }
+.od-step { display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; position:relative; z-index:1; }
+.od-step:not(:last-child)::after {
+  content:''; position:absolute; top:14px; left:50%; width:100%; height:2px;
+  background:var(--stone,#e8e2d8); z-index:0;
+}
+.od-step.done::after  { background:var(--olive,#4B672D); }
+.od-step.active::after { background:linear-gradient(90deg,var(--olive,#4B672D),var(--stone,#e8e2d8)); }
+.od-step-dot {
+  width:28px; height:28px; border-radius:50%; border:2px solid var(--stone,#e8e2d8);
+  background:var(--white,#fff); display:flex; align-items:center; justify-content:center;
+  font-size:11px; font-weight:700; color:#9e9e9e; z-index:1; position:relative;
+}
+.od-step.done .od-step-dot  { background:var(--olive,#4B672D); border-color:var(--olive,#4B672D); color:#EBF6C4; }
+.od-step.active .od-step-dot { background:var(--olive,#4B672D); border-color:var(--olive,#4B672D); color:#EBF6C4; box-shadow:0 0 0 4px rgba(75,103,45,.15); }
+.od-step span { font-size:10px; color:#9e9e9e; text-align:center; margin-top:2px; }
+.od-step.done span, .od-step.active span { color:var(--olive,#4B672D); font-weight:600; }
+
+/* Modal actions */
+.od-actions { display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; margin-top:16px; padding-top:16px; border-top:1px solid var(--stone,#e8e2d8); }
+.od-btn {
+  padding:10px 24px; border-radius:40px; font-size:12px; font-weight:700;
+  cursor:pointer; border:none; transition:.15s; font-family:var(--fb,'Jost',sans-serif);
+  letter-spacing:1px; text-transform:uppercase;
+}
+.od-btn-primary { background:linear-gradient(135deg,var(--olive-dark,#3a5220),var(--olive,#4B672D)); color:#EBF6C4; }
+.od-btn-primary:hover { box-shadow:0 4px 14px rgba(75,103,45,.4); transform:translateY(-1px); }
+.od-btn-primary:disabled { background:#ccc; color:#fff; cursor:not-allowed; transform:none; box-shadow:none; }
+.od-btn-danger { background:rgba(198,40,40,.08); color:#c62828; border:1.5px solid rgba(198,40,40,.2); }
+.od-btn-danger:hover { background:#c62828; color:#fff; }
+.od-btn-secondary { background:var(--parchment,#f8f6f0); color:var(--olive,#4B672D); border:1.5px solid rgba(75,103,45,.2); }
+.od-btn-secondary:hover { background:var(--sage,#EBF6C4); }
+
+/* Notification bell */
+.new-order-banner {
+  display:none; align-items:center; gap:12px; padding:12px 20px;
+  background:#fff8e1; border:1.5px solid rgba(245,127,23,.3);
+  border-radius:var(--rsm,8px); margin-bottom:16px; font-size:13px; color:#f57f17; font-weight:600;
+}
+.new-order-banner.show { display:flex; }
+</style>
+
+<div class="orders-wrap">
+
+  <!-- ── Page header ── -->
+  <div class="ami-page-header" style="margin-bottom:20px;">
+    <div>
+      <h1 class="ami-page-title">Quản lý <em>đơn hàng</em></h1>
+      <p class="ami-page-sub">
+        {{ orders|length }} đơn hàng
+        {% if status_filter != 'all' %} · Đang lọc: <strong>{{ status_filter }}</strong>{% endif %}
+        {% if search_q %} · Tìm: "<strong>{{ search_q }}</strong>"{% endif %}
+      </p>
+    </div>
+    <div class="ami-page-actions">
+      <a href="?status=all" class="ami-btn ami-btn-secondary">↻ Làm mới</a>
+    </div>
+  </div>
+
+  <!-- ── New order notification ── -->
+  <div class="new-order-banner" id="newOrderBanner">
+    🔔 <span id="newOrderText">Có đơn hàng mới!</span>
+    <button onclick="document.getElementById('newOrderBanner').classList.remove('show')"
+            style="margin-left:auto;background:none;border:none;cursor:pointer;color:#f57f17;font-size:16px;">✕</button>
+  </div>
+
+  <!-- ── Status tabs ── -->
+  <div class="order-tabs">
+    <a href="?status=all{% if search_q %}&q={{ search_q }}{% endif %}"
+       class="order-tab {% if status_filter == 'all' %}active{% endif %}">
+      Tất cả
+      <span class="order-tab-count">{{ orders|length }}</span>
+    </a>
+    {% for tab in status_tabs %}
+    <a href="?status={{ tab.key }}{% if search_q %}&q={{ search_q }}{% endif %}"
+       class="order-tab {% if status_filter == tab.key %}active{% endif %}">
+      {{ tab.label }}
+      {% if tab.count %}<span class="order-tab-count">{{ tab.count }}</span>{% endif %}
+    </a>
+    {% endfor %}
+  </div>
+
+  <!-- ── Search ── -->
+  <form method="get" class="orders-search">
+    <input type="hidden" name="status" value="{{ status_filter }}">
+    <input type="text" name="q" value="{{ search_q }}" placeholder="🔍  Mã đơn, tên khách, SĐT…">
+    <button type="submit" class="ami-btn ami-btn-primary ami-btn-sm">Tìm</button>
+    {% if search_q %}
+    <a href="?status={{ status_filter }}"
+       style="font-size:12px;color:#c62828;text-decoration:none;padding:8px 14px;border:1px solid rgba(198,40,40,.25);border-radius:40px;">✕ Xóa</a>
     {% endif %}
-    {% endwith %}
-  </a>
-  {% endfor %}
-</div>
+  </form>
 
-<!-- ── SEARCH ── -->
-<form method="get" style="display:flex; gap:10px; margin-bottom:24px; align-items:center;">
-  <input type="hidden" name="status" value="{{ status_filter }}">
-  <input type="text" name="q" value="{{ search_q }}"
-         placeholder="🔍  Mã đơn, tên khách, SĐT…"
-         style="flex:1; max-width:420px; padding:11px 18px; border:1.5px solid var(--stone); border-radius:var(--radius-sm); font-family:var(--font-body); font-size:13px; outline:none; background:var(--white); transition:.2s;"
-         onfocus="this.style.borderColor='var(--olive)'; this.style.boxShadow='0 0 0 3px rgba(75,103,45,.1)'"
-         onblur="this.style.borderColor='var(--stone)'; this.style.boxShadow='none'">
-  <button type="submit" class="ami-btn ami-btn-primary ami-btn-sm">Tìm kiếm</button>
-  {% if search_q %}
-  <a href="?status={{ status_filter }}" style="font-size:12px; color:var(--danger); text-decoration:none; padding:8px 14px; border:1px solid rgba(184,50,50,.25); border-radius:40px;">✕ Xóa</a>
-  {% endif %}
-</form>
+  <!-- ── Orders grid ── -->
+  <div class="orders-grid" id="ordersGrid">
+    {% for order in orders %}
+    {% with ds=order.delivery_status %}
+    <div class="order-card {% if ds == 'Chờ xác nhận' %}new-order{% endif %}"
+         onclick="openOrderDetail('{{ order.id_DonHang }}')"
+         id="order-card-{{ order.id_DonHang }}"
+         data-status="{{ ds }}">
+      <div class="order-card-inner">
 
-<!-- ── ORDERS TABLE ── -->
-<div class="ami-table-wrap">
-  <table class="ami-table" id="ordersTable">
-    <thead>
-      <tr>
-        <th>Mã đơn</th>
-        <th>Ngày đặt</th>
-        <th>Khách hàng</th>
-        <th>Tổng tiền</th>
-        <th>Thanh toán</th>
-        <th>Trạng thái</th>
-        <th>Thao tác</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for order in orders %}
-      <tr class="order-row" data-id="{{ order.id_DonHang }}" data-status="{{ order.TrangThai }}">
+        <!-- Thumbnail -->
+        {% if order.first_image %}
+        <img src="{{ order.first_image }}" class="order-thumb" alt="product"
+             onerror="this.style.display='none'">
+        {% else %}
+        <div class="order-thumb-placeholder">📦</div>
+        {% endif %}
 
-        <!-- Mã đơn -->
-        <td>
-          <span style="font-family:var(--font-mono); font-size:12px; font-weight:600; color:var(--olive);">
-            {{ order.MaDonHang }}
-          </span>
-        </td>
-
-        <!-- Ngày -->
-        <td>
-          <span style="font-size:13px; color:var(--text);">{{ order.ThoiGian|date:"d/m/Y" }}</span><br>
-          <span style="font-size:11px; color:var(--text-4);">{{ order.ThoiGian|date:"H:i" }}</span>
-        </td>
-
-        <!-- Khách hàng -->
-        <td>
-          {% if order.id_GiaoHang %}
-          <span style="font-size:13px; font-weight:500; color:var(--text);">{{ order.id_GiaoHang.TenNguoiNhan }}</span><br>
-          <span style="font-size:11px; color:var(--text-4);">{{ order.id_GiaoHang.SDT }}</span>
-          {% else %}
-          <span style="color:var(--text-4); font-size:13px;">Khách vãng lai</span>
-          {% endif %}
-        </td>
-
-        <!-- Tổng tiền -->
-        <td>
-          <span style="font-family:var(--font-display); font-size:17px; font-weight:400; color:var(--text);">
-            {{ order.TongTien|floatformat:0 }}₫
-          </span>
-        </td>
-
-        <!-- Thanh toán -->
-        <td>
-          <span style="display:inline-block; font-size:10px; font-weight:700; letter-spacing:.5px; padding:4px 10px; border-radius:20px; background:var(--parchment); color:var(--text-2);">
-            {% if order.HinhThucThanhToan == 'cod' %}💵 COD
-            {% elif order.HinhThucThanhToan == 'vnpay' %}🏦 VNPAY
-            {% elif order.HinhThucThanhToan == 'momo' %}📱 MoMo
-            {% else %}{{ order.HinhThucThanhToan|default:"COD" }}
-            {% endif %}
-          </span>
-        </td>
-
-        <!-- Trạng thái -->
-        <td>
-          {% with s=order.TrangThai %}
-          <span style="display:inline-block; padding:5px 12px; border-radius:20px; font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase;
-            {% if s == 'Chờ xác nhận' %}background:rgba(184,120,50,.12); color:#b87832;
-            {% elif s == 'Đã xác nhận' %}background:rgba(50,120,184,.12); color:#3278b8;
-            {% elif s == 'Đang giao' %}background:rgba(100,150,220,.12); color:#4070c0;
-            {% elif s == 'Hoàn tất' %}background:rgba(50,120,50,.12); color:#327832;
-            {% elif s == 'Đã hủy' %}background:rgba(184,50,50,.1); color:#b83232;
-            {% elif s == 'Đã thanh toán' %}background:rgba(50,120,50,.12); color:#327832;
-            {% else %}background:var(--parchment); color:var(--text-3);
-            {% endif %}">
-            {{ s }}
-          </span>
-          {% endwith %}
-        </td>
-
-        <!-- Thao tác -->
-        <td>
-          <div style="display:flex; gap:6px; flex-wrap:wrap;">
-            <button onclick="openOrderDetail('{{ order.id_DonHang }}')"
-                    style="padding:6px 12px; border:1.5px solid var(--stone); border-radius:20px; background:var(--white); font-size:11px; font-weight:600; cursor:pointer; color:var(--text-2); transition:.15s;"
-                    onmouseover="this.style.background='var(--parchment)'"
-                    onmouseout="this.style.background='var(--white)'">
-              👁 Xem
-            </button>
-
-            {% if order.TrangThai == 'Chờ xác nhận' %}
-            <button onclick="updateStatus('{{ order.id_DonHang }}', 'Đã xác nhận', this)"
-                    style="padding:6px 12px; border:none; border-radius:20px; background:rgba(50,120,50,.12); color:#327832; font-size:11px; font-weight:600; cursor:pointer; transition:.15s;">
-              ✅ Xác nhận
-            </button>
-            <button onclick="updateStatus('{{ order.id_DonHang }}', 'Đã hủy', this)"
-                    style="padding:6px 12px; border:none; border-radius:20px; background:rgba(184,50,50,.1); color:#b83232; font-size:11px; font-weight:600; cursor:pointer; transition:.15s;">
-              ✕ Hủy
-            </button>
-            {% elif order.TrangThai == 'Đã xác nhận' %}
-            <button onclick="updateStatus('{{ order.id_DonHang }}', 'Đang giao', this)"
-                    style="padding:6px 12px; border:none; border-radius:20px; background:rgba(50,120,184,.12); color:#3278b8; font-size:11px; font-weight:600; cursor:pointer; transition:.15s;">
-              🚚 Giao hàng
-            </button>
-            {% elif order.TrangThai == 'Đang giao' %}
-            <button onclick="updateStatus('{{ order.id_DonHang }}', 'Hoàn tất', this)"
-                    style="padding:6px 12px; border:none; border-radius:20px; background:rgba(75,103,45,.15); color:var(--olive); font-size:11px; font-weight:600; cursor:pointer; transition:.15s;">
-              🎉 Hoàn tất
-            </button>
-            {% endif %}
+        <!-- Info -->
+        <div class="order-info">
+          <div class="order-code">{{ order.MaDonHang }}</div>
+          <div class="order-customer">
+            {% if order.id_GiaoHang %}{{ order.id_GiaoHang.TenNguoiNhan }}
+            {% else %}Khách vãng lai{% endif %}
           </div>
-        </td>
-      </tr>
-      {% empty %}
-      <tr>
-        <td colspan="7" style="text-align:center; padding:60px 20px; color:var(--text-4); font-size:14px;">
-          <div style="font-size:36px; margin-bottom:12px;">📦</div>
-          Không có đơn hàng nào phù hợp.
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+          <div class="order-meta">
+            {{ order.ThoiGian|date:"d/m/Y H:i" }}
+            {% if order.id_GiaoHang %}· {{ order.id_GiaoHang.SDT }}{% endif %}
+          </div>
+          <div class="order-products-preview">{{ order.admin_products }}</div>
+        </div>
+
+        <!-- Amount -->
+        <div>
+          <div class="order-amount">{{ order.TongTien|floatformat:0 }}₫</div>
+          <div class="order-qty">{{ order.admin_quantity }} sản phẩm</div>
+        </div>
+
+        <!-- Status -->
+        <div>
+          {% if ds == 'Chờ xác nhận' %}
+          <span class="order-status-chip st-cho" id="chip-{{ order.id_DonHang }}">{{ ds }}</span>
+          {% elif ds == 'Đã xác nhận' %}
+          <span class="order-status-chip st-xn"  id="chip-{{ order.id_DonHang }}">{{ ds }}</span>
+          {% elif ds == 'Đang giao' %}
+          <span class="order-status-chip st-giao" id="chip-{{ order.id_DonHang }}">{{ ds }}</span>
+          {% elif ds == 'Khách đã nhận hàng' %}
+          <span class="order-status-chip st-nhan" id="chip-{{ order.id_DonHang }}">{{ ds }}</span>
+          {% elif ds == 'Hoàn tất' %}
+          <span class="order-status-chip st-hoan" id="chip-{{ order.id_DonHang }}">{{ ds }}</span>
+          {% else %}
+          <span class="order-status-chip st-huy"  id="chip-{{ order.id_DonHang }}">{{ ds }}</span>
+          {% endif %}
+        </div>
+
+        <!-- Quick action btn (không bọc trong onclick card) -->
+        <div onclick="event.stopPropagation()" id="quick-btn-{{ order.id_DonHang }}">
+          {% if ds == 'Chờ xác nhận' %}
+          <button class="order-action-btn btn-confirm"
+                  onclick="quickUpdate('{{ order.id_DonHang }}','Đã xác nhận',this)">✅ Xác nhận</button>
+          {% elif ds == 'Đã xác nhận' %}
+          <button class="order-action-btn btn-ship"
+                  onclick="quickUpdate('{{ order.id_DonHang }}','Đang giao',this)">🚚 Giao hàng</button>
+          {% elif ds == 'Khách đã nhận hàng' %}
+          <button class="order-action-btn btn-complete"
+                  onclick="quickUpdate('{{ order.id_DonHang }}','Hoàn tất',this)">🎉 Hoàn tất</button>
+          {% else %}
+          <button class="order-action-btn btn-disabled" disabled>—</button>
+          {% endif %}
+        </div>
+
+      </div>
+    </div>
+    {% endwith %}
+    {% empty %}
+    <div style="text-align:center;padding:80px 20px;color:#9e9e9e;">
+      <div style="font-size:48px;margin-bottom:16px;">📦</div>
+      <p style="font-size:15px;">Không có đơn hàng nào phù hợp.</p>
+    </div>
+    {% endfor %}
+  </div>
 </div>
 
-<!-- ── ORDER DETAIL MODAL ── -->
-<div id="orderDetailModal"
-     style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(26,28,20,.55); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:24px;">
-  <div style="background:var(--white); border-radius:var(--radius); padding:36px; max-width:700px; width:100%; box-shadow:var(--shadow-md); position:relative; max-height:88vh; overflow-y:auto;">
-    <button onclick="document.getElementById('orderDetailModal').style.display='none'"
-            style="position:absolute; top:16px; right:16px; background:none; border:none; cursor:pointer; font-size:18px; color:var(--text-4); width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition:.2s;"
-            onmouseover="this.style.background='var(--parchment)'"
-            onmouseout="this.style.background='none'">✕</button>
-    <div id="orderDetailContent">
-      <div style="text-align:center; padding:40px; color:var(--text-4);">Đang tải…</div>
+<!-- ══════════════════════════════════════
+     ORDER DETAIL MODAL
+══════════════════════════════════════ -->
+<div class="od-modal-backdrop" id="orderModal">
+  <div class="od-modal">
+    <button class="od-close" onclick="closeModal()">✕</button>
+    <div id="orderModalContent">
+      <div style="text-align:center;padding:60px;color:#9e9e9e;">Đang tải…</div>
     </div>
   </div>
 </div>
 
 <script>
-let toastTimer2;
-function showToast(msg, ok=true) {
-  const t = document.getElementById('ami-toast');
-  if (!t) return;
-  t.textContent = msg;
-  t.style.borderColor = ok ? 'rgba(235,246,196,.2)' : 'rgba(184,50,50,.3)';
-  t.classList.add('show');
-  clearTimeout(toastTimer2);
-  toastTimer2 = setTimeout(() => t.classList.remove('show'), 3500);
-}
+const CHIP_CLASS = {
+  'Chờ xác nhận':      'st-cho',
+  'Đã xác nhận':       'st-xn',
+  'Đang giao':         'st-giao',
+  'Khách đã nhận hàng':'st-nhan',
+  'Hoàn tất':          'st-hoan',
+  'Đã hủy':            'st-huy',
+};
 
-async function updateStatus(orderId, newStatus, btn) {
+const STEPS = ['Chờ xác nhận','Đã xác nhận','Đang giao','Khách đã nhận hàng','Hoàn tất'];
+const STEP_IDX = Object.fromEntries(STEPS.map((s,i)=>[s,i]));
+
+// ── Quick update từ danh sách ──
+async function quickUpdate(orderId, newStatus, btn) {
   if (!confirm(`Xác nhận chuyển đơn hàng sang "${newStatus}"?`)) return;
-  const orig = btn.innerHTML;
   btn.disabled = true;
-  btn.innerHTML = '⏳';
-
+  btn.textContent = '⏳';
+  const fd = new FormData();
+  fd.append('order_id', orderId);
+  fd.append('status', newStatus);
   try {
-    const fd = new FormData();
-    fd.append('order_id', orderId);
-    fd.append('status', newStatus);
     const res  = await fetch('/api/admin/update-order-status/', { method:'POST', body:fd });
     const data = await res.json();
+    console.log('order detail:', data.order);
+    if (!data.ok) { alert(data.message); btn.disabled=false; btn.textContent='↻'; return; }
 
-    if (data.ok) {
-      showToast(data.message, true);
-      // Cập nhật UI ngay
-      const row = document.querySelector(`.order-row[data-id="${orderId}"]`);
-      if (row) {
-        const statusColors = {
-          'Chờ xác nhận': 'background:rgba(184,120,50,.12);color:#b87832',
-          'Đã xác nhận':  'background:rgba(50,120,184,.12);color:#3278b8',
-          'Đang giao':    'background:rgba(100,150,220,.12);color:#4070c0',
-          'Hoàn tất':     'background:rgba(50,120,50,.12);color:#327832',
-          'Đã hủy':       'background:rgba(184,50,50,.1);color:#b83232',
-        };
-        const chip = row.cells[5].querySelector('span');
-        if (chip) { chip.setAttribute('style', `display:inline-block;padding:5px 12px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;${statusColors[newStatus]||''}`); chip.textContent = newStatus; }
-        // Rebuild action buttons
-        const actionCell = row.cells[6];
-        let html = `<div style="display:flex;gap:6px;flex-wrap:wrap;"><button onclick="openOrderDetail('${orderId}')" style="padding:6px 12px;border:1.5px solid var(--stone);border-radius:20px;background:var(--white);font-size:11px;font-weight:600;cursor:pointer;color:var(--text-2);">👁 Xem</button>`;
-        if (newStatus === 'Đã xác nhận') html += `<button onclick="updateStatus('${orderId}','Đang giao',this)" style="padding:6px 12px;border:none;border-radius:20px;background:rgba(50,120,184,.12);color:#3278b8;font-size:11px;font-weight:600;cursor:pointer;">🚚 Giao hàng</button>`;
-        else if (newStatus === 'Đang giao') html += `<button onclick="updateStatus('${orderId}','Hoàn tất',this)" style="padding:6px 12px;border:none;border-radius:20px;background:rgba(75,103,45,.15);color:var(--olive);font-size:11px;font-weight:600;cursor:pointer;">🎉 Hoàn tất</button>`;
-        html += '</div>';
-        actionCell.innerHTML = html;
-        row.dataset.status = newStatus;
-      }
-    } else {
-      showToast(data.message || 'Có lỗi xảy ra.', false);
-      btn.disabled = false;
-      btn.innerHTML = orig;
+    // Cập nhật chip
+    const chip = document.getElementById('chip-'+orderId);
+    if (chip) {
+      chip.textContent = newStatus;
+      chip.className = 'order-status-chip ' + (CHIP_CLASS[newStatus]||'');
     }
-  } catch {
-    showToast('Lỗi kết nối. Vui lòng thử lại.', false);
-    btn.disabled = false;
-    btn.innerHTML = orig;
+    // Cập nhật card border
+    const card = document.getElementById('order-card-'+orderId);
+    if (card) {
+      card.dataset.status = newStatus;
+      if (newStatus !== 'Chờ xác nhận') card.classList.remove('new-order');
+    }
+    // Xóa nút quick action
+    const qb = document.getElementById('quick-btn-'+orderId);
+    if (qb) qb.innerHTML = '<button class="order-action-btn btn-disabled" disabled>—</button>';
+
+    // Toast
+    showToast('✅ ' + data.message);
+  } catch(e) {
+    alert('Lỗi kết nối.');
+    btn.disabled = false; btn.textContent='↻';
   }
 }
 
+// ── Mở modal chi tiết ──
 async function openOrderDetail(orderId) {
-  const modal = document.getElementById('orderDetailModal');
-  const content = document.getElementById('orderDetailContent');
-  modal.style.display = 'flex';
-  content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-4);">⏳ Đang tải…</div>';
+  const modal   = document.getElementById('orderModal');
+  const content = document.getElementById('orderModalContent');
+  modal.classList.add('open');
+  content.innerHTML = '<div style="text-align:center;padding:60px;color:#9e9e9e;">Đang tải…</div>';
 
   try {
     const res  = await fetch(`/api/admin/order-detail/?order_id=${orderId}`);
     const data = await res.json();
-    if (!data.ok) { content.innerHTML = `<p style="color:var(--danger);padding:20px;">${data.message}</p>`; return; }
-
-    const o = data.order;
-    const SC = { 'Chờ xác nhận':'#b87832','Đã xác nhận':'#3278b8','Đang giao':'#4070c0','Hoàn tất':'#327832','Đã hủy':'#b83232' };
-    const SB = { 'Chờ xác nhận':'rgba(184,120,50,.12)','Đã xác nhận':'rgba(50,120,184,.12)','Đang giao':'rgba(100,150,220,.12)','Hoàn tất':'rgba(50,120,50,.12)','Đã hủy':'rgba(184,50,50,.1)' };
-
-    const itemsHTML = (o.items||[]).map(i => `
-      <div style="display:flex;gap:14px;align-items:center;padding:12px;background:var(--parchment);border-radius:var(--radius-sm);margin-bottom:8px;">
-        <img src="${i.image}" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;border:1px solid var(--stone);"
-             onerror="this.src='https://images.unsplash.com/photo-1541643600914-78b084683702?auto=format&fit=crop&w=200&q=80'">
-        <div style="flex:1;">
-          <p style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--olive);font-weight:600;margin-bottom:2px;">${i.brand}</p>
-          <p style="font-family:var(--font-display);font-size:17px;color:var(--text);">${i.product_name}</p>
-          <p style="font-size:11px;color:var(--text-4);">SL: ${i.qty}</p>
-        </div>
-        <span style="font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;">${i.price}</span>
-      </div>`).join('');
-
-    let actionBtns = '';
-    if (o.status==='Chờ xác nhận') actionBtns = `<button onclick="updateStatus('${o.id}','Đã xác nhận',this);document.getElementById('orderDetailModal').style.display='none'" style="padding:10px 22px;border:none;border-radius:40px;background:var(--olive);color:var(--sage);font-size:11px;font-weight:600;letter-spacing:1px;cursor:pointer;">✅ Xác nhận đơn</button><button onclick="updateStatus('${o.id}','Đã hủy',this);document.getElementById('orderDetailModal').style.display='none'" style="padding:10px 22px;border:1.5px solid rgba(184,50,50,.25);border-radius:40px;background:rgba(184,50,50,.08);color:#b83232;font-size:11px;font-weight:600;letter-spacing:1px;cursor:pointer;">✕ Hủy đơn</button>`;
-    else if (o.status==='Đã xác nhận') actionBtns = `<button onclick="updateStatus('${o.id}','Đang giao',this);document.getElementById('orderDetailModal').style.display='none'" style="padding:10px 22px;border:none;border-radius:40px;background:var(--olive);color:var(--sage);font-size:11px;font-weight:600;letter-spacing:1px;cursor:pointer;">🚚 Chuyển sang giao hàng</button>`;
-    else if (o.status==='Đang giao') actionBtns = `<button onclick="updateStatus('${o.id}','Hoàn tất',this);document.getElementById('orderDetailModal').style.display='none'" style="padding:10px 22px;border:none;border-radius:40px;background:var(--olive);color:var(--sage);font-size:11px;font-weight:600;letter-spacing:1px;cursor:pointer;">🎉 Xác nhận hoàn tất</button>`;
-
-    content.innerHTML = `
-      <h2 style="font-family:var(--font-display);font-size:26px;font-weight:300;color:var(--text);margin-bottom:8px;">${o.ma_don}</h2>
-      <span style="display:inline-block;margin-bottom:20px;padding:5px 14px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;background:${SB[o.status]||'var(--parchment)'};color:${SC[o.status]||'var(--text-3)'};">${o.status}</span>
-      <p style="font-size:10px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:var(--text-4);margin:0 0 12px;">Thông tin giao hàng</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;background:var(--parchment);border-radius:var(--radius-sm);padding:18px;margin-bottom:20px;">
-        <div><p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text-4);margin-bottom:3px;">Người nhận</p><p style="font-size:14px;color:var(--text);">${o.receiver||'—'}</p></div>
-        <div><p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text-4);margin-bottom:3px;">Số điện thoại</p><p style="font-size:14px;color:var(--text);">${o.phone||'—'}</p></div>
-        <div style="grid-column:1/-1;"><p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text-4);margin-bottom:3px;">Địa chỉ</p><p style="font-size:14px;color:var(--text);">${o.address||'—'}</p></div>
-        <div><p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text-4);margin-bottom:3px;">Thanh toán</p><p style="font-size:14px;color:var(--text);">${o.payment||'COD'}</p></div>
-        <div><p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text-4);margin-bottom:3px;">Ngày đặt</p><p style="font-size:14px;color:var(--text);">${o.date}</p></div>
-        ${o.note?`<div style="grid-column:1/-1;"><p style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text-4);margin-bottom:3px;">Ghi chú</p><p style="font-size:14px;color:var(--text);">${o.note}</p></div>`:''}
-      </div>
-      <p style="font-size:10px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:var(--text-4);margin-bottom:12px;">Sản phẩm</p>
-      <div>${itemsHTML||'<p style="color:var(--text-4);font-size:13px;">Không có sản phẩm</p>'}</div>
-      <div style="border-top:1px solid var(--stone);padding-top:16px;margin-top:16px;display:flex;justify-content:space-between;align-items:center;">
-        <span style="font-family:var(--font-display);font-size:20px;color:var(--text);">Tổng cộng</span>
-        <span style="font-family:var(--font-display);font-size:24px;color:var(--olive);font-weight:400;">${o.total}</span>
-      </div>
-      ${actionBtns?`<div style="margin-top:20px;display:flex;gap:10px;justify-content:flex-end;">${actionBtns}</div>`:''}`;
-  } catch {
-    content.innerHTML = '<p style="color:var(--danger);padding:20px;">Lỗi tải dữ liệu.</p>';
+    if (!data.ok) { content.innerHTML = `<p style="color:#c62828;padding:20px;">${data.message}</p>`; return; }
+    renderModal(data.order);
+  } catch(e) {
+    content.innerHTML = '<p style="color:#c62828;padding:20px;">Lỗi tải dữ liệu.</p>';
   }
 }
 
-// Close modal on overlay click
-document.getElementById('orderDetailModal').addEventListener('click', function(e) {
-  if (e.target === this) this.style.display = 'none';
+function renderModal(o) {
+  const content = document.getElementById('orderModalContent');
+  const stepIdx = STEP_IDX[o.status] ?? (o.status === 'Đã hủy' ? -1 : 0);
+
+  // Progress bar
+  const progressHTML = o.status === 'Đã hủy'
+    ? `<div style="text-align:center;padding:12px 0 20px;color:#c62828;font-weight:700;letter-spacing:1px;font-size:13px;">✕ ĐƠN HÀNG ĐÃ HỦY</div>`
+    : `<div class="od-steps">
+        ${STEPS.map((s,i) => `
+          <div class="od-step ${i < stepIdx ? 'done' : i === stepIdx ? 'active' : ''}">
+            <div class="od-step-dot">${i < stepIdx ? '✓' : i+1}</div>
+            <span>${s.replace('Khách đã nhận hàng','Đã nhận')}</span>
+          </div>
+          ${i < STEPS.length-1 ? `<div style="flex:1;height:2px;background:${i < stepIdx ? 'var(--olive,#4B672D)' : 'var(--stone,#e8e2d8)'};margin-top:-14px;z-index:0;"></div>` : ''}
+        `).join('')}
+       </div>`;
+
+  // Items
+  const itemsHTML = (o.items||[]).map(item => `
+    <div class="od-item">
+      <img src="${item.image}" onerror="this.style.display='none'" alt="">
+      <div style="flex:1;">
+        <div class="od-item-brand">${item.brand||''}</div>
+        <div class="od-item-name">${item.product_name}</div>
+        <div style="font-size:11px;color:#9e9e9e;">SKU: ${item.sku||'—'} · SL: ${item.qty}</div>
+      </div>
+      <strong class="od-item-price">${item.price}</strong>
+    </div>`).join('') || '<p style="color:#9e9e9e;font-size:13px;">Không có sản phẩm.</p>';
+
+  // Action buttons
+  let actionsHTML = `<button class="od-btn od-btn-secondary" onclick="closeModal()">Đóng</button>`;
+
+  if (o.can_cancel) {
+    actionsHTML = `
+      <button class="od-btn od-btn-danger"
+              onclick="adminCancelOrder('${o.id}', this)">✕ Hủy đơn</button>
+      ${actionsHTML}`;
+  }
+  if (o.next_status) {
+    actionsHTML = `
+      <button class="od-btn od-btn-primary" id="modal-next-btn"
+              onclick="modalUpdate('${o.id}','${o.next_status}','${o.next_label}',this)">
+        ${o.next_label}
+      </button>
+      ${actionsHTML}`;
+  }
+
+  content.innerHTML = `
+    <div style="margin-bottom:6px;">
+      <span style="font-family:var(--fd,'Cormorant Garamond',serif);font-size:28px;font-weight:300;">${o.ma_don}</span>
+    </div>
+    <div style="margin-bottom:20px;">
+      <span class="order-status-chip ${CHIP_CLASS[o.status]||''}" style="font-size:10px;">${o.status}</span>
+      <span style="font-size:12px;color:#9e9e9e;margin-left:12px;">${o.date}</span>
+    </div>
+
+    ${progressHTML}
+
+    <div class="od-grid">
+      <div class="od-section">
+        <div class="od-section-title">Tổng quan</div>
+        <div class="od-row"><span>Tổng tiền</span><strong>${o.total}</strong></div>
+        <div class="od-row"><span>Thanh toán</span><strong>${(o.payment||'COD').toUpperCase()}</strong></div>
+        <div class="od-row"><span>TT Thanh toán</span><strong>${o.payment_status||'—'}</strong></div>
+        <div class="od-row"><span>Voucher</span><strong>${o.voucher_code||'—'}</strong></div>
+        <div class="od-row"><span>Điểm đã dùng</span><strong>${o.points_used||0} điểm</strong></div>
+        <div class="od-row"><span>Tiền giảm điểm</span><strong>${o.points_discount||'0₫'}</strong></div>
+        <div class="od-row"><span>Điểm tích lũy</span><strong>${o.points_earned||0} điểm</strong></div>
+      </div>
+      <div class="od-section">
+        <div class="od-section-title">Thông tin giao hàng</div>
+        <div class="od-row"><span>Khách hàng</span><strong>${o.customer||'—'}</strong></div>
+        <div class="od-row"><span>Người nhận</span><strong>${o.receiver||'—'}</strong></div>
+        <div class="od-row"><span>Số điện thoại</span><strong>${o.phone||'—'}</strong></div>
+        <div class="od-row"><span>Địa chỉ</span><strong style="text-align:right;max-width:180px;">${o.address||'—'}</strong></div>
+        <div class="od-row"><span>Ghi chú</span><strong>${o.note||'—'}</strong></div>
+      </div>
+    </div>
+
+    <div class="od-section" style="margin-bottom:0;">
+      <div class="od-section-title">Sản phẩm đã đặt</div>
+      ${itemsHTML}
+    </div>
+
+    <div class="od-actions">${actionsHTML}</div>`;
+}
+
+// ── Cập nhật từ modal ──
+async function modalUpdate(orderId, newStatus, label, btn) {
+  if (!confirm(`Xác nhận: ${label}?`)) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ Đang xử lý…';
+  const fd = new FormData();
+  fd.append('order_id', orderId);
+  fd.append('status', newStatus);
+  try {
+    const res  = await fetch('/api/admin/update-order-status/', { method:'POST', body:fd });
+    const data = await res.json();
+    if (!data.ok) { alert(data.message); btn.disabled=false; btn.textContent=label; return; }
+
+    // Refresh modal
+    const res2  = await fetch(`/api/admin/order-detail/?order_id=${orderId}`);
+    const data2 = await res2.json();
+    if (data2.ok) renderModal(data2.order);
+
+    // Cập nhật list
+    const chip = document.getElementById('chip-'+orderId);
+    if (chip) { chip.textContent=newStatus; chip.className='order-status-chip '+(CHIP_CLASS[newStatus]||''); }
+    const card = document.getElementById('order-card-'+orderId);
+    if (card) { card.dataset.status=newStatus; card.classList.remove('new-order'); }
+    const qb = document.getElementById('quick-btn-'+orderId);
+    if (qb) {
+      if (newStatus==='Khách đã nhận hàng') {
+        qb.innerHTML = `<button class="order-action-btn btn-complete" onclick="quickUpdate('${orderId}','Hoàn tất',this)">🎉 Hoàn tất</button>`;
+      } else {
+        qb.innerHTML = '<button class="order-action-btn btn-disabled" disabled>—</button>';
+      }
+    }
+    showToast('✅ ' + data.message);
+  } catch(e) { alert('Lỗi kết nối.'); btn.disabled=false; btn.textContent=label; }
+}
+
+// ── Admin hủy đơn từ modal ──
+async function adminCancelOrder(orderId, btn) {
+  if (!confirm('Bạn chắc chắn muốn hủy đơn hàng này?')) return;
+  btn.disabled = true;
+  const fd = new FormData();
+  fd.append('order_id', orderId);
+  fd.append('status', 'Đã hủy');
+  try {
+    const res  = await fetch('/api/admin/update-order-status/', { method:'POST', body:fd });
+    const data = await res.json();
+    if (!data.ok) { alert(data.message); btn.disabled=false; return; }
+    const res2  = await fetch(`/api/admin/order-detail/?order_id=${orderId}`);
+    const data2 = await res2.json();
+    if (data2.ok) renderModal(data2.order);
+    const chip = document.getElementById('chip-'+orderId);
+    if (chip) { chip.textContent='Đã hủy'; chip.className='order-status-chip st-huy'; }
+    const card = document.getElementById('order-card-'+orderId);
+    if (card) card.classList.remove('new-order');
+    showToast('Đơn hàng đã được hủy.');
+  } catch(e) { alert('Lỗi kết nối.'); btn.disabled=false; }
+}
+
+function closeModal() {
+  document.getElementById('orderModal').classList.remove('open');
+}
+document.getElementById('orderModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
 });
+
+// ── Toast ──
+function showToast(msg) {
+  let t = document.getElementById('ami-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'ami-toast';
+    t.style.cssText = 'position:fixed;bottom:28px;right:28px;z-index:99999;background:#4B672D;color:#EBF6C4;padding:12px 24px;border-radius:40px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.2);transition:opacity .3s;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg; t.style.opacity='1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>{ t.style.opacity='0'; }, 3000);
+}
+
+// ── Auto-poll đơn mới mỗi 30s ──
+let _lastCount = {{ orders|length }};
+setInterval(async () => {
+  try {
+    const res  = await fetch('/api/admin/new-orders-count/');
+    const data = await res.json();
+    if (!data.ok) return;
+    const count = data.count;
+    if (count > _lastCount) {
+      document.getElementById('newOrderText').textContent =
+        `Có ${count - _lastCount} đơn hàng mới! Làm mới trang để xem.`;
+      document.getElementById('newOrderBanner').classList.add('show');
+    }
+    _lastCount = count;
+  } catch(e) {}
+}, 30000);
 </script>
 {% endblock %}

@@ -528,3 +528,36 @@ fieldset.module h2 {
   background: rgba(75,103,45,.1); color: var(--olive); text-decoration: none; transition: .2s;
 }
 .add-row a:hover { background: rgba(75,103,45,.2); }
+
+/* ── Avatar trong danh sách TaiKhoan ── */
+.tk-av-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    overflow: hidden;
+    border: 2px solid rgba(75,103,45,.2);
+}
+.tk-av-img {
+    width: 36px;
+    height: 36px;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+}
+.tk-av-mono {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4B672D, #7a9e50);
+    color: #EBF6C4;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}

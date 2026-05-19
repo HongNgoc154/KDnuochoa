@@ -17,6 +17,7 @@ import hmac
 import urllib.parse
 from datetime import datetime, timedelta
 from django.conf import settings
+from django.core.mail import send_mail
 import requests as http_requests
 import uuid
 from django.http import JsonResponse
@@ -64,6 +65,98 @@ def _format_currency(value):
     if value is None:
         return "0đ"
     return f"{int(value):,}".replace(",", ".") + "đ"
+
+def _payment_status_label(order):
+    payment = ((order.HinhThucThanhToan or "COD").strip() or "COD").lower()
+    status = (order.TrangThai or "").strip()
+    if status == "Thanh toán thất bại":
+        return "Thanh toán thất bại"
+    if payment in ("vnpay", "momo", "paypal"):
+        return "Đã thanh toán"
+    if status == "Hoàn tất":
+        return "Đã thanh toán"
+    return "Chưa thanh toán"
+
+
+def _delivery_status_label(order):
+    status = (order.TrangThai or "Chờ xác nhận").strip()
+    if status == "Đã thanh toán":
+        return "Chờ xác nhận"
+    if status == "Thanh toán thất bại":
+        return "Đã hủy"
+    return status or "Chờ xác nhận"
+
+
+def _order_account(order):
+    customer = getattr(order, "id_KhachHang", None)
+    if customer and getattr(customer, "id_TaiKhoan", None):
+        return customer.id_TaiKhoan
+    delivery = getattr(order, "id_GiaoHang", None)
+    if delivery and getattr(delivery, "id_TaiKhoan", None):
+        return delivery.id_TaiKhoan
+    return None
+
+
+def _send_order_status_email(order, status):
+    account = _order_account(order)
+    email = (getattr(account, "Email", "") or "").strip() if account else ""
+    if not email:
+        return False
+
+    customer_name = _account_display_name(account)
+    order_code = order.MaDonHang or f"#{order.id_DonHang}"
+    subject_map = {
+        "Đã xác nhận": f"Ami Perfumery — Đơn hàng {order_code} đã được xác nhận",
+        "Hoàn tất": f"Ami Perfumery — Đơn hàng {order_code} đã hoàn tất",
+    }
+    body_map = {
+        "Đã xác nhận": (
+            f"Xin chào {customer_name},\n\n"
+            f"Đơn hàng {order_code} của bạn đã được Ami Perfumery xác nhận. "
+            "Bạn có thể theo dõi trạng thái đơn trong trang tài khoản và xác nhận đã nhận hàng khi đơn được giao thành công.\n\n"
+            "Cảm ơn bạn đã mua sắm tại Ami Perfumery."
+        ),
+        "Hoàn tất": (
+            f"Xin chào {customer_name},\n\n"
+            f"Đơn hàng {order_code} của bạn đã được hoàn tất. "
+            "Ami Perfumery rất vui khi được phục vụ bạn và mong tiếp tục đồng hành trong những đơn hàng tiếp theo.\n\n"
+            "Trân trọng,\nAmi Perfumery"
+        ),
+    }
+    try:
+        send_mail(
+            subject_map.get(status, f"Ami Perfumery — Cập nhật đơn hàng {order_code}"),
+            body_map.get(status, f"Đơn hàng {order_code} đã được cập nhật sang trạng thái {status}."),
+            getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@ami.com"),
+            [email],
+            fail_silently=False,
+        )
+        return True
+    except Exception as exc:
+        print(f"[order_email] Không gửi được email đơn {order_code} tới {email}: {exc}")
+        return False
+
+
+def _extract_voucher_code(order):
+    note = ""
+    delivery = getattr(order, "id_GiaoHang", None)
+    if delivery:
+        note = delivery.GhiChu or ""
+    marker = "[AMI_VOUCHER:"
+    if marker in note:
+        return note.split(marker, 1)[1].split("]", 1)[0].strip() or "—"
+    return "—"
+
+
+def _clean_delivery_note(note):
+    if not note:
+        return ""
+    marker = "[AMI_VOUCHER:"
+    if marker in note:
+        before, after = note.split(marker, 1)
+        tail = after.split("]", 1)[1] if "]" in after else ""
+        return (before + tail).strip()
+    return note
 
 
 def _safe_list(queryset):
@@ -335,7 +428,6 @@ def _get_available_vouchers(account_id):
 
 
 
-from django.conf import settings
 
 def _product_image_map(product_ids):
     images = HinhAnh.objects.filter(id_SanPham_id__in=product_ids)
@@ -1458,7 +1550,7 @@ def checkout_page(request):
             form_data["name"]    = delivery.TenNguoiNhan or ""
             form_data["phone"]   = delivery.SDT          or ""
             form_data["address"] = delivery.DiaChi       or ""
-            form_data["note"]    = delivery.GhiChu       or ""
+            form_data["note"]    = _clean_delivery_note(delivery.GhiChu)
  
         # Email lấy từ TaiKhoan
         acc = _safe_first(TaiKhoan.objects.filter(id_TaiKhoan=account_id))
@@ -1525,12 +1617,15 @@ def place_order_api(request):
                     print(f"[place_order] Đã tạo KhachHang mới id={customer.id_KhachHang} cho account={account_id}")
  
         # ── 1. Lưu GiaoHang ─────────────────────────────────────
+        delivery_note = note
+        if voucher_cd:
+            delivery_note = f"{note}\n[AMI_VOUCHER:{voucher_cd}]".strip()
         giao_hang = GiaoHang.objects.create(
             id_TaiKhoan_id = account_id if account_id else None,
             TenNguoiNhan   = name,
             SDT            = phone,
             DiaChi         = address,
-            GhiChu         = note,
+            GhiChu         = delivery_note,
         )
  
         # ── 2. Lưu DonHang ──────────────────────────────────────
@@ -2018,7 +2113,7 @@ def vnpay_return(request):
     print("Got:     ", vnp_hash[:20])
 
     if signature_valid and response_code == "00":
-        DonHang.objects.filter(MaDonHang=order_id).update(TrangThai="Đã thanh toán")
+        DonHang.objects.filter(MaDonHang=order_id).exclude(TrangThai__in=["Đã hủy", "Hoàn tất"]).update(TrangThai="Chờ xác nhận")
         return render(request, "app/payment_success.html", {
             "order_id": order_id,
             "message":  "Thanh toán VNPAY thành công!",
@@ -2122,7 +2217,7 @@ def momo_return(request):
     print("message:",    message)
 
     if result_code == "0":
-        DonHang.objects.filter(MaDonHang=order_id).update(TrangThai="Đã thanh toán")
+        DonHang.objects.filter(MaDonHang=order_id).exclude(TrangThai__in=["Đã hủy", "Hoàn tất"]).update(TrangThai="Chờ xác nhận")
         return render(request, "app/payment_success.html", {
             "order_id": order_id,
             "message":  "Thanh toán MoMo thành công!",
@@ -2148,7 +2243,7 @@ def momo_ipn(request):
         print(data)
 
         if result_code == "0":
-            DonHang.objects.filter(MaDonHang=order_id).update(TrangThai="Đã thanh toán")
+            DonHang.objects.filter(MaDonHang=order_id).exclude(TrangThai__in=["Đã hủy", "Hoàn tất"]).update(TrangThai="Chờ xác nhận")
         return JsonResponse({"status": "ok"})
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
@@ -2209,7 +2304,8 @@ def my_orders_api(request):
         "Chờ xác nhận":   0,
         "Đã xác nhận":    1,
         "Đang giao":      2,
-        "Hoàn tất":       3,
+        "Khách đã nhận hàng": 3,
+        "Hoàn tất":       4,
         "Đã hủy":         -1,
         "Đã giao":        3,
         "Đã thanh toán":  1,
@@ -2237,7 +2333,7 @@ def my_orders_api(request):
                 "price":        _format_currency(d.GiaBan),
             })
  
-        trang_thai = (order.TrangThai or "Chờ xác nhận").strip()
+        trang_thai = _delivery_status_label(order)
         gh = order.id_GiaoHang
  
         result.append({
@@ -2248,6 +2344,7 @@ def my_orders_api(request):
             "step":     STATUS_STEP.get(trang_thai, 0),
             "total":    _format_currency(order.TongTien),
             "payment":  order.HinhThucThanhToan or "COD",
+            "payment_status": _payment_status_label(order),
             "items":    item_list,
             "address":  gh.DiaChi if gh else "",
             "receiver": gh.TenNguoiNhan if gh else "",
@@ -2278,13 +2375,13 @@ def confirm_received_api(request):
         order = DonHang.objects.filter(
             Q(id_KhachHang=customer) | Q(id_GiaoHang__id_TaiKhoan_id=account_id),
             id_DonHang=order_id,
-            TrangThai="Đang giao"
+            TrangThai__in=["Đã xác nhận", "Đang giao"]
         ).first()
     else:
         order = DonHang.objects.filter(
             id_DonHang=order_id,
             id_GiaoHang__id_TaiKhoan_id=account_id,
-            TrangThai="Đang giao"
+            TrangThai__in=["Đã xác nhận", "Đang giao"]
         ).first()
  
     if not order:
@@ -2293,13 +2390,13 @@ def confirm_received_api(request):
             "message": "Không tìm thấy đơn hàng hoặc đơn chưa đủ điều kiện xác nhận."
         })
  
-    order.TrangThai = "Hoàn tất"
+    order.TrangThai = "Khách đã nhận hàng"
     order.save(update_fields=["TrangThai"])
  
     return JsonResponse({
         "ok":         True,
-        "message":    "Cảm ơn bạn đã xác nhận! Đơn hàng đã được hoàn tất. 🎉",
-        "new_status": "Hoàn tất",
+        "message":    "Cảm ơn bạn đã xác nhận! Ami Perfumery sẽ hoàn tất đơn hàng trong thời gian sớm nhất.",
+        "new_status": "Khách đã nhận hàng",
     })
  
  
@@ -2356,155 +2453,229 @@ def cancel_order_api(request):
 # ADMIN VIEWS — Quản lý đơn hàng
 # ═══════════════════════════════════════════════════════════════════
  
-# ── 4. Admin: Danh sách đơn hàng ──────────────────────────────────
-# URL: GET /admin-orders/
-# ──────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────
+# ADMIN VIEWS — Quản lý đơn hàng
+# ─────────────────────────────────────────────────────────────────
+
 def admin_orders_view(request):
-    """
-    Trang quản lý đơn hàng cho admin/staff.
-    Filter theo trạng thái, tìm kiếm theo mã đơn / tên khách.
-    """
-    # ── Kiểm tra quyền admin ──
+    is_django_admin = bool(
+        getattr(request, "user", None)
+        and request.user.is_authenticated
+        and request.user.is_staff
+    )
     account_id = request.session.get("account_id")
-    if not account_id:
-        return redirect('auth-page')
-    account = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first()
-    if not account or account.LoaiTaiKhoan not in ('admin', 'staff'):
-        return redirect('home')
- 
+    account    = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first() if account_id else None
+    if not is_django_admin and (not account or account.LoaiTaiKhoan not in ('admin','staff')):
+        return redirect('/admin/login/?next=/admin-orders/')
+
     status_filter = request.GET.get("status", "all")
     search_q      = (request.GET.get("q") or "").strip()
- 
+
     orders_qs = DonHang.objects.select_related(
-        "id_KhachHang", "id_GiaoHang"
+        "id_KhachHang", "id_KhachHang__id_TaiKhoan",
+        "id_GiaoHang",  "id_GiaoHang__id_TaiKhoan"
     ).order_by("-ThoiGian")
- 
+
     if status_filter != "all":
         orders_qs = orders_qs.filter(TrangThai=status_filter)
- 
+
     if search_q:
         orders_qs = orders_qs.filter(
             Q(MaDonHang__icontains=search_q) |
+            Q(id_KhachHang__TenKhachHang__icontains=search_q) |
             Q(id_GiaoHang__TenNguoiNhan__icontains=search_q) |
             Q(id_GiaoHang__SDT__icontains=search_q)
         )
- 
-    # ── Đếm theo trạng thái ──
+
+    orders = list(orders_qs[:200])
+    order_ids = [o.id_DonHang for o in orders]
+
+    details = list(
+        ChiTietDonHang.objects
+        .filter(id_DonHang_id__in=order_ids)
+        .select_related("id_BienThe", "id_BienThe__id_SanPham",
+                        "id_BienThe__id_SanPham__id_ThuongHieu")
+    ) if order_ids else []
+
+    detail_map = defaultdict(list)
+    for d in details:
+        detail_map[d.id_DonHang_id].append(d)
+
+    product_ids_all = list({
+        d.id_BienThe.id_SanPham_id
+        for d in details
+        if d.id_BienThe and d.id_BienThe.id_SanPham_id
+    })
+    image_map = _product_image_map(product_ids_all)
+
+    for order in orders:
+        rows = detail_map.get(order.id_DonHang, [])
+        order.admin_items    = rows
+        order.admin_products = ", ".join(
+            d.id_BienThe.id_SanPham.TenSanPham
+            for d in rows if d.id_BienThe and d.id_BienThe.id_SanPham
+        ) or "—"
+        order.admin_variants = ", ".join(
+            d.id_BienThe.Sku for d in rows if d.id_BienThe and d.id_BienThe.Sku
+        ) or "—"
+        order.admin_quantity    = sum(int(d.SoLuong or 0) for d in rows)
+        order.delivery_status   = _delivery_status_label(order)
+        order.payment_status    = _payment_status_label(order)
+
+        # Ảnh sản phẩm đầu tiên trong đơn
+        first_img = ""
+        for d in rows:
+            if d.id_BienThe and d.id_BienThe.id_SanPham_id:
+                imgs = image_map.get(d.id_BienThe.id_SanPham_id, [])
+                if imgs:
+                    first_img = imgs[0]
+                    break
+        order.first_image = first_img
+
     from django.db.models import Count
     status_counts = {
         row["TrangThai"]: row["cnt"]
         for row in DonHang.objects.values("TrangThai").annotate(cnt=Count("id_DonHang"))
     }
- 
+
+    STATUS_TABS = [
+        {"label": "Chờ xác nhận",       "key": "Chờ xác nhận"},
+        {"label": "Đã xác nhận",         "key": "Đã xác nhận"},
+        {"label": "Đang giao",           "key": "Đang giao"},
+        {"label": "Khách đã nhận hàng",  "key": "Khách đã nhận hàng"},
+        {"label": "Hoàn tất",            "key": "Hoàn tất"},
+        {"label": "Đã hủy",              "key": "Đã hủy"},
+    ]
+    for tab in STATUS_TABS:
+        tab["count"] = status_counts.get(tab["key"], 0)
+
     return render(request, "admin/orders.html", {
-        "orders":        list(orders_qs[:100]),
+        "orders":        orders,
         "status_filter": status_filter,
         "search_q":      search_q,
-        "status_counts": status_counts,
-        "STATUS_LIST": [
-            "Chờ xác nhận",
-            "Đã xác nhận",
-            "Đang giao",
-            "Hoàn tất",
-            "Đã hủy",
-        ],
+        "status_tabs":   STATUS_TABS,
+        "total_count":   DonHang.objects.count(),
     })
- 
- 
-# ── 5. Admin: Cập nhật trạng thái đơn hàng ────────────────────────
+
+
+# ═══════════════════════════════════════════════════════════════════
+# ADMIN — Cập nhật trạng thái đơn hàng
 # URL: POST /api/admin/update-order-status/
-# Body: order_id, status
-# ──────────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════
 @csrf_exempt
 @require_POST
 def admin_update_order_status(request):
-    """
-    Admin cập nhật trạng thái đơn hàng.
-    Luồng hợp lệ:
-      Chờ xác nhận → Đã xác nhận
-      Đã xác nhận  → Đang giao
-      Đang giao    → Hoàn tất  (hoặc khách tự confirm)
-      Bất kỳ       → Đã hủy   (admin có thể hủy)
-    """
+    is_django_admin = bool(
+        getattr(request, "user", None)
+        and request.user.is_authenticated
+    )
     account_id = request.session.get("account_id")
-    if not account_id:
-        return JsonResponse({"ok": False, "need_login": True})
- 
-    account = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first()
-    if not account or account.LoaiTaiKhoan not in ('admin', 'staff'):
-        return JsonResponse({"ok": False, "message": "Không có quyền thực hiện."}, status=403)
- 
+    if not is_django_admin and not account_id:
+        return JsonResponse({"ok": False, "message": "Chưa đăng nhập."}, status=403)
+
     order_id   = request.POST.get("order_id")
     new_status = (request.POST.get("status") or "").strip()
- 
-    VALID_STATUSES = ["Chờ xác nhận", "Đã xác nhận", "Đang giao", "Hoàn tất", "Đã hủy"]
-    if new_status not in VALID_STATUSES:
+
+    VALID = [
+        "Chờ xác nhận", "Đã xác nhận", "Đang giao",
+        "Khách đã nhận hàng", "Hoàn tất", "Đã hủy"
+    ]
+    if new_status not in VALID:
         return JsonResponse({"ok": False, "message": "Trạng thái không hợp lệ."})
- 
-    order = DonHang.objects.filter(id_DonHang=order_id).first()
+
+    order = DonHang.objects.select_related(
+        "id_KhachHang", "id_KhachHang__id_TaiKhoan",
+        "id_GiaoHang",  "id_GiaoHang__id_TaiKhoan",
+    ).filter(id_DonHang=order_id).first()
     if not order:
         return JsonResponse({"ok": False, "message": "Không tìm thấy đơn hàng."})
- 
-    # ── Kiểm tra luồng hợp lệ ──
+
+    # ── Luồng hợp lệ (dùng TrangThai thô trong DB) ──
     FLOW = {
-        "Chờ xác nhận": ["Đã xác nhận", "Đã hủy"],
-        "Đã xác nhận":  ["Đang giao",   "Đã hủy"],
-        "Đang giao":    ["Hoàn tất",     "Đã hủy"],
-        "Hoàn tất":     [],
-        "Đã hủy":       [],
+        "Chờ xác nhận":       ["Đã xác nhận",        "Đã hủy"],
+        "Đã thanh toán":      ["Đã xác nhận",        "Đã hủy"],
+        "Đã xác nhận":        ["Đang giao",           "Đã hủy"],
+        "Đang giao":          ["Khách đã nhận hàng"],
+        "Khách đã nhận hàng": ["Hoàn tất"],
+        "Hoàn tất":           [],
+        "Đã hủy":             [],
+        "Thanh toán thất bại":[],
     }
     current = (order.TrangThai or "Chờ xác nhận").strip()
-    allowed = FLOW.get(current, [])
- 
-    if new_status not in allowed:
+    if new_status not in FLOW.get(current, []):
         return JsonResponse({
             "ok": False,
             "message": f"Không thể chuyển từ '{current}' sang '{new_status}'."
         })
- 
+
     order.TrangThai = new_status
     order.save(update_fields=["TrangThai"])
- 
+
+    # ── Gửi email theo mốc ──
+    email_sent = False
+    if new_status in ("Đã xác nhận", "Hoàn tất"):
+        email_sent = _send_order_status_email(order, new_status)
+
+    # ── Khi Hoàn tất: cộng điểm, cập nhật TongChiTieu, hạng ──
+    if new_status == "Hoàn tất":
+        acc = _order_account(order)
+        if acc:
+            total_val = float(order.TongTien or 0)
+            acc.TongChiTieu = float(acc.TongChiTieu or 0) + total_val
+            acc.save(update_fields=["TongChiTieu"])
+            earned = int(total_val / 10000)
+            if earned > 0:
+                add_points(acc, earned, "earn_order",
+                           f"Tích điểm hoàn tất đơn {order.MaDonHang}", order)
+            update_member_level(acc)
+            order.DiemNhanDuoc = earned
+            order.save(update_fields=["DiemNhanDuoc"])
+
+    suffix = " · Email đã gửi." if email_sent else ""
     return JsonResponse({
         "ok":         True,
-        "message":    f"Đã cập nhật đơn hàng {order.MaDonHang} → {new_status}",
+        "message":    f"Đã cập nhật → {new_status}.{suffix}",
         "new_status": new_status,
         "order_id":   order.id_DonHang,
+        "email_sent": email_sent,
     })
- 
- 
-# ── 6. Admin: Chi tiết đơn hàng (API JSON) ────────────────────────
+
+
+# ═══════════════════════════════════════════════════════════════════
+# ADMIN — Chi tiết đơn hàng (JSON)
 # URL: GET /api/admin/order-detail/?order_id=...
-# ──────────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════
 def admin_order_detail_api(request):
+    is_django_admin = bool(
+        getattr(request, "user", None)
+        and request.user.is_authenticated
+    )
     account_id = request.session.get("account_id")
-    if not account_id:
-        return JsonResponse({"ok": False, "need_login": True})
-    account = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first()
-    if not account or account.LoaiTaiKhoan not in ('admin', 'staff'):
-        return JsonResponse({"ok": False, "message": "Không có quyền."}, status=403)
- 
+    if not is_django_admin and not account_id:
+        return JsonResponse({"ok": False, "message": "Chưa đăng nhập."}, status=403)
+
     order_id = request.GET.get("order_id")
     order = DonHang.objects.select_related(
         "id_KhachHang", "id_GiaoHang",
-        "id_KhachHang__id_TaiKhoan"
+        "id_KhachHang__id_TaiKhoan", "id_GiaoHang__id_TaiKhoan",
     ).filter(id_DonHang=order_id).first()
- 
     if not order:
         return JsonResponse({"ok": False, "message": "Không tìm thấy đơn hàng."})
- 
+
     details = list(
         ChiTietDonHang.objects
         .filter(id_DonHang=order)
-        .select_related("id_BienThe", "id_BienThe__id_SanPham",
-                         "id_BienThe__id_SanPham__id_ThuongHieu")
+        .select_related(
+            "id_BienThe", "id_BienThe__id_SanPham",
+            "id_BienThe__id_SanPham__id_ThuongHieu",
+        )
     )
     product_ids = [
         d.id_BienThe.id_SanPham_id for d in details
         if d.id_BienThe and d.id_BienThe.id_SanPham_id
     ]
     image_map = _product_image_map(product_ids)
- 
+
     items = []
     for d in details:
         bt = d.id_BienThe
@@ -2516,33 +2687,74 @@ def admin_order_detail_api(request):
         imgs = image_map.get(sp.id_SanPham, [])
         items.append({
             "product_name": sp.TenSanPham,
-            "brand":        sp.id_ThuongHieu.TenThuongHieu if sp.id_ThuongHieu else "",
-            "image":        imgs[0] if imgs else FALLBACK_IMAGES["default"],
-            "sku":          bt.Sku,
-            "qty":          d.SoLuong or 1,
-            "price":        _format_currency(d.GiaBan),
+            "brand":  sp.id_ThuongHieu.TenThuongHieu if sp.id_ThuongHieu else "",
+            "image":  imgs[0] if imgs else FALLBACK_IMAGES["default"],
+            "sku":    bt.Sku,
+            "qty":    d.SoLuong or 1,
+            "price":  _format_currency(d.GiaBan),
         })
- 
+
     gh = order.id_GiaoHang
     kh = order.id_KhachHang
- 
+
+    # ── Tính next_status dựa trên TrangThai thô trong DB ──
+    raw_status = (order.TrangThai or "").strip()
+    display_status = _delivery_status_label(order)   # trạng thái hiển thị cho người dùng
+
+    FLOW_NEXT = {
+        "Chờ xác nhận":       ("Đã xác nhận",        "✅ Xác nhận đơn"),
+        "Đã thanh toán":      ("Đã xác nhận",        "✅ Xác nhận đơn"),
+        "Đã xác nhận":        ("Đang giao",           "🚚 Bắt đầu giao hàng"),
+        "Đang giao":          ("Khách đã nhận hàng",  "📦 Đánh dấu đã giao"),
+        "Khách đã nhận hàng": ("Hoàn tất",            "🎉 Hoàn tất đơn hàng"),
+    }
+    next_action = FLOW_NEXT.get(raw_status) or FLOW_NEXT.get(display_status)
+
+    can_cancel = raw_status in ("Chờ xác nhận", "Đã xác nhận", "Đã thanh toán")
+
     return JsonResponse({
         "ok": True,
         "order": {
-            "id":       order.id_DonHang,
-            "ma_don":   order.MaDonHang,
-            "date":     order.ThoiGian.strftime("%d/%m/%Y %H:%M") if order.ThoiGian else "",
-            "status":   order.TrangThai,
-            "payment":  order.HinhThucThanhToan,
-            "total":    _format_currency(order.TongTien),
-            "items":    items,
-            "receiver": gh.TenNguoiNhan if gh else "",
-            "phone":    gh.SDT if gh else "",
-            "address":  gh.DiaChi if gh else "",
-            "note":     gh.GhiChu if gh else "",
-            "customer": kh.TenKhachHang if kh else "Khách vãng lai",
+            "id":             order.id_DonHang,
+            "ma_don":         order.MaDonHang,
+            "date":           order.ThoiGian.strftime("%d/%m/%Y %H:%M") if order.ThoiGian else "",
+            "status":         display_status,
+            "raw_status":     raw_status,
+            "payment":        order.HinhThucThanhToan or "COD",
+            "payment_status": _payment_status_label(order),
+            "voucher_code":   _extract_voucher_code(order),
+            "points_used":    int(order.DiemDaDung or 0),
+            "points_discount":_format_currency(order.TienGiamTuDiem),
+            "points_earned":  int(order.DiemNhanDuoc or 0),
+            "total":          _format_currency(order.TongTien),
+            "items":          items,
+            "receiver":       gh.TenNguoiNhan if gh else "",
+            "phone":          gh.SDT if gh else "",
+            "address":        gh.DiaChi if gh else "",
+            "note":           _clean_delivery_note(gh.GhiChu) if gh else "",
+            "customer":       kh.TenKhachHang if kh else "Khách vãng lai",
+            "next_status":    next_action[0] if next_action else None,
+            "next_label":     next_action[1] if next_action else None,
+            "can_cancel":     can_cancel,
         }
     })
+
+# ═══════════════════════════════════════════════════════════════════
+# ADMIN — API đếm đơn mới (dùng cho auto-poll)
+# URL: GET /api/admin/new-orders-count/
+# ═══════════════════════════════════════════════════════════════════
+def admin_new_orders_count(request):
+    is_django_admin = bool(
+        getattr(request, "user", None)
+        and request.user.is_authenticated
+    )
+    account_id = request.session.get("account_id")
+    if not is_django_admin and not account_id:
+        return JsonResponse({"ok": False, "count": 0})
+
+    count = DonHang.objects.filter(TrangThai="Chờ xác nhận").count()
+    return JsonResponse({"ok": True, "count": count})
+ 
 
 @csrf_exempt
 @require_POST

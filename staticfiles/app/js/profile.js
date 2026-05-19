@@ -135,47 +135,47 @@ const I18N = {
 //   });
 // })();
 
-function openOrderModal(orderId) {
-  const order = ORDERS.find(o => o.id === orderId);
-  if (!order) return;
-  const modal   = document.getElementById('orderModal');
-  const content = document.getElementById('orderModalContent');
-  if (!modal || !content) return;
+// function openOrderModal(orderId) {
+//   const order = ORDERS.find(o => o.id === orderId);
+//   if (!order) return;
+//   const modal   = document.getElementById('orderModal');
+//   const content = document.getElementById('orderModalContent');
+//   if (!modal || !content) return;
 
-  content.innerHTML = `
-    <h3 class="modal-title">Đơn hàng ${order.id}</h3>
-    <p class="od-section-title">Sản phẩm</p>
-    <div class="order-detail-items">
-      <div class="od-item">
-        <img class="od-item-img" src="${order.img}" alt="${order.product}">
-        <span class="od-item-name">${order.product}</span>
-        <span class="od-item-price">${order.total}</span>
-      </div>
-    </div>
-    <div class="od-totals">
-      <div class="od-row"><span>Tạm tính</span><span>${order.total}</span></div>
-      <div class="od-row"><span>Phí vận chuyển</span><span>Miễn phí</span></div>
-      <div class="od-row total"><span>Tổng cộng</span><span>${order.total}</span></div>
-    </div>
-    <p class="od-section-title">Cập nhật thông tin giao hàng</p>
-    <div class="form-grid" style="grid-template-columns:1fr;">
-      <div class="field-group">
-        <label class="field-label">Địa chỉ giao hàng</label>
-        <input class="field-input" type="text" value="123 Đường 30/4, Cần Thơ" placeholder="Địa chỉ">
-      </div>
-      <div class="field-group">
-        <label class="field-label">Số điện thoại</label>
-        <input class="field-input" type="tel" value="0901 234 567" placeholder="SĐT">
-      </div>
-    </div>
-    <div class="modal-actions" style="margin-top:20px;">
-      <button class="btn-save" onclick="showToast('Đã cập nhật thông tin giao hàng ✓'); document.getElementById('orderModal').hidden=true;">
-        <span class="btn-text">Cập nhật</span><span class="btn-spinner"></span>
-      </button>
-    </div>
-  `;
-  modal.hidden = false;
-}
+//   content.innerHTML = 
+//     <h3 class="modal-title">Đơn hàng ${order.id}</h3>
+//     <p class="od-section-title">Sản phẩm</p>
+//     <div class="order-detail-items">
+//       <div class="od-item">
+//         <img class="od-item-img" src="${order.img}" alt="${order.product}">
+//         <span class="od-item-name">${order.product}</span>
+//         <span class="od-item-price">${order.total}</span>
+//       </div>
+//     </div>
+//     <div class="od-totals">
+//       <div class="od-row"><span>Tạm tính</span><span>${order.total}</span></div>
+//       <div class="od-row"><span>Phí vận chuyển</span><span>Miễn phí</span></div>
+//       <div class="od-row total"><span>Tổng cộng</span><span>${order.total}</span></div>
+//     </div>
+//     <p class="od-section-title">Cập nhật thông tin giao hàng</p>
+//     <div class="form-grid" style="grid-template-columns:1fr;">
+//       <div class="field-group">
+//         <label class="field-label">Địa chỉ giao hàng</label>
+//         <input class="field-input" type="text" value="123 Đường 30/4, Cần Thơ" placeholder="Địa chỉ">
+//       </div>
+//       <div class="field-group">
+//         <label class="field-label">Số điện thoại</label>
+//         <input class="field-input" type="tel" value="0901 234 567" placeholder="SĐT">
+//       </div>
+//     </div>
+//     <div class="modal-actions" style="margin-top:20px;">
+//       <button class="btn-save" onclick="showToast('Đã cập nhật thông tin giao hàng ✓'); document.getElementById('orderModal').hidden=true;">
+//         <span class="btn-text">Cập nhật</span><span class="btn-spinner"></span>
+//       </button>
+//     </div>
+//   ;
+//   modal.hidden = false;
+// }
 
 function openCancelModal(orderId) {
   const modal = document.getElementById('cancelModal');
@@ -184,8 +184,14 @@ function openCancelModal(orderId) {
   modal.hidden = false;
 }
 
+// Giữ lại DUY NHẤT đoạn này:
 document.getElementById('orderModalClose')?.addEventListener('click', () => {
   document.getElementById('orderModal').hidden = true;
+});
+document.getElementById('orderModal')?.addEventListener('click', (e) => {
+  if (e.target === document.getElementById('orderModal')) {
+    document.getElementById('orderModal').hidden = true;
+  }
 });
 document.getElementById('cancelModalClose')?.addEventListener('click', () => {
   document.getElementById('cancelModal').hidden = true;
@@ -838,18 +844,20 @@ function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 })();
 
 const STATUS_STEP_MAP = {
-  "Chờ xác nhận": 0,
-  "Đã xác nhận":  1,
-  "Đang giao":    2,
-  "Hoàn tất":     3,
-  "Đã hủy":       -1,
-  "Đã giao":      3,
-  "Đã thanh toán": 1,
+  "Chờ xác nhận":        0,
+  "Đã xác nhận":         1,
+  "Đang giao":           2,
+  "Khách đã nhận hàng":  3,   // ← THÊM
+  "Hoàn tất":            4,   // ← ĐỔI từ 3 → 4
+  "Đã hủy":             -1,
+  "Đã giao":             3,
+  "Đã thanh toán":       1,
 };
 const STATUS_CSS = {
   "Chờ xác nhận": "status-processing",
   "Đã xác nhận":  "status-shipped",
   "Đang giao":    "status-shipped",
+  "Khách đã nhận hàng":  "status-delivered",
   "Hoàn tất":     "status-delivered",
   "Đã hủy":       "status-cancelled",
   "Đã giao":      "status-delivered",
@@ -858,11 +866,12 @@ const STATUS_LABEL_MAP = {
   "Chờ xác nhận": "Chờ xác nhận",
   "Đã xác nhận":  "Đã xác nhận",
   "Đang giao":    "Đang giao",
+  "Khách đã nhận hàng":  "Đã nhận hàng",
   "Hoàn tất":     "Hoàn tất",
   "Đã hủy":       "Đã hủy",
   "Đã giao":      "Đã giao",
 };
-const ORDER_STEPS = ["Đặt hàng", "Xác nhận", "Đang giao", "Hoàn tất"];
+const ORDER_STEPS = ["Đặt hàng", "Xác nhận", "Đang giao", "Đã nhận", "Hoàn tất"];
  
 function buildProgressHTML(step, status) {
   if (status === "Đã hủy") {
@@ -893,6 +902,10 @@ function buildOrderCard(order) {
   }
   if (order.status === "Đang giao") {
     btns += `<button class="btn-order btn-order-received" data-order-id="${order.id}">✓ Đã nhận được hàng</button>`;
+  }
+  if (order.status === "Khách đã nhận hàng") {
+    // Hiện label chờ admin hoàn tất — không có nút action
+    btns += `<span style="font-size:11px;color:#9e9e8e;letter-spacing:1px;padding:9px 0;">Chờ admin hoàn tất đơn hàng</span>`;
   }
  
   return `
