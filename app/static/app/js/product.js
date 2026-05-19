@@ -18,6 +18,51 @@
    ============================================================= */
 
 
+
+(function () {
+  // Lấy product_id từ URL: /product/9/
+  const match = window.location.pathname.match(/\/product\/(\d+)\//);
+  if (!match) return;
+  const productId = match[1];
+
+  fetch('/api/recommend/' + productId + '/')
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok || !data.products || data.products.length === 0) return;
+
+      const track   = document.getElementById('aiTrack');
+      const section = document.getElementById('aiRecommendSection');
+
+      data.products.forEach(item => {
+        const card = document.createElement('a');
+        card.href      = '/product/' + item.id + '/';
+        card.className = 'pd-rel-card';
+        card.innerHTML = `
+          <div class="pd-rel-media">
+            <img src="${item.primary_image}" alt="${item.name}" loading="lazy">
+          </div>
+          <div class="pd-rel-body">
+            <p class="pd-rel-brand">${item.brand}</p>
+            <h3 class="pd-rel-name">${item.name}</h3>
+            <p class="pd-rel-price">${item.price}</p>
+          </div>`;
+        track.appendChild(card);
+      });
+
+      // Hiện section lên
+      section.style.display = 'block';
+
+      // Gắn nút scroll
+      const outer = track.parentElement;
+      document.getElementById('aiLeft').addEventListener('click',
+        () => outer.scrollBy({ left: -320, behavior: 'smooth' }));
+      document.getElementById('aiRight').addEventListener('click',
+        () => outer.scrollBy({ left:  320, behavior: 'smooth' }));
+    })
+    .catch(err => console.warn('[AI]', err));
+})();
+
+
 function getCSRFToken() {
 
     const name = "csrftoken=";

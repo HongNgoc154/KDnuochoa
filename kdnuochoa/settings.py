@@ -117,6 +117,18 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 CKEDITOR_UPLOAD_PATH = "uploads/"
 
+CSRF_TRUSTED_ORIGINS = [
+    'http://127.0.0.1:8000',
+    'http://localhost:8000',
+]
+
+CKEDITOR_CONFIGS = {
+    'default': {
+        'filebrowserUploadUrl': '/ckeditor/upload/',
+        'filebrowserBrowseUrl': '/ckeditor/browse/',
+    }
+}
+
 # ═══════════════════════════════════════════════════════
 # AUTH
 # ═══════════════════════════════════════════════════════
@@ -163,3 +175,10 @@ EMAIL_USE_TLS      = True
 EMAIL_HOST_USER    = 'lhngocc1304@gmail.com'      # ← đổi thành email của bạn
 EMAIL_HOST_PASSWORD = 'drtp jeuw vnim ztqb'         # ← App Password (không phải mk thường)
 DEFAULT_FROM_EMAIL = 'Ami Perfumery <your_gmail@gmail.com>'
+
+
+# ═══════════════════════════════════════════════════════
+# AI — OpenAI GPT-4o
+# ═══════════════════════════════════════════════════════
+import os
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")

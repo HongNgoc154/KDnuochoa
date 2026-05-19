@@ -903,7 +903,17 @@ function buildOrderCard(order) {
   }
   if (order.status === "Đã xác nhận" || order.status === "Đang giao") {
     btns += `<button class="btn-order btn-order-received" data-order-id="${order.id}">✓ Đã nhận được hàng</button>`;
+
   }
+  if (order.status === "Hoàn tất") {
+  const reviewed = order.items?.some(i => i.reviewed);
+
+  if (reviewed) {
+    btns += `<button class="btn-order btn-order-review is-reviewed" disabled>✓ Đã đánh giá</button>`;
+  } else {
+    btns += `<button class="btn-order btn-order-review" data-order-id="${order.id}">Đánh giá sản phẩm</button>`;
+  }
+}
  
   return `
     <div class="order-card" data-id="${order.id}" data-status="${order.status}">
@@ -995,6 +1005,7 @@ function attachOrderEvents(container, ordersData) {
     const detailBtn   = e.target.closest('.btn-order-detail');
     const cancelBtn   = e.target.closest('.btn-order-cancel');
     const receivedBtn = e.target.closest('.btn-order-received');
+    const reviewBtn = e.target.closest('.btn-order-review');
  
     if (detailBtn) {
       const orderId = detailBtn.dataset.orderId;
@@ -1008,6 +1019,7 @@ function attachOrderEvents(container, ordersData) {
     }
     if (cancelBtn) openCancelOrderModal(cancelBtn.dataset.orderId);
     if (receivedBtn) await confirmReceived(receivedBtn.dataset.orderId, receivedBtn);
+    if (reviewBtn) openOrderReviewModal(reviewBtn.dataset.orderId);
   });
 }
  
@@ -1059,26 +1071,20 @@ function openProfileOrderModal(order) {
     <p class="od-section-title">Sản phẩm</p>
     <div class="order-detail-items">${itemsHTML}</div>
     <div class="od-totals">
-      // Sau dòng </div> của od-totals, thêm:
-        ${order.status === 'Đang giao' ? `
-          <div style="margin-top:16px;text-align:right;">
-            <button class="btn-order-received" 
-                    onclick="confirmReceived('${order.id}', this); document.getElementById('orderModal').hidden=true;"
-                    style="padding:11px 28px;">
-              ✓ Xác nhận đã nhận hàng
-            </button>
-          </div>` : ''}
-        ${order.status === 'Chờ xác nhận' ? `
-          <div style="margin-top:16px;text-align:right;">
-            <button class="btn-order btn-order-cancel" 
-                    onclick="document.getElementById('orderModal').hidden=true; openCancelOrderModal('${order.id}');">
-              Hủy đơn
-            </button>
-          </div>` : ''}
-        ;
       <div class="od-row"><span>Trạng thái thanh toán</span><span>${order.payment_status || '—'}</span></div>
       <div class="od-row total"><span>Tổng cộng</span><span>${order.total}</span></div>
-    </div>`;
+    </div>
+    ${order.status === 'Đang giao' ? `<div style="margin-top:16px;text-align:right;"><button class="btn-order-received" onclick="confirmReceived('${order.id}', this); document.getElementById('orderModal').hidden=true;" style="padding:11px 28px;">✓ Xác nhận đã nhận hàng</button></div>` : ''}
+    ${order.status === 'Chờ xác nhận' ? `<div style="margin-top:16px;text-align:right;"><button class="btn-order btn-order-cancel" onclick="document.getElementById('orderModal').hidden=true; openCancelOrderModal('${order.id}');">Hủy đơn</button></div>` : ''}
+    ${order.status === 'Hoàn tất' ? `
+      <div style="margin-top:16px;text-align:right;">
+        ${
+          order.items?.some(i => i.reviewed)
+          ? `<button class="btn-order btn-order-review is-reviewed" disabled>✓ Đã đánh giá</button>`
+          : `<button class="btn-order btn-order-review" data-order-id="${order.id}" onclick="document.getElementById('orderModal').hidden=true; openOrderReviewModal('${order.id}');">Đánh giá sản phẩm</button>`
+        }
+      </div>
+    ` : ''}`;
  
   modal.hidden = false;
 }
@@ -1187,6 +1193,9 @@ function updateOrderCardUI(orderId, newStatus) {
     if (newStatus === 'Đã xác nhận' || newStatus === 'Đang giao') {
       html += `<button class="btn-order btn-order-received" data-order-id="${orderId}">✓ Đã nhận được hàng</button>`;
     }
+    if (newStatus === 'Hoàn tất') {
+      html += `<button class="btn-order btn-order-review" data-order-id="${orderId}">Đánh giá sản phẩm</button>`;
+    }
     footer.innerHTML = html;
   }
 }
@@ -1244,33 +1253,95 @@ function updateOrderCardUI(orderId, newStatus) {
 })();
 
 
-// const avatarWrap = document.getElementById("avatarWrap");
-// const avatarInput = document.getElementById("avatarInput");
+let orderReviewState = { productId: null, rating: 5 };
 
-// avatarWrap.addEventListener("click", function(e){
+function markOrderReviewed(orderId) {
+  if (!orderId) return;
+  const buttons = document.querySelectorAll(`.btn-order-review[data-order-id="${orderId}"]`);
+  buttons.forEach((btn) => {
+    btn.textContent = '✓ Đã đánh giá';
+    btn.disabled = true;
+    btn.classList.add('is-reviewed');
+    btn.style.pointerEvents = 'none';
+    btn.style.opacity = '0.7';
+    btn.style.cursor = 'not-allowed';
+  });
+}
 
-//     e.preventDefault();
-//     e.stopPropagation();
+function renderOrderReviewStars(selected = 5) {
+  const editor = document.getElementById('orderReviewStarEditor');
+  if (!editor) return;
+  editor.innerHTML = '';
+  for (let i = 1; i <= 5; i++) {
+    const star = document.createElement('span');
+    star.className = `star-editor-star ${i <= selected ? 'lit' : ''}`;
+    star.textContent = '★';
+    star.addEventListener('click', () => {
+      orderReviewState.rating = i;
+      renderOrderReviewStars(i);
+    });
+    editor.appendChild(star);
+  }
+}
 
-//     avatarInput.click();
+function openOrderReviewModal(orderId) {
+  fetch('/api/my-orders/').then(r => r.json()).then(data => {
+    const found = (data.orders || []).find(o => String(o.id) === String(orderId));
+    if (!found) return showToast('Không tìm thấy đơn hàng.');
+    const first = (found.items || [])[0];
+    if (!first) return showToast('Đơn hàng không có sản phẩm để đánh giá.');
 
-// });
+    orderReviewState = { productId: String(first.product_id), rating: 5 };
+    document.getElementById('orderReviewModal').dataset.orderId = String(orderId);
+    document.getElementById('orderReviewProductName').textContent = `Sản phẩm: ${first.product_name}`;
+    document.getElementById('orderReviewText').value = '';
+    renderOrderReviewStars(5);
+    document.getElementById('orderReviewModal').hidden = false;
+  }).catch(() => showToast('Không thể mở form đánh giá.'));
+}
 
-// avatarInput.addEventListener("change", function(){
+(function initOrderReviewModal() {
+  const modal = document.getElementById('orderReviewModal');
+  if (!modal) return;
 
-//     const file = this.files[0];
+  const close = () => { modal.hidden = true; };
+  document.getElementById('orderReviewModalClose')?.addEventListener('click', close);
+  document.getElementById('orderReviewModalClose2')?.addEventListener('click', close);
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
 
-//     if(file){
+  document.getElementById('orderReviewSubmit')?.addEventListener('click', async () => {
+    const btn = document.getElementById('orderReviewSubmit');
+    const content = (document.getElementById('orderReviewText')?.value || '').trim();
+    const rating = Number(orderReviewState.rating || 0);
+    const reviewedOrderId = document.querySelector('#orderReviewModal')?.dataset.orderId;
 
-//         const reader = new FileReader();
+    if (rating < 1 || rating > 5) return showToast('Vui lòng chọn số sao từ 1 đến 5.');
+    if (!content) return showToast('Vui lòng nhập nội dung đánh giá.');
 
-//         reader.onload = function(e){
+    btn.disabled = true;
+    btn.classList.add('loading');
+    try {
+      const fd = new FormData();
+      fd.append('order_id', reviewedOrderId);
+      fd.append('product_id', orderReviewState.productId);
+      fd.append('rating', String(rating));
+      fd.append('content', content);
+      const res = await fetch('/submit-review/', { method: 'POST', body: fd });
+      const data = await res.json();
 
-//             avatarWrap.querySelector("img").src =
-//                 e.target.result;
-
-//         };
-
-//         reader.readAsDataURL(file);
-//     }
-// });
+      if (data.ok) {
+        showToast(data.message || 'Gửi đánh giá thành công.');
+        const reviewedOrderId = document.querySelector('#orderReviewModal')?.dataset.orderId;
+        markOrderReviewed(reviewedOrderId);
+        close();
+      } else {
+        showToast(data.message || 'Gửi đánh giá thất bại.');
+      }
+    } catch {
+      showToast('Lỗi kết nối. Vui lòng thử lại.');
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('loading');
+    }
+  });
+})();

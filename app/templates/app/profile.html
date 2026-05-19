@@ -532,6 +532,20 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="orderReviewModal" hidden>
+  <div class="modal-card modal-sm" id="orderReviewModalCard">
+    <button class="modal-close" id="orderReviewModalClose">✕</button>
+    <h3 class="modal-title">Đánh giá sản phẩm</h3>
+    <p class="modal-sub" id="orderReviewProductName">Chia sẻ trải nghiệm của bạn về sản phẩm.</p>
+    <div class="star-editor" id="orderReviewStarEditor"></div>
+    <textarea class="field-input" id="orderReviewText" rows="4" maxlength="800" placeholder="Nội dung đánh giá…"></textarea>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="orderReviewModalClose2">Hủy</button>
+      <button class="btn-save" id="orderReviewSubmit"><span class="btn-text">Gửi đánh giá</span><span class="btn-spinner"></span></button>
+    </div>
+  </div>
+</div>
+
 <!-- ── SUCCESS TOAST ── -->
 <div class="toast" id="toast"></div>
 {% endblock %}

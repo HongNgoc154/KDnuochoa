@@ -4,6 +4,10 @@ from . import views
 # from app.admin import admin_site
 
 urlpatterns = [
+    # AI 
+    path('api/recommend/<int:product_id>/', views.ai_recommend_api, name='ai-recommend'),
+    path('api/chatbot/', views.chatbot_api, name='chatbot-api'),
+
     path('', views.home, name='home'),
     path('nuoc-hoa/', views.category, name='category-all'),
     path("nuoc-hoa/<slug:segment>/", views.category, name="category-segment"),

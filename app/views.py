@@ -119,7 +119,10 @@ def _send_order_status_email(order, status):
         "Hoàn tất": (
             f"Xin chào {customer_name},\n\n"
             f"Đơn hàng {order_code} của bạn đã được hoàn tất. "
-            "Ami Perfumery rất vui khi được phục vụ bạn và mong tiếp tục đồng hành trong những đơn hàng tiếp theo.\n\n"
+            "Ami Perfumery rất vui khi được phục vụ bạn.\n\n"
+            "Đừng quên đánh giá sản phẩm để nhận thêm nhiều ưu đãi hấp dẫn từ cửa hàng. "
+            "Bạn có thể vào trang Tài khoản > Đơn hàng và nhấn nút Đánh giá ngay trên đơn đã hoàn tất.\n\n"
+            "👉 Mở nhanh trang đơn hàng: https://amiperfumery.vn/profile/?tab=orders\n\n"
             "Trân trọng,\nAmi Perfumery"
         ),
     }
@@ -698,17 +701,29 @@ def product_detail(request, product_id=None):
             "name": item.id_NhomHuong.TenNhomHuong,
             "icon": item.id_NhomHuong.IconUrl.url if item.id_NhomHuong.IconUrl else "",
         }
-        if vai_tro == "Top Notes":
+        if vai_tro.strip() == "Top Notes":
             pyramid["top"].append(entry)
-        elif vai_tro == "Heart Notes":
+        elif vai_tro.strip() == "Heart Notes":
             pyramid["heart"].append(entry)
-        elif vai_tro == "Base Notes":
+        elif vai_tro.strip() == "Base Notes":
             pyramid["base"].append(entry)
         else:
             pyramid["other"].append(entry)
  
-    # Nếu không có vai trò → hiển thị tất cả ở "other" (không show pyramid)
-    nhom_huong_pyramid = pyramid if (pyramid["top"] or pyramid["heart"] or pyramid["base"]) else None
+    # Nếu không có top/heart/base → đưa tất cả vào "other" để vẫn hiển thị
+    if not (pyramid["top"] or pyramid["heart"] or pyramid["base"]):
+        # Không có tầng → đưa tất cả vào other để hiển thị flat
+        pyramid["other"] = [
+            {
+                "name": item.id_NhomHuong.TenNhomHuong,
+                "icon": item.id_NhomHuong.IconUrl.url if item.id_NhomHuong.IconUrl else "",
+            }
+            for item in nhom_huongs
+        ]
+
+    nhom_huong_pyramid = pyramid if any([
+        pyramid["top"], pyramid["heart"], pyramid["base"], pyramid["other"]
+    ]) else None
 
     variants = _safe_list(BienThe.objects.filter(id_SanPham=product_obj).order_by("id_BienThe"))
     variant_attr_rows = _safe_list(
@@ -1125,45 +1140,74 @@ def submit_question(request):
 def submit_review(request):
     account_id = request.session.get("account_id")
     if not account_id:
-        return JsonResponse({"ok": False, "need_login": True, "message": "Vui lòng đăng nhập để chia sẻ trải nghiệm của bạn."})
+        return JsonResponse({"ok": False, "need_login": True, "message": "Vui lòng đăng nhập để đánh giá."})
 
     last_submit = request.session.get("review_last_submit")
     now_ts = timezone.now().timestamp()
     if last_submit and now_ts - float(last_submit) < 8:
         return JsonResponse({"ok": False, "message": "Bạn đang thao tác quá nhanh, vui lòng thử lại sau vài giây."}, status=429)
 
+    order_id = request.POST.get("order_id")
     product_id = request.POST.get("product_id")
+
     try:
         rating = int(request.POST.get("rating") or 0)
     except ValueError:
         rating = 0
+
     content = escape((request.POST.get("content") or "").strip())
+
+    if not order_id:
+        return JsonResponse({"ok": False, "message": "Thiếu mã đơn hàng."}, status=400)
 
     if rating < 1 or rating > 5:
         return JsonResponse({"ok": False, "message": "Số sao phải từ 1 đến 5."}, status=400)
+
     if not content:
         return JsonResponse({"ok": False, "message": "Vui lòng nhập nội dung đánh giá."}, status=400)
+
     if len(content) > 800:
         return JsonResponse({"ok": False, "message": "Đánh giá tối đa 800 ký tự."}, status=400)
 
     account = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first()
     product = SanPham.objects.filter(id_SanPham=product_id).first()
+
     if not account or not product:
         return JsonResponse({"ok": False, "message": "Không tìm thấy dữ liệu."}, status=404)
 
-    has_purchased = ChiTietDonHang.objects.filter(
-        id_DonHang__id_KhachHang__id_TaiKhoan=account,
-        id_BienThe__id_SanPham=product,
-        id_DonHang__TrangThai="Đã giao"
-    ).exists()
+    customer = KhachHang.objects.filter(id_TaiKhoan_id=account_id).first()
 
-    if not has_purchased:
+    order_filter = Q(id_DonHang=order_id) & Q(TrangThai="Hoàn tất")
+
+    if customer:
+        order_filter &= (
+            Q(id_KhachHang=customer) |
+            Q(id_GiaoHang__id_TaiKhoan_id=account_id)
+        )
+    else:
+        order_filter &= Q(id_GiaoHang__id_TaiKhoan_id=account_id)
+
+    order = DonHang.objects.filter(order_filter).first()
+
+    if not order:
         return JsonResponse({
             "ok": False,
-            "message": "Bạn cần mua và nhận sản phẩm trước khi đánh giá."
+            "message": "Đơn hàng chưa hoàn tất hoặc không thuộc tài khoản của bạn."
+        }, status=403)
+
+    product_in_order = ChiTietDonHang.objects.filter(
+        id_DonHang=order,
+        id_BienThe__id_SanPham=product
+    ).exists()
+
+    if not product_in_order:
+        return JsonResponse({
+            "ok": False,
+            "message": "Sản phẩm này không thuộc đơn hàng cần đánh giá."
         }, status=403)
 
     already_reviewed = DanhGia.objects.filter(
+        id_DonHang=order,
         id_SanPham=product,
         id_TaiKhoan=account,
         parent_id__isnull=True
@@ -1172,10 +1216,11 @@ def submit_review(request):
     if already_reviewed:
         return JsonResponse({
             "ok": False,
-            "message": "Bạn đã đánh giá sản phẩm này rồi."
+            "message": "Bạn đã đánh giá sản phẩm trong đơn hàng này rồi."
         }, status=400)
 
     review = DanhGia.objects.create(
+        id_DonHang=order,
         id_SanPham=product,
         id_TaiKhoan=account,
         SoSao=rating,
@@ -1183,22 +1228,21 @@ def submit_review(request):
         parent_id=None,
         NgayDanhGia=timezone.now(),
     )
+
     request.session["review_last_submit"] = now_ts
 
     config = CauHinhThanhVien.objects.filter(
         TrangThai='active'
     ).order_by('MucChiTieuToiThieu').first()
 
-    review_bonus = 100
-
-    if config:
-        review_bonus = int(config.ThuongDanhGia or 100)
+    review_bonus = int(config.ThuongDanhGia or 100) if config else 100
 
     add_points(
         account,
         review_bonus,
         "review_bonus",
-        "Thưởng đánh giá sản phẩm"
+        f"Thưởng đánh giá sản phẩm trong đơn {order.MaDonHang}",
+        order
     )
 
     update_member_level(account)
@@ -1206,6 +1250,9 @@ def submit_review(request):
     return JsonResponse({
         "ok": True,
         "message": "Cảm ơn bạn đã chia sẻ trải nghiệm cùng Ami Perfume.",
+        "reviewed": True,
+        "order_id": order.id_DonHang,
+        "product_id": product.id_SanPham,
         "review": {
             "id": review.id_DanhGia,
             "name": _account_display_name(account),
@@ -2324,6 +2371,12 @@ def my_orders_api(request):
             if not sp:
                 continue
             imgs = image_map.get(sp.id_SanPham, [])
+            reviewed = DanhGia.objects.filter(
+                id_DonHang=order,
+                id_SanPham=sp,
+                id_TaiKhoan_id=account_id,
+                parent_id__isnull=True
+            ).exists()
             item_list.append({
                 "product_id":   sp.id_SanPham,
                 "product_name": sp.TenSanPham,
@@ -2331,6 +2384,7 @@ def my_orders_api(request):
                 "image":        imgs[0] if imgs else FALLBACK_IMAGES["default"],
                 "qty":          d.SoLuong or 1,
                 "price":        _format_currency(d.GiaBan),
+                "reviewed": reviewed,
             })
  
         trang_thai = _delivery_status_label(order)
@@ -2916,3 +2970,77 @@ def api_gia_tri_thuoc_tinh(request):
         import traceback
         traceback.print_exc()
         return JsonResponse({'ok': False, 'message': str(e)}, status=500)
+    
+
+# ════════════════════════════════════════════════════════════
+# AI — Gợi ý sản phẩm tương tự (Content-based Filtering)
+# ════════════════════════════════════════════════════════════
+def ai_recommend_api(request, product_id):
+    """
+    GET /api/recommend/<product_id>/
+    Trả về tối đa 8 sản phẩm tương tự dựa trên TF-IDF cosine.
+    """
+    from app.ai.recommender import get_similar_products
+
+    similar_ids = get_similar_products(product_id, top_n=8)
+    if not similar_ids:
+        return JsonResponse({"ok": True, "products": []})
+
+    products = list(
+        SanPham.objects
+        .select_related("id_ThuongHieu", "id_LoaiSanPham")
+        .prefetch_related("nhom_huongs")
+        .filter(id_SanPham__in=similar_ids)
+    )
+
+    # Giữ đúng thứ tự theo độ tương tự
+    product_map = {p.id_SanPham: p for p in products}
+    ordered = [product_map[pid] for pid in similar_ids if pid in product_map]
+
+    cards = _build_product_cards(ordered)
+    return JsonResponse({"ok": True, "products": cards},
+                        json_dumps_params={"ensure_ascii": False})
+
+
+# ════════════════════════════════════════════════════
+# CHATBOT AI — RAG + GPT-4o
+# ════════════════════════════════════════════════════
+@csrf_exempt
+@require_POST
+def chatbot_api(request):
+    """
+    POST /api/chatbot/
+    Body: { "message": "...", "history": [...] }
+    """
+    import json as _json
+
+    try:
+        data     = _json.loads(request.body)
+        user_msg = (data.get("message") or "").strip()
+        history  = data.get("history") or []
+
+        if not user_msg:
+            return JsonResponse({"ok": False,
+                                 "error": "Tin nhắn không được trống."})
+
+        # Giới hạn history 10 lượt để tránh vượt context window
+        if len(history) > 20:
+            history = history[-20:]
+
+        from app.ai.chatbot import chat
+        result = chat(user_msg, history)
+
+        return JsonResponse({
+            "ok":          True,
+            "reply":       result["reply"],
+            "history":     result["history"],
+            "suggestions": result["suggestions"],
+        }, json_dumps_params={"ensure_ascii": False})
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            "ok":    False,
+            "error": "Lỗi hệ thống. Vui lòng thử lại sau."
+        }, status=500)

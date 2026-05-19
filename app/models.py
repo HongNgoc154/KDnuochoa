@@ -1,5 +1,7 @@
 from django.db import models
 from ckeditor_uploader.fields import RichTextUploadingField
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
 
 
 # ===================== NHÓM HƯƠNG =====================
@@ -62,6 +64,16 @@ class SanPham(models.Model):
 
     def __str__(self):
         return self.TenSanPham
+    
+@receiver(post_save, sender=SanPham)
+@receiver(post_delete, sender=SanPham)
+def invalidate_ai_cache(sender, **kwargs):
+    """Tự động xóa cache AI khi sản phẩm thay đổi."""
+    try:
+        from app.ai.recommender import invalidate_cache
+        invalidate_cache()
+    except Exception:
+        pass
 
 
 class SanPhamNhomHuong(models.Model):
@@ -418,6 +430,14 @@ class DanhGia(models.Model):
         null=True,
         blank=True
     )
+
+    id_DonHang = models.ForeignKey(
+        DonHang,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='id_DonHang'
+)
 
     parent_id = models.IntegerField(null=True, blank=True)
 

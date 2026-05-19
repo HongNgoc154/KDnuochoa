@@ -1,0 +1,22 @@
+# ── Môi trường Python ──
+.env
+*.pyc
+__pycache__/
+*.pyo
+
+# ── AI cache files ──
+app/ai/faiss.index
+app/ai/chunks.pkl
+app/ai/model_cache.pkl
+
+# ── Django ──
+db.sqlite3
+staticfiles/
+media/
+
+# ── VSCode ──
+.vscode/
+
+# ── Windows ──
+Thumbs.db
+desktop.ini
