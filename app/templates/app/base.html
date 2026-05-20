@@ -192,13 +192,362 @@
   </div>
 </footer>
 
-<!-- FLOATING CHAT -->
-<div class="floating-chat">
-  <a href="#" class="chat-bubble" title="Nhắn tin Zalo"><i class="bi bi-chat-dots-fill"></i></a>
+<!-- FLOATING CHAT WIDGET -->
+<div class="ami-chat" id="amiChat">
+ 
+  <!-- NÚT MỞ CHAT -->
+  <button class="ami-chat__trigger" id="chatTrigger" aria-label="Mở tư vấn AI">
+    <span class="ami-chat__trigger-icon ami-chat__trigger-icon--chat">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8.5" cy="10.5" r="1" fill="currentColor"/><circle cx="12" cy="10.5" r="1" fill="currentColor"/><circle cx="15.5" cy="10.5" r="1" fill="currentColor"/></svg>
+    </span>
+    <span class="ami-chat__trigger-icon ami-chat__trigger-icon--close" hidden>
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </span>
+    <span class="ami-chat__badge" id="chatBadge" hidden>1</span>
+  </button>
+ 
+  <!-- PANEL CHAT -->
+  <div class="ami-chat__panel" id="chatPanel" aria-hidden="true">
+ 
+    <!-- HEADER -->
+    <div class="ami-chat__header">
+      <div class="ami-chat__avatar">
+        <span>A</span>
+        <span class="ami-chat__status-dot"></span>
+      </div>
+      <div class="ami-chat__header-info">
+        <p class="ami-chat__header-name">Ami Consultant</p>
+        <p class="ami-chat__header-status">● Đang hoạt động</p>
+      </div>
+      <button class="ami-chat__close" id="chatClose" aria-label="Đóng chat">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M13.5 4.5l-9 9M4.5 4.5l9 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+ 
+    <!-- MESSAGES -->
+    <div class="ami-chat__messages" id="chatMessages">
+      <!-- Tin nhắn chào mừng (static) -->
+      <div class="ami-chat__msg ami-chat__msg--bot" data-welcome>
+        <div class="ami-chat__bubble">
+          Xin chào! Tôi là trợ lý tư vấn nước hoa của <strong>Ami Perfumery</strong>. Bạn đang tìm kiếm hương thơm cho dịp nào? ✨
+        </div>
+      </div>
+ 
+      <!-- Quick replies gợi ý ban đầu -->
+      <div class="ami-chat__quick-replies" id="chatQuickReplies">
+        <button class="ami-chat__quick-btn" data-msg="Nước hoa đi làm hàng ngày">Đi làm hàng ngày</button>
+        <button class="ami-chat__quick-btn" data-msg="Nước hoa đi tiệc hoặc hẹn hò">Tiệc / Hẹn hò</button>
+        <button class="ami-chat__quick-btn" data-msg="Tôi muốn mua nước hoa làm quà tặng">Quà tặng</button>
+      </div>
+    </div>
+ 
+    <!-- TYPING INDICATOR (ẩn mặc định) -->
+    <div class="ami-chat__typing" id="chatTyping" hidden>
+      <span></span><span></span><span></span>
+    </div>
+ 
+    <!-- INPUT -->
+    <div class="ami-chat__input-wrap">
+      <input
+        class="ami-chat__input"
+        id="chatInput"
+        type="text"
+        placeholder="Nhập câu hỏi về nước hoa..."
+        autocomplete="off"
+        maxlength="300"
+      >
+      <button class="ami-chat__send" id="chatSend" aria-label="Gửi">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M16 2L8.5 9.5M16 2L11 16l-2.5-6.5L2 7l14-5z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+ 
+  </div>
 </div>
+<!-- END CHAT WIDGET -->
 
 <script src="{% static 'app/js/main.js' %}"></script>
 <script src="{% static 'app/js/cart.js' %}"></script>
 {% block extra_js %}{% endblock %}
+
+
+
+{% comment %} <!-- ═══════════════════════════════════════════════
+     AMI CHATBOT WIDGET
+     ═══════════════════════════════════════════════ -->
+<div id="amiChatWidget">
+
+  <!-- Bubble button -->
+  <button id="amiChatBubble" onclick="toggleAmiChat()" aria-label="Tư vấn nước hoa">
+    <span id="bubbleIcon">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+    </span>
+    <span id="chatUnreadDot" style="display:none;"></span>
+  </button>
+
+  <!-- Chat box -->
+  <div id="amiChatBox" style="display:none;">
+
+    <!-- Header -->
+    <div class="chat-header">
+      <div class="chat-header-left">
+        <div class="chat-avatar">A</div>
+        <div>
+          <p class="chat-name">Ami Consultant</p>
+          <p class="chat-status">● Đang hoạt động</p>
+        </div>
+      </div>
+      <button class="chat-close" onclick="toggleAmiChat()">✕</button>
+    </div>
+
+    <!-- Messages -->
+    <div class="chat-messages" id="chatMessages">
+      <div class="chat-msg bot">
+        <div class="msg-bubble">
+          Xin chào! Tôi là trợ lý tư vấn nước hoa của <strong>Ami Perfumery</strong>. 
+          Bạn đang tìm kiếm hương thơm cho dịp nào? ✨
+        </div>
+      </div>
+    </div>
+
+    <!-- Suggestions (sản phẩm gợi ý) -->
+    <div class="chat-suggestions" id="chatSuggestions" style="display:none;"></div>
+
+    <!-- Input -->
+    <div class="chat-input-wrap">
+      <input type="text" id="chatInput"
+        placeholder="Nhập câu hỏi về nước hoa..."
+        onkeydown="if(event.key==='Enter') sendChatMsg()">
+      <button onclick="sendChatMsg()" id="chatSendBtn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+
+  </div>
+</div> {% endcomment %}
+
+{% comment %} <style>
+#amiChatWidget {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 9999;
+  font-family: var(--font-body, 'Cormorant Garamond', serif);
+}
+#amiChatBubble {
+  width: 58px; height: 58px;
+  border-radius: 50%;
+  background: #4B672D;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(75,103,45,0.4);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+#amiChatBubble:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 28px rgba(75,103,45,0.5);
+}
+#chatUnreadDot {
+  position: absolute; top: 6px; right: 6px;
+  width: 10px; height: 10px;
+  background: #e53935; border-radius: 50%;
+  border: 2px solid #fff;
+}
+#amiChatBox {
+  position: absolute;
+  bottom: 70px; right: 0;
+  width: 340px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.chat-header {
+  background: #4B672D;
+  color: #fff;
+  padding: 14px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.chat-header-left { display: flex; align-items: center; gap: 10px; }
+.chat-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: #EBF6C4; color: #4B672D;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 16px;
+}
+.chat-name { font-size: 14px; font-weight: 600; margin: 0; }
+.chat-status { font-size: 11px; opacity: 0.85; margin: 0; }
+.chat-close {
+  background: none; border: none; color: #fff;
+  font-size: 16px; cursor: pointer; opacity: 0.8;
+  padding: 4px 8px;
+}
+.chat-close:hover { opacity: 1; }
+.chat-messages {
+  height: 320px; overflow-y: auto;
+  padding: 16px; display: flex;
+  flex-direction: column; gap: 10px;
+  background: #fafaf8;
+}
+.chat-msg { display: flex; }
+.chat-msg.bot { justify-content: flex-start; }
+.chat-msg.user { justify-content: flex-end; }
+.msg-bubble {
+  max-width: 80%; padding: 10px 14px;
+  border-radius: 12px; font-size: 13px;
+  line-height: 1.55;
+}
+.chat-msg.bot .msg-bubble {
+  background: #fff;
+  border: 1px solid #e8e4dc;
+  color: #333; border-radius: 4px 12px 12px 12px;
+}
+.chat-msg.user .msg-bubble {
+  background: #4B672D; color: #fff;
+  border-radius: 12px 4px 12px 12px;
+}
+.chat-typing .msg-bubble {
+  background: #fff; border: 1px solid #e8e4dc;
+  color: #999; font-style: italic; font-size: 12px;
+}
+.chat-suggestions {
+  padding: 8px 12px;
+  display: flex; gap: 8px; overflow-x: auto;
+  border-top: 1px solid #f0ece4;
+  background: #fafaf8;
+}
+.chat-sug-card {
+  flex-shrink: 0; width: 100px;
+  background: #fff; border: 1px solid #e8e4dc;
+  border-radius: 8px; overflow: hidden;
+  text-decoration: none; color: #333;
+  font-size: 11px; transition: box-shadow 0.2s;
+}
+.chat-sug-card:hover { box-shadow: 0 2px 12px rgba(75,103,45,0.2); }
+.chat-sug-card img {
+  width: 100%; height: 70px; object-fit: cover;
+}
+.chat-sug-card p { padding: 4px 6px; margin: 0; font-size: 11px; font-weight: 500; }
+.chat-input-wrap {
+  display: flex; align-items: center;
+  padding: 10px 12px; gap: 8px;
+  border-top: 1px solid #f0ece4;
+  background: #fff;
+}
+#chatInput {
+  flex: 1; border: 1px solid #ddd;
+  border-radius: 20px; padding: 8px 14px;
+  font-size: 13px; outline: none;
+  font-family: inherit;
+}
+#chatInput:focus { border-color: #4B672D; }
+#chatSendBtn {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: #4B672D; border: none;
+  color: #fff; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s;
+}
+#chatSendBtn:hover { background: #3a5223; }
+</style>
+
+<script>
+let chatHistory = [];
+let chatOpen = false;
+
+function toggleAmiChat() {
+  chatOpen = !chatOpen;
+  const box = document.getElementById('amiChatBox');
+  box.style.display = chatOpen ? 'flex' : 'none';
+  document.getElementById('chatUnreadDot').style.display = 'none';
+  if (chatOpen) document.getElementById('chatInput').focus();
+}
+
+function addMsg(text, role) {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + role;
+  div.innerHTML = `<div class="msg-bubble">${text}</div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+function showTyping() {
+  return addMsg('Đang soạn tin...', 'bot chat-typing');
+}
+
+function showSuggestions(suggestions) {
+  const wrap = document.getElementById('chatSuggestions');
+  if (!suggestions || suggestions.length === 0) {
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.innerHTML = '';
+  suggestions.forEach(item => {
+    const a = document.createElement('a');
+    a.className = 'chat-sug-card';
+    a.href = '/product/' + item.id + '/';
+    a.target = '_blank';
+    a.innerHTML = `
+      <p>${item.name}</p>
+      <p style="color:#4B672D;padding:0 6px 6px;">${item.brand}</p>`;
+    wrap.appendChild(a);
+  });
+  wrap.style.display = 'flex';
+}
+
+async function sendChatMsg() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  input.value = '';
+  document.getElementById('chatSendBtn').disabled = true;
+
+  // Hiện tin nhắn người dùng
+  addMsg(msg, 'user');
+
+  // Hiện typing indicator
+  const typingEl = showTyping();
+
+  try {
+    const res = await fetch('/api/chatbot/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg, history: chatHistory }),
+    });
+    const data = await res.json();
+
+    // Xóa typing
+    typingEl.remove();
+
+    if (data.ok) {
+      // Hiện reply (chuyển \n thành <br>)
+      const formatted = data.reply.replace(/\n/g, '<br>');
+      addMsg(formatted, 'bot');
+      chatHistory = data.history;
+      showSuggestions(data.suggestions);
+    } else {
+      addMsg('Xin lỗi, có lỗi xảy ra. Vui lòng thử lại.', 'bot');
+    }
+  } catch (err) {
+    typingEl.remove();
+    addMsg('Không thể kết nối. Vui lòng thử lại.', 'bot');
+  }
+
+  document.getElementById('chatSendBtn').disabled = false;
+  document.getElementById('chatInput').focus();
+}
+</script> {% endcomment %}
+<script src="{% static 'app/js/chat.js' %}"></script>
 </body>
 </html>

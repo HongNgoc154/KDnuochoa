@@ -1,7 +1,6 @@
 import os
 from app.ai.knowledge_base import retrieve
 
-# System prompt — định nghĩa tính cách và giới hạn của chatbot
 SYSTEM_PROMPT = """Bạn là trợ lý tư vấn nước hoa của cửa hàng Ami Perfumery tại Cần Thơ, Việt Nam.
 
 TÍNH CÁCH: Ấm áp, tinh tế, chuyên nghiệp theo phong cách luxury lifestyle.
@@ -21,35 +20,20 @@ GIỚI HẠN:
 
 
 def chat(user_message: str, history: list = None):
-    """
-    Xử lý 1 lượt hội thoại theo kiến trúc RAG:
-    1. Retrieve: tìm chunks liên quan từ FAISS
-    2. Augment: ghép chunks vào system prompt
-    3. Generate: gửi GPT-4o, nhận câu trả lời
+    from groq import Groq
 
-    Args:
-        user_message: câu hỏi của người dùng
-        history: lịch sử hội thoại (multi-turn)
-    Returns:
-        dict với reply, history mới, và suggestions (sản phẩm gợi ý)
-    """
-    from openai import OpenAI
+    client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
 
-    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
-
-    # ── Bước 1: RETRIEVE ──────────────────────────────────────
-    # Tìm top-5 chunks liên quan nhất với câu hỏi
+    # ── Bước 1: RETRIEVE ──────────────────────────────────
     chunks = retrieve(user_message, top_k=5)
 
-    # ── Bước 2: AUGMENT ───────────────────────────────────────
-    # Ghép chunks thành context string
+    # ── Bước 2: AUGMENT ───────────────────────────────────
     context_lines = []
     for i, c in enumerate(chunks, 1):
         prefix = "[SẢN PHẨM]" if c["type"] == "product" else "[BÀI VIẾT]"
         context_lines.append(f"{i}. {prefix} {c['name']}: {c['text']}")
     context = "\n\n".join(context_lines)
 
-    # Ghép vào system prompt
     full_system = (
         SYSTEM_PROMPT
         + "\n\n" + "=" * 50
@@ -59,16 +43,14 @@ def chat(user_message: str, history: list = None):
         + "\n" + "=" * 50
     )
 
-    # ── Bước 3: GENERATE ──────────────────────────────────────
-    # Build messages: history + câu hỏi mới
+    # ── Bước 3: GENERATE ──────────────────────────────────
     messages = list(history or [])
     messages.append({"role": "user", "content": user_message})
 
-    # Gọi OpenAI GPT-4o
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model="llama-3.3-70b-versatile",
         max_tokens=1024,
-        temperature=0.7,     # 0=chính xác, 1=sáng tạo, 0.7=cân bằng
+        temperature=0.7,
         messages=[
             {"role": "system", "content": full_system}
         ] + messages,
@@ -76,10 +58,9 @@ def chat(user_message: str, history: list = None):
 
     reply = response.choices[0].message.content
 
-    # Cập nhật history để dùng cho lượt sau (multi-turn)
+    # Cập nhật history cho multi-turn
     messages.append({"role": "assistant", "content": reply})
 
-    # Lấy sản phẩm được tìm thấy để hiển thị card gợi ý
     suggested = [c for c in chunks if c["type"] == "product"][:3]
 
     return {

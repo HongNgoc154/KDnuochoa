@@ -23,6 +23,12 @@ import uuid
 from django.http import JsonResponse
 from .models import ThuocTinh, GiaTriThuocTinh
 import json as _json
+import json
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.utils import timezone as tz
+from django.db import models
 
 
 from .models import (
@@ -44,7 +50,7 @@ from .models import (
     ThuongHieu,
     YeuThich,
     LichSuDiem,
-    CauHinhThanhVien,
+    CauHinhThanhVien,NhaCungCap, PhieuNhap, ChiTietNhap
 )
 from collections import defaultdict
 
@@ -3002,6 +3008,174 @@ def ai_recommend_api(request, product_id):
                         json_dumps_params={"ensure_ascii": False})
 
 
+def admin_api_bien_the(request):
+    """Trả về danh sách biến thể theo id_SanPham."""
+    sp_id = request.GET.get('sp_id')
+    if not sp_id:
+        return JsonResponse({'ok': False, 'data': []})
+    from .models import BienThe, BienTheThuocTinh
+    bien_the = BienThe.objects.filter(id_SanPham_id=sp_id)
+    data = []
+    for bt in bien_the:
+        attrs = BienTheThuocTinh.objects.select_related(
+            'id_GiaTriThuocTinh__id_ThuocTinh'
+        ).filter(id_BienThe=bt)
+        attr_str = ', '.join(
+            f"{a.id_GiaTriThuocTinh.id_ThuocTinh.TenThuocTinh}: {a.id_GiaTriThuocTinh.GiaTri}"
+            for a in attrs
+        )
+        data.append({
+            'id':       bt.id_BienThe,
+            'sku':      bt.Sku,
+            'gia_nhap': float(bt.GiaNhap or 0),
+            'gia_ban':  float(bt.GiaBan or 0),
+            'ton_kho':  bt.SoLuong,
+            'attrs':    attr_str or bt.Sku,
+        })
+    return JsonResponse({'ok': True, 'data': data})
+ 
+ 
+@csrf_exempt
+def admin_api_luu_phieu(request):
+    """Lưu phiếu nhập + chi tiết + cập nhật tồn kho."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'Method not allowed'}, status=405)
+ 
+    try:
+        body     = json.loads(request.body)
+        phieu_id = body.get('phieu_id')  # None = tạo mới
+        ncc_id   = body.get('ncc_id')
+        trang_thai = body.get('trang_thai', 'confirmed')
+        rows     = body.get('rows', [])   # [{bien_the_id, so_luong, gia_nhap}, ...]
+        new_products = body.get('new_products', [])  # sản phẩm mới chưa có
+ 
+        from .models import TaiKhoan as TK, BienThe as BT, ThuocTinh, GiaTriThuocTinh
+        from django.db import transaction
+ 
+        with transaction.atomic():
+            # 1. Lưu sản phẩm mới nếu có
+            for np in new_products:
+                sp_name = (np.get('ten_san_pham') or '').strip()
+                if not sp_name:
+                    continue
+                # Tạo SanPham
+                new_sp = SanPham.objects.create(
+                    TenSanPham=sp_name,
+                    TrangThai_SanPham='active',
+                )
+                # Tạo biến thể cho sản phẩm mới
+                for bt_data in np.get('bien_the', []):
+                    new_bt = BT.objects.create(
+                        id_SanPham=new_sp,
+                        Sku=bt_data.get('sku', f'SKU-{new_sp.pk}'),
+                        GiaNhap=bt_data.get('gia_nhap', 0),
+                        GiaBan=bt_data.get('gia_ban', 0),
+                        SoLuong=0,
+                    )
+                    # Gán thuộc tính
+                    for attr in bt_data.get('attrs', []):
+                        thuoc_tinh, _ = ThuocTinh.objects.get_or_create(
+                            TenThuocTinh=attr.get('ten_thuoc_tinh', 'Dung tích')
+                        )
+                        gia_tri, _ = GiaTriThuocTinh.objects.get_or_create(
+                            id_ThuocTinh=thuoc_tinh,
+                            GiaTri=attr.get('gia_tri', '')
+                        )
+                        BienTheThuocTinh.objects.create(
+                            id_BienThe=new_bt,
+                            id_GiaTriThuocTinh=gia_tri
+                        )
+                    # Thêm vào rows để nhập kho
+                    rows.append({
+                        'bien_the_id': new_bt.id_BienThe,
+                        'so_luong':    bt_data.get('so_luong', 0),
+                        'gia_nhap':    bt_data.get('gia_nhap', 0),
+                    })
+ 
+            # 2. Tạo / cập nhật PhieuNhap
+            tk = None
+            if request.user.is_authenticated:
+                tk = TK.objects.filter(Username=request.user.username).first()
+ 
+            tong_tien = sum(
+                float(r.get('gia_nhap', 0)) * int(r.get('so_luong', 0))
+                for r in rows
+            )
+ 
+            if phieu_id:
+                phieu = PhieuNhap.objects.get(pk=phieu_id)
+                phieu.TrangThai = trang_thai
+                phieu.TongTien  = tong_tien
+                if ncc_id:
+                    phieu.id_NCC_id = ncc_id
+                phieu.save()
+                # Xóa chi tiết cũ để ghi lại
+                phieu.chi_tiet.all().delete()
+            else:
+                import random, string
+                ma = 'PN' + tz.now().strftime('%y%m%d') + ''.join(
+                    random.choices(string.ascii_uppercase + string.digits, k=4)
+                )
+                phieu = PhieuNhap.objects.create(
+                    ThoiGian=tz.now(),
+                    id_TaiKhoan=tk,
+                    id_NCC_id=ncc_id if ncc_id else None,
+                    MaPhieu=ma,
+                    TongTien=tong_tien,
+                    TrangThai=trang_thai,
+                )
+ 
+            # 3. Lưu chi tiết + cập nhật tồn kho
+            for r in rows:
+                bt_id    = r.get('bien_the_id')
+                so_luong = int(r.get('so_luong', 0))
+                gia_nhap = float(r.get('gia_nhap', 0))
+                if not bt_id or so_luong <= 0:
+                    continue
+ 
+                ChiTietNhap.objects.create(
+                    id_PhieuNhap=phieu,
+                    id_BienThe_id=bt_id,
+                    SoLuongNhap=so_luong,
+                    GiaNhap=gia_nhap,
+                )
+ 
+                if trang_thai in ('confirmed', 'done'):
+                    BT.objects.filter(pk=bt_id).update(
+                        SoLuong=models.F('SoLuong') + so_luong
+                    )
+ 
+        return JsonResponse({
+            'ok': True,
+            'phieu_id': phieu.id_PhieuNhap,
+            'ma_phieu': phieu.MaPhieu,
+        })
+ 
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return JsonResponse({'ok': False, 'error': str(e)}, status=500)
+ 
+ 
+@csrf_exempt
+def admin_api_them_sp_moi(request):
+    """Kiểm tra tên sản phẩm có tồn tại chưa."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False})
+    body = json.loads(request.body)
+    ten  = (body.get('ten_san_pham') or '').strip()
+    if not ten:
+        return JsonResponse({'ok': False, 'error': 'Tên trống'})
+    exists = SanPham.objects.filter(TenSanPham__iexact=ten).first()
+    if exists:
+        from .models import BienThe as BT
+        bien_the = list(BT.objects.filter(id_SanPham=exists).values(
+            'id_BienThe', 'Sku', 'GiaNhap', 'GiaBan', 'SoLuong'
+        ))
+        return JsonResponse({'ok': True, 'exists': True, 'sp_id': exists.id_SanPham,
+                             'ten': exists.TenSanPham, 'bien_the': bien_the})
+    return JsonResponse({'ok': True, 'exists': False})
+
+
 # ════════════════════════════════════════════════════
 # CHATBOT AI — RAG + GPT-4o
 # ════════════════════════════════════════════════════
@@ -3013,30 +3187,49 @@ def chatbot_api(request):
     Body: { "message": "...", "history": [...] }
     """
     import json as _json
-
+ 
     try:
         data     = _json.loads(request.body)
         user_msg = (data.get("message") or "").strip()
         history  = data.get("history") or []
-
+ 
         if not user_msg:
-            return JsonResponse({"ok": False,
-                                 "error": "Tin nhắn không được trống."})
-
-        # Giới hạn history 10 lượt để tránh vượt context window
+            return JsonResponse({"ok": False, "error": "Tin nhắn không được trống."})
+ 
         if len(history) > 20:
             history = history[-20:]
-
+ 
         from app.ai.chatbot import chat
         result = chat(user_msg, history)
-
+ 
+        # ── Bổ sung ảnh + giá vào suggestions ──────────────────
+        suggestions = result.get("suggestions") or []
+        if suggestions:
+            product_ids = [s["id"] for s in suggestions if s.get("type") == "product"]
+            if product_ids:
+                img_map     = _product_image_map(product_ids)
+                variant_map = _first_variant_map(product_ids)
+ 
+                for s in suggestions:
+                    if s.get("type") != "product":
+                        continue
+                    pid    = s["id"]
+                    imgs   = img_map.get(pid, [])
+                    s["image"] = imgs[0] if imgs else ""
+ 
+                    variant = variant_map.get(pid)
+                    if variant and variant.GiaBan:
+                        s["price"] = _format_currency(variant.GiaBan)
+                    else:
+                        s["price"] = ""
+ 
         return JsonResponse({
             "ok":          True,
             "reply":       result["reply"],
             "history":     result["history"],
-            "suggestions": result["suggestions"],
+            "suggestions": suggestions,
         }, json_dumps_params={"ensure_ascii": False})
-
+ 
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -3044,3 +3237,48 @@ def chatbot_api(request):
             "ok":    False,
             "error": "Lỗi hệ thống. Vui lòng thử lại sau."
         }, status=500)
+    
+
+# ════════════════════════════════════════════════════════════
+# PERSONALIZED RECOMMENDATIONS — Giai đoạn 3
+# ════════════════════════════════════════════════════════════
+def personalized_recommend_api(request):
+    """
+    GET /api/recommend/personal/
+    Trả về gợi ý cá nhân hóa cho user đang đăng nhập.
+    Nếu chưa đăng nhập → trả về sản phẩm phổ biến.
+    """
+    from app.ai.personalize import (
+        get_personalized_recommendations,
+        _get_popular_products
+    )
+
+    account_id = request.session.get("account_id")
+
+    if account_id:
+        product_ids = get_personalized_recommendations(account_id, top_n=8)
+    else:
+        product_ids = _get_popular_products(top_n=8)
+
+    if not product_ids:
+        return JsonResponse({"ok": True, "products": [], "type": "empty"})
+
+    products = list(
+        SanPham.objects
+        .select_related("id_ThuongHieu", "id_LoaiSanPham")
+        .filter(id_SanPham__in=product_ids)
+    )
+
+    # Giữ đúng thứ tự theo điểm
+    product_map = {p.id_SanPham: p for p in products}
+    ordered = [product_map[pid] for pid in product_ids if pid in product_map]
+
+    cards = _build_product_cards(ordered)
+
+    return JsonResponse({
+        "ok":      True,
+        "products": cards,
+        "type":    "personalized" if account_id else "popular",
+    }, json_dumps_params={"ensure_ascii": False})
+
+

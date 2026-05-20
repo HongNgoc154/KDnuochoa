@@ -7,6 +7,7 @@ urlpatterns = [
     # AI 
     path('api/recommend/<int:product_id>/', views.ai_recommend_api, name='ai-recommend'),
     path('api/chatbot/', views.chatbot_api, name='chatbot-api'),
+    path('api/recommend/personal/', views.personalized_recommend_api, name='personal-recommend'),
 
     path('', views.home, name='home'),
     path('nuoc-hoa/', views.category, name='category-all'),
@@ -58,6 +59,9 @@ urlpatterns = [
     path('api/admin/update-order-status/', views.admin_update_order_status, name='admin-update-order-status'),
     path('api/admin/order-detail/',        views.admin_order_detail_api,    name='admin-order-detail'),
     path('api/admin/new-orders-count/', views.admin_new_orders_count, name='admin-new-orders-count'),
+    path('admin-api/bien-the/',    views.admin_api_bien_the,   name='admin-api-bien-the'),
+    path('admin-api/luu-phieu/',   views.admin_api_luu_phieu,  name='admin-api-luu-phieu'),
+    path('admin-api/them-sp-moi/', views.admin_api_them_sp_moi,name='admin-api-them-sp-moi'),
 
     # ── Admin helper: Thuộc tính & Giá trị thuộc tính ──
     path('api/admin/thuoc-tinh/',          views.api_thuoc_tinh_list,       name='api-thuoc-tinh'),

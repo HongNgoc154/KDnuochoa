@@ -1039,3 +1039,60 @@ function showQaToast(msg, type = "success") {
   const savedRating = sessionStorage.getItem(`${draftKey}_rating`);
   if(savedRating){ rating = Number(savedRating) || 5; paintStars(); sessionStorage.removeItem(`${draftKey}_rating`); }
 })();
+
+
+// ════════════════════════════════════════════════
+// PERSONALIZED RECOMMENDATIONS — Giai đoạn 3
+// ════════════════════════════════════════════════
+(function () {
+  fetch('/api/recommend/personal/')
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok || !data.products || data.products.length === 0) return;
+
+      const track   = document.getElementById('personalTrack');
+      const section = document.getElementById('personalSection');
+      const label   = document.getElementById('personalLabel');
+      if (!track || !section) return;
+
+      // Đổi tiêu đề nếu là gợi ý phổ biến (chưa đăng nhập)
+      if (data.type === 'popular') {
+        label.textContent = '🔥 Sản phẩm được yêu thích nhất';
+        document.querySelector('#personalSection p[style]').textContent =
+          'Những sản phẩm được khách hàng lựa chọn nhiều nhất';
+      }
+
+      // Lấy product_id hiện tại để không hiện trùng
+      const currentId = parseInt(
+        document.querySelector('[data-product-id]')?.dataset.productId || '0'
+      );
+
+      data.products
+        .filter(item => item.id !== currentId)
+        .forEach(item => {
+          const card = document.createElement('a');
+          card.href      = '/product/' + item.id + '/';
+          card.className = 'pd-rel-card';
+          card.innerHTML = `
+            <div class="pd-rel-media">
+              <img src="${item.primary_image}" alt="${item.name}" loading="lazy">
+            </div>
+            <div class="pd-rel-body">
+              <p class="pd-rel-brand">${item.brand}</p>
+              <h3 class="pd-rel-name">${item.name}</h3>
+              <p class="pd-rel-price">${item.price}</p>
+            </div>`;
+          track.appendChild(card);
+        });
+
+      if (track.children.length > 0) {
+        section.style.display = 'block';
+        const outer = track.parentElement;
+        document.getElementById('personalLeft')?.addEventListener('click',
+          () => outer.scrollBy({ left: -320, behavior: 'smooth' }));
+        document.getElementById('personalRight')?.addEventListener('click',
+          () => outer.scrollBy({ left:  320, behavior: 'smooth' }));
+      }
+    })
+    .catch(err => console.warn('[Personal Recommend]', err));
+})();

@@ -606,3 +606,82 @@ class YeuThich(models.Model):
         managed         = False
         db_table        = 'YeuThich'
         unique_together = [('id_TaiKhoan', 'id_SanPham')]
+
+
+# ===================== NHÀ CUNG CẤP =====================
+class NhaCungCap(models.Model):
+    id_NCC     = models.AutoField(primary_key=True)
+    Ten_NCC    = models.CharField(max_length=255, null=True)
+    DiChi     = models.TextField(null=True, blank=True)
+    SDT        = models.CharField(max_length=20, null=True, blank=True)
+    Email      = models.CharField(max_length=255, null=True, blank=True)
+
+    class Meta:
+        managed  = False
+        db_table = 'NhaCungCap'
+
+    def __str__(self):
+        return self.Ten_NCC or f"NCC {self.id_NCC}"
+
+
+# ===================== PHIẾU NHẬP =====================
+class PhieuNhap(models.Model):
+    TRANG_THAI_CHOICES = [
+        ('draft',     'Nháp'),
+        ('confirmed', 'Đã xác nhận'),
+        ('done',      'Hoàn tất'),
+        ('cancelled', 'Huỷ'),
+    ]
+
+    id_PhieuNhap = models.AutoField(primary_key=True)
+    ThoiGian     = models.DateTimeField(null=True, blank=True)
+    id_TaiKhoan  = models.ForeignKey(
+        'TaiKhoan',
+        on_delete=models.DO_NOTHING,
+        db_column='id_TaiKhoan',
+        null=True, blank=True
+    )
+    id_NCC = models.ForeignKey(
+        NhaCungCap,
+        on_delete=models.DO_NOTHING,
+        db_column='id_NCC',
+        null=True, blank=True
+    )
+    MaPhieu  = models.CharField(max_length=100, null=True, blank=True)
+    TongTien = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    TrangThai = models.CharField(max_length=50, null=True, blank=True)
+
+    class Meta:
+        managed  = False
+        db_table = 'PhieuNhap'
+
+    def __str__(self):
+        return self.MaPhieu or f"PN-{self.id_PhieuNhap}"
+
+
+# ===================== CHI TIẾT NHẬP =====================
+class ChiTietNhap(models.Model):
+    id_ChiTietNhap = models.AutoField(primary_key=True)
+    id_PhieuNhap   = models.ForeignKey(
+        PhieuNhap,
+        on_delete=models.CASCADE,
+        db_column='id_PhieuNhap',
+        related_name='chi_tiet',
+        null=True, blank=True
+    )
+    id_BienThe = models.ForeignKey(
+        'BienThe',
+        on_delete=models.DO_NOTHING,
+        db_column='id_BienThe',
+        null=True, blank=True
+    )
+    SoLuongNhap = models.IntegerField(null=True, blank=True)
+    GiaNhap     = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        managed  = False
+        db_table = 'ChiTietNhap'
+
+    def __str__(self):
+        bt = self.id_BienThe
+        return f"{bt.id_SanPham.TenSanPham} - {bt.Sku}" if bt else f"CTN-{self.id_ChiTietNhap}"

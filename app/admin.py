@@ -10,12 +10,18 @@ from django import forms as django_forms
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.conf import settings as django_settings
+import json
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.utils import timezone as tz
+from django.db import models 
 
 from .models import (
     BienThe, BienTheThuocTinh, GiaTriThuocTinh,
     LoaiSanPham, NhomHuong, SanPham, ThuocTinh,
     ThuongHieu, HinhAnh, SanPhamNhomHuong, BaiViet, HoiDap, TaiKhoan, DanhGia,
-    KhuyenMai, KhuyenMaiTaiKhoan, KhachHang
+    KhuyenMai, KhuyenMaiTaiKhoan, KhachHang, NhaCungCap, PhieuNhap, ChiTietNhap,
 )
 
 
@@ -1474,3 +1480,155 @@ class KhachHangAdmin(admin.ModelAdmin):
         try: return obj.id_TaiKhoan.Email
         except: return "—"
     get_email.short_description = "Email"
+
+
+# ─── NHÀ CUNG CẤP ────────────────────────────────────────────
+@admin.register(NhaCungCap, site=admin_site)
+class NhaCungCapAdmin(admin.ModelAdmin):
+    list_display  = ('id_NCC', 'Ten_NCC', 'SDT', 'Email', 'DiChi')
+    search_fields = ('Ten_NCC', 'SDT', 'Email')
+    list_per_page = 20
+ 
+    class Media:
+        css = {'all': ('admin/css/ami_luxury.css',)}
+ 
+ 
+# ─── PHIẾU NHẬP ──────────────────────────────────────────────
+@admin.register(PhieuNhap, site=admin_site)
+class PhieuNhapAdmin(admin.ModelAdmin):
+    change_form_template = "admin/phieunhap_change_form.html"
+    add_form_template    = "admin/phieunhap_change_form.html"
+ 
+    list_display  = (
+        'ma_phieu_display', 'ThoiGian', 'ten_nguoi_nhap',
+        'ten_ncc', 'tong_tien_display', 'trang_thai_badge', 'so_san_pham'
+    )
+    list_display_links = ('ma_phieu_display',)
+    list_filter   = ('TrangThai', 'ThoiGian')
+    search_fields = ('MaPhieu', 'id_TaiKhoan__TenDangNhap', 'id_NCC__Ten_NCC')
+    ordering      = ('-ThoiGian',)
+    list_per_page = 20
+ 
+    # ── List display helpers ──────────────────────────────────
+    def ma_phieu_display(self, obj):
+        return format_html(
+            '<strong style="color:#4B672D;">{}</strong>',
+            obj.MaPhieu or f'PN-{obj.id_PhieuNhap}'
+        )
+    ma_phieu_display.short_description = "Mã phiếu"
+ 
+    def ten_nguoi_nhap(self, obj):
+        if obj.id_TaiKhoan:
+            return format_html(
+                '<span>{}</span><br><small style="color:#888;">{}</small>',
+                obj.id_TaiKhoan.TenDangNhap or '—',
+                obj.id_TaiKhoan.LoaiTaiKhoan or ''
+            )
+        return '—'
+    ten_nguoi_nhap.short_description = "Người nhập"
+ 
+    def ten_ncc(self, obj):
+        return obj.id_NCC.Ten_NCC if obj.id_NCC else '—'
+    ten_ncc.short_description = "Nhà cung cấp"
+ 
+    def tong_tien_display(self, obj):
+        if obj.TongTien:
+            return format_html(
+                '<strong style="color:#4B672D;">{}</strong>',
+                f"{int(obj.TongTien):,}".replace(",", ".") + "₫"
+            )
+        return '—'
+    tong_tien_display.short_description = "Tổng tiền"
+ 
+    def trang_thai_badge(self, obj):
+        colors = {
+            'draft':     ('#fff8e1', '#f57f17', '📝 Nháp'),
+            'confirmed': ('#e3f2fd', '#1565c0', '✅ Xác nhận'),
+            'done':      ('#e8f5e9', '#2e7d32', '✔ Hoàn tất'),
+            'cancelled': ('#fce4ec', '#c62828', '✖ Huỷ'),
+        }
+        bg, fg, label = colors.get(
+            obj.TrangThai or 'draft',
+            ('#f5f5f5', '#616161', obj.TrangThai or 'Nháp')
+        )
+        return format_html(
+            '<span style="background:{};color:{};padding:3px 10px;'
+            'border-radius:20px;font-size:11px;font-weight:600;">{}</span>',
+            bg, fg, label
+        )
+    trang_thai_badge.short_description = "Trạng thái"
+ 
+    def so_san_pham(self, obj):
+        count = obj.chi_tiet.count()
+        return format_html('<span style="font-weight:600;">{} dòng</span>', count)
+    so_san_pham.short_description = "Chi tiết"
+ 
+    # ── Change form context ───────────────────────────────────
+    def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+ 
+        # Danh sách NCC + sản phẩm + tài khoản cho dropdowns
+        extra_context['ncc_list']    = list(NhaCungCap.objects.values('id_NCC', 'Ten_NCC', 'SDT', 'Email'))
+        extra_context['san_pham_list'] = list(
+            SanPham.objects.select_related('id_ThuongHieu')
+            .values('id_SanPham', 'TenSanPham', 'id_ThuongHieu__TenThuongHieu')
+            .order_by('TenSanPham')
+        )
+        extra_context['tk_info'] = {
+            'username': request.user.username,
+            'role':     'Admin' if request.user.is_superuser else 'Staff',
+        }
+        extra_context['now'] = tz.now().strftime('%d/%m/%Y %H:%M')
+ 
+        # Nếu đang xem phiếu cũ, lấy chi tiết
+        if object_id:
+            try:
+                phieu = PhieuNhap.objects.get(pk=object_id)
+                chi_tiet_qs = phieu.chi_tiet.select_related(
+                    'id_BienThe__id_SanPham',
+                    'id_BienThe__id_SanPham__id_ThuongHieu'
+                ).all()
+ 
+                chi_tiet_list = []
+                for ct in chi_tiet_qs:
+                    bt = ct.id_BienThe
+                    sp = bt.id_SanPham if bt else None
+                    chi_tiet_list.append({
+                        'id':         ct.id_ChiTietNhap,
+                        'san_pham':   sp.TenSanPham if sp else '—',
+                        'thuong_hieu': sp.id_ThuongHieu.TenThuongHieu if sp and sp.id_ThuongHieu else '—',
+                        'sku':        bt.Sku if bt else '—',
+                        'gia_nhap':   float(ct.GiaNhap or 0),
+                        'so_luong':   ct.SoLuongNhap or 0,
+                        'thanh_tien': float((ct.GiaNhap or 0) * (ct.SoLuongNhap or 0)),
+                        'bien_the_id': bt.id_BienThe if bt else None,
+                        'is_new_product': False,
+                    })
+                extra_context['chi_tiet_list'] = chi_tiet_list
+                extra_context['phieu'] = phieu
+            except PhieuNhap.DoesNotExist:
+                pass
+ 
+        return super().changeform_view(request, object_id, form_url, extra_context)
+ 
+    # ── Save ──────────────────────────────────────────────────
+    def save_model(self, request, obj, form, change):
+        # Gán ngày + người nhập nếu tạo mới
+        if not change:
+            obj.ThoiGian = tz.now()
+            try:
+                from .models import TaiKhoan as TK
+                tk = TK.objects.filter(Username=request.user.username).first()
+                if tk:
+                    obj.id_TaiKhoan = tk
+            except Exception:
+                pass
+        super().save_model(request, obj, form, change)
+ 
+    class Media:
+        css = {'all': ('admin/css/ami_luxury.css',)}
+        js  = ('admin/js/phieunhap.js',)
+ 
+ 
+
+ 
