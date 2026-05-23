@@ -1082,6 +1082,19 @@ function showQaToast(msg, type = "success") {
               <h3 class="pd-rel-name">${item.name}</h3>
               <p class="pd-rel-price">${item.price}</p>
             </div>`;
+            // ── Tracking click AI (Giai đoạn 4) ──
+          card.addEventListener('click', function (e) {
+            fetch('/api/ai/track-click/', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                product_id: item.id,
+                source: 'personalized'
+              })
+            });
+            // Không e.preventDefault() — vẫn cho chuyển trang bình thường
+          });
+
           track.appendChild(card);
         });
 

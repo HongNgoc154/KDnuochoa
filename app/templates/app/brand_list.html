@@ -1,43 +1,69 @@
 {% extends 'app/base.html' %}
 {% load static %}
-{% block title %}Ami Perfumery – Thương hiệu{% endblock %}
+{% block title %}Thương hiệu – Ami Perfumery{% endblock %}
 {% block body_class %}brand-page{% endblock %}
 
 {% block extra_css %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{% static 'app/css/brand.css' %}">
 {% endblock %}
 
 {% block content %}
+<main class="brand-page-wrap">
 
-<main>
-  <section class="brand-list-hero reveal">
-    <p class="section-label">Maison Universe</p>
-    <h1>Mỗi thương hiệu là một <em>thế giới hương thơm</em></h1>
-    <p>Khám phá danh sách thương hiệu với bố cục luxury, bo góc mềm và hiệu ứng chuyển động tinh tế.</p>
+  <section class="brand-hero reveal">
+    <p class="brand-section-label">Maison Universe</p>
+    <h1 class="brand-hero-title">
+      Mỗi thương hiệu là một<br>
+      <em>thế giới hương thơm</em>
+    </h1>
+    <p class="brand-hero-sub">Khám phá các thương hiệu nước hoa đẳng cấp tại Ami Perfumery</p>
+    <div class="brand-hr"></div>
   </section>
 
-  <section class="brand-slider-wrap reveal" data-brand-slider>
-    <button class="edge-arrow edge-arrow-left" type="button" aria-label="Scroll trái" data-brand-prev>←</button>
-    <button class="edge-arrow edge-arrow-right" type="button" aria-label="Scroll phải" data-brand-next>→</button>
+  <section class="brand-grid-section">
+    {% if brands %}
+      <div class="brand-masonry" id="brandMasonry">
+        {% for brand in brands %}
+        <a href="{% url 'brand-detail' brand.slug %}"
+           class="brand-card reveal"
+           style="animation-delay: {{ forloop.counter0 }}00ms;"
+           aria-label="Xem thương hiệu {{ brand.TenThuongHieu }}">
 
-    <div class="brand-slider" data-brand-track>
-      {% for brand in brands %}
-      <article class="brand-poster" style="--brand-accent: {{ brand.palette }};" data-brand-card>
-         <a href="{% if brand.slug %}{% url 'brand-detail' brand.slug %}{% else %}{% url 'brand-list' %}{% endif %}" class="brand-poster-link">
-          <div class="brand-poster-media">
-            <img src="{{ brand.poster_image }}" alt="{{ brand.name }}" loading="lazy">
-            <div class="poster-overlay"></div>
+          <div class="bc-logo-wrap">
+            {% if brand.LogoUrl %}
+              <img src="{{ brand.LogoUrl }}"
+                   alt="Logo {{ brand.TenThuongHieu }}"
+                   class="bc-logo-img"
+                   loading="lazy">
+            {% else %}
+              <span class="bc-logo-text">
+                {{ brand.TenThuongHieu|slice:":2"|upper }}
+              </span>
+            {% endif %}
           </div>
-          <div class="brand-poster-content">
-            <p class="brand-kicker">{{ brand.tagline }}</p>
-            <h2>{{ brand.name }}</h2>
-            <span class="brand-type">{{ brand.category }}</span>
-          </div>
+
+          <div class="bc-dot"></div>
+          <span class="bc-name">{{ brand.TenThuongHieu }}</span>
+
+          {% if brand.LoaiThuongHieu %}
+            <span class="bc-type">{{ brand.LoaiThuongHieu }}</span>
+          {% endif %}
+
+          <div class="bc-hover-line"></div>
         </a>
-      </article>
-      {% endfor %}
-    </div>
+        {% endfor %}
+      </div>
+
+    {% else %}
+      <div class="brand-empty">
+        <p>Chưa có thương hiệu nào. Vui lòng thêm dữ liệu.</p>
+      </div>
+    {% endif %}
   </section>
+
 </main>
 {% endblock %}
 

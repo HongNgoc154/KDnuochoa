@@ -15,7 +15,9 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.utils import timezone as tz
-from django.db import models 
+from django.http import Http404
+from django.urls import reverse
+from django.utils.html import strip_tags
 
 from .models import (
     BienThe, BienTheThuocTinh, GiaTriThuocTinh,
@@ -156,6 +158,10 @@ class SanPhamAdmin(nested_admin.NestedModelAdmin):
     inlines            = []
  
     def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
+        # Chặn object_id không phải số
+        if object_id and not str(object_id).isdigit():
+            raise Http404("object_id không hợp lệ")
+        
         extra_context = extra_context or {}
         extra_context['nhom_huong_list'] = NhomHuong.objects.all().order_by('TenNhomHuong')
  
@@ -244,10 +250,10 @@ class SanPhamAdmin(nested_admin.NestedModelAdmin):
             except (ValueError, TypeError):
                 return 0
  
-        old_bts = BienThe.objects.filter(id_SanPham=obj)
+        old_bts = list(BienThe.objects.filter(id_SanPham=obj).order_by('id_BienThe'))
+
         for bt in old_bts:
             BienTheThuocTinh.objects.filter(id_BienThe=bt).delete()
-        old_bts.delete()
  
         for i in range(total):
             gt_id    = request.POST.get(f'bienthe_set-{i}-giaTriId', '').strip()
@@ -255,21 +261,32 @@ class SanPhamAdmin(nested_admin.NestedModelAdmin):
             gia_nhap = request.POST.get(f'bienthe_set-{i}-giaNhap',  '0')
             gia_ban  = request.POST.get(f'bienthe_set-{i}-giaBan',   '0')
             so_luong = request.POST.get(f'bienthe_set-{i}-soLuong',  '0')
- 
+
             if not gt_id:
                 continue
+
             try:
-                bt = BienThe.objects.create(
-                    id_SanPham=obj,
-                    Sku=sku or f'SP{obj.pk}-BT{i+1}',
-                    GiaNhap=safe_float(gia_nhap),
-                    GiaBan=safe_float(gia_ban),
-                    SoLuong=safe_int(so_luong),
-                )
+                if i < len(old_bts):
+                    bt = old_bts[i]
+                    bt.Sku = sku or f'SP{obj.pk}-BT{i+1}'
+                    bt.GiaNhap = safe_float(gia_nhap)
+                    bt.GiaBan = safe_float(gia_ban)
+                    bt.SoLuong = safe_int(so_luong)
+                    bt.save(update_fields=['Sku', 'GiaNhap', 'GiaBan', 'SoLuong'])
+                else:
+                    bt = BienThe.objects.create(
+                        id_SanPham=obj,
+                        Sku=sku or f'SP{obj.pk}-BT{i+1}',
+                        GiaNhap=safe_float(gia_nhap),
+                        GiaBan=safe_float(gia_ban),
+                        SoLuong=safe_int(so_luong),
+                    )
+
                 BienTheThuocTinh.objects.create(
                     id_BienThe=bt,
                     id_GiaTriThuocTinh_id=int(gt_id),
                 )
+
             except Exception as e:
                 import logging, traceback
                 logging.getLogger(__name__).error(f'_save_bienthe error row {i}: {e}')
@@ -290,16 +307,83 @@ class SanPhamAdmin(nested_admin.NestedModelAdmin):
                 import logging
                 logging.getLogger(__name__).error(f'_save_images error: {e}')
  
-    # ── List display ──
+
+# ── List display ──
     def product_card(self, obj):
-        img_tag = ""
-        first_img = HinhAnh.objects.filter(id_SanPham=obj).first()
+        first_img = HinhAnh.objects.filter(
+            id_SanPham=obj
+        ).first()
+
+        img_url = ""
         if first_img and first_img.url:
-            img_tag = format_html(
-                '<img src="{}" style="width:48px;height:48px;object-fit:cover;'
-                'border-radius:8px;vertical-align:middle;margin-right:10px;border:1px solid #e0d9cc;"/>',
-                first_img.url.url)
-        return format_html('{}<strong style="vertical-align:middle;">{}</strong>', img_tag, obj.TenSanPham)
+            img_url = first_img.url.url
+
+        # Link tên sản phẩm không gạch chân
+        obj_link = format_html(
+            '<a href="{}" style="text-decoration:none;color:#2d2d2d;">{}</a>',
+            reverse(
+                'admin:app_sanpham_change',
+                args=[obj.pk]
+            ),
+            obj.TenSanPham
+        )
+
+        return format_html("""
+            <div style="
+                display:flex;
+                align-items:center;
+                gap:12px;
+                min-width:240px;
+            ">
+
+                <div style="
+                    width:54px;
+                    height:54px;
+                    border-radius:10px;
+                    overflow:hidden;
+                    border:1px solid #e5dfd4;
+                    background:#fff;
+                    flex-shrink:0;
+                ">
+                    {}
+                </div>
+
+                <div style="
+                    display:flex;
+                    flex-direction:column;
+                    justify-content:center;
+                    min-width:0;
+                ">
+                    <div style="
+                        font-size:14px;
+                        font-weight:600;
+                        line-height:1.4;
+                    ">
+                        {}
+                    </div>
+
+                    <div style="
+                        margin-top:4px;
+                        font-size:11px;
+                        color:#888;
+                    ">
+                        {}
+                    </div>
+                </div>
+            </div>
+        """,
+
+        format_html(
+            '<img src="{}" style="width:100%;height:100%;object-fit:cover;">',
+            img_url
+        ) if img_url else "",
+
+        obj_link,
+
+        obj.id_ThuongHieu.TenThuongHieu
+        if obj.id_ThuongHieu else "—"
+    )
+
     product_card.short_description = "Sản phẩm"
  
     def TrangThai_badge(self, obj):
@@ -372,6 +456,7 @@ class ThuocTinhAdmin(admin.ModelAdmin):
     list_display   = ('tt_card', 'so_gia_tri', 'danh_sach_gia_tri')
     search_fields  = ('TenThuocTinh',)
     list_per_page  = 20
+    list_display_links = None
  
     # ── Context cho template ──
     def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
@@ -457,10 +542,25 @@ class ThuocTinhAdmin(admin.ModelAdmin):
  
     # ── List display ──
     def tt_card(self, obj):
+        url = reverse('myadmin:app_thuoctinh_change', args=[obj.pk])
+
         return format_html(
-            '<strong style="color:var(--olive,#4B672D);font-size:13px;">{}</strong>',
+            '''
+            <a href="{}" style="
+                text-decoration:none;
+                color:#2d2d2d;
+                font-size:14px;
+                font-weight:600;
+                display:inline-block;
+                text-align:left;
+            ">
+                {}
+            </a>
+            ''',
+            url,
             obj.TenThuocTinh
         )
+
     tt_card.short_description = "Tên thuộc tính"
  
     def so_gia_tri(self, obj):
@@ -513,6 +613,7 @@ class ThuongHieuAdmin(admin.ModelAdmin):
     add_form_template    = "admin/thuonghieu_change_form.html"
  
     list_display   = ('logo_preview', 'TenThuongHieu', 'so_san_pham')
+    list_display_links = None
     search_fields  = ('TenThuongHieu',)
     list_per_page  = 20
  
@@ -544,6 +645,7 @@ class LoaiSanPhamAdmin(admin.ModelAdmin):
  
     # Đầy đủ tất cả cột trong DB
     list_display   = ('hinhanh_preview', 'TenLoaiSanPham', 'mo_ta_short', 'GhiChu', 'so_san_pham')
+    list_display_links = None
     search_fields  = ('TenLoaiSanPham', 'MoTa', 'GhiChu')
     list_per_page  = 20
  
@@ -589,6 +691,7 @@ class NhomHuongAdmin(admin.ModelAdmin):
  
     list_display   = ('icon_preview', 'TenNhomHuong', 'LoaiHuong',
                       'mau_sac_display', 'mo_ta_short', 'so_san_pham')
+    list_display_links = None
     search_fields  = ('TenNhomHuong', 'LoaiHuong')
     list_filter    = ('LoaiHuong',)
     list_per_page  = 20
@@ -670,28 +773,118 @@ class HinhAnhAdmin(admin.ModelAdmin):
 class BaiVietAdmin(admin.ModelAdmin):
     change_form_template = "admin/baiviet_change_form.html"
     add_form_template    = "admin/baiviet_change_form.html"
- 
-    # Đầy đủ cột DB: id_BaiViet, TieuDe, NoiDung, NgayTao, TacGia, AnhDaiDien
-    list_display   = ('anh_preview', 'TieuDe', 'TacGia', 'NgayTao')
-    list_display_links = ('TieuDe',)
-    search_fields  = ('TieuDe', 'TacGia', 'NoiDung')
-    list_filter    = ('NgayTao', 'TacGia')
-    ordering       = ('-NgayTao',)
-    list_per_page  = 20
- 
+
+    list_display = (
+        'anh_preview',
+        'tieude_card',
+        'noidung_preview',
+        'tacgia_card',
+        'NgayTao'
+    )
+
+    # bỏ link mặc định của Django
+    list_display_links = None
+
+    search_fields = ('TieuDe', 'TacGia', 'NoiDung')
+    list_filter = ('NgayTao', 'TacGia')
+    ordering = ('-NgayTao',)
+    list_per_page = 20
+
+
     def anh_preview(self, obj):
         if obj.AnhDaiDien:
             return format_html(
-                '<img src="{}" style="width:56px;height:40px;object-fit:cover;'
-                'border-radius:6px;border:1px solid #e0d9cc;">',
+                '''
+                <img src="{}"
+                style="
+                    width:70px;
+                    height:50px;
+                    object-fit:cover;
+                    border-radius:8px;
+                    border:1px solid #e0d9cc;
+                ">
+                ''',
                 obj.AnhDaiDien.url
             )
-        return format_html('<span style="font-size:20px;">📰</span>')
+
+        return "📰"
+
     anh_preview.short_description = "Ảnh"
- 
+
+
+    def tieude_card(self, obj):
+        from django.urls import reverse
+
+        url = reverse(
+            'myadmin:app_baiviet_change',
+            args=[obj.pk]
+        )
+
+        return format_html(
+            '''
+            <a href="{}"
+               style="
+                    text-decoration:none;
+                    color:#2d2d2d;
+                    font-size:14px;
+                    font-weight:600;
+               ">
+               {}
+            </a>
+            ''',
+            url,
+            obj.TieuDe
+        )
+
+    tieude_card.short_description = "Tiêu đề"
+
+
+    def noidung_preview(self, obj):
+        if not obj.NoiDung:
+            return "—"
+
+        text = strip_tags(obj.NoiDung)
+
+        if len(text) > 80:
+            text = text[:80] + "..."
+
+        return format_html(
+            '''
+            <div style="
+                color:#666;
+                font-size:12px;
+                line-height:1.5;
+                max-width:320px;
+            ">
+                {}
+            </div>
+            ''',
+            text
+        )
+
+    noidung_preview.short_description = "Nội dung"
+
+
+    def tacgia_card(self, obj):
+        return format_html(
+            '''
+            <span style="
+                font-size:13px;
+                font-weight:500;
+                color:#444;
+            ">
+                {}
+            </span>
+            ''',
+            obj.TacGia or "—"
+        )
+
+    tacgia_card.short_description = "Tác giả"
+
+
     class Media:
         css = {'all': ('admin/css/ami_luxury.css',)}
-        js  = ('ckeditor/ckeditor/ckeditor.js',)
+        js = ('ckeditor/ckeditor/ckeditor.js',)
 
 
 # ═══════════════════════════════════════
@@ -728,6 +921,7 @@ class HoiDapAdmin(admin.ModelAdmin):
     list_display   = ('id_HoiDap', 'ten_san_pham', 'ten_khach_hang',
                       'noi_dung_short', 'trang_thai_badge', 'NgayTao')
     list_display_links = ('id_HoiDap', 'noi_dung_short')
+    list_display_links = None
     list_filter    = ('TrangThai', 'NgayTao')
     search_fields  = ('NoiDung', 'id_TaiKhoan__TenDangNhap', 'id_SanPham__TenSanPham')
     ordering       = ('-NgayTao',)
@@ -786,6 +980,7 @@ class DanhGiaAdmin(admin.ModelAdmin):
     list_display   = ('id_DanhGia', 'ten_san_pham', 'ten_khach_hang',
                       'sao_display', 'noi_dung_short', 'phan_hoi_badge', 'NgayDanhGia')
     list_display_links = ('id_DanhGia', 'noi_dung_short')
+    list_display_links = None
     list_filter    = ('SoSao', 'NgayDanhGia')
     search_fields  = ('NoiDung', 'id_TaiKhoan__TenDangNhap', 'id_SanPham__TenSanPham')
     ordering       = ('-NgayDanhGia',)
@@ -906,14 +1101,69 @@ class KhuyenMaiAdmin(admin.ModelAdmin):
     change_form_template = "admin/khuyenmai_change_form.html"
     add_form_template    = "admin/khuyenmai_change_form.html"
  
-    list_display   = ('MaKhuyenMai', 'TenKhuyenMai', 'LoaiKhuyenMai',
-                      'loai_giam_badge', 'gia_tri_display', 'SoLuong',
-                      'DaSuDung', 'trang_thai_badge', 'NgayBatDau', 'NgayKetThuc')
-    list_display_links = ('MaKhuyenMai',)
+    list_display = (
+        'ma_km_card',
+        'ten_km_card',
+        'LoaiKhuyenMai',
+        'loai_giam_badge',
+        'gia_tri_display',
+        'SoLuong',
+        'DaSuDung',
+        'trang_thai_badge',
+        'NgayBatDau',
+        'NgayKetThuc'
+    )
+
+    list_display_links = None
+    # list_display_links = ('MaKhuyenMai',)
     search_fields  = ('MaKhuyenMai', 'TenKhuyenMai', 'MoTa')
     list_filter    = ('TrangThai', 'LoaiKhuyenMai', 'LoaiGiam')
     ordering       = ('-id_KhuyenMai',)
     list_per_page  = 20
+
+    
+
+    def ma_km_card(self, obj):
+        url = reverse(
+            'myadmin:app_khuyenmai_change',
+            args=[obj.pk]
+        )
+
+        return format_html(
+            '''
+            <a href="{}"
+            style="
+                    text-decoration:none;
+                    color:#2d2d2d;
+                    font-size:13px;
+                    font-weight:700;
+            ">
+                {}
+            </a>
+            ''',
+            url,
+            obj.MaKhuyenMai
+        )
+
+    ma_km_card.short_description = "Mã KM"
+
+
+    def ten_km_card(self, obj):
+
+        return format_html(
+            '''
+            <div style="
+                font-size:13px;
+                font-weight:500;
+                color:#444;
+            ">
+                {}
+            </div>
+            ''',
+            obj.TenKhuyenMai or "—"
+        )
+
+    ten_km_card.short_description = "Tên khuyến mãi"
  
     # ── Context ──
     def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
@@ -1062,6 +1312,7 @@ class KhuyenMaiTaiKhoanAdmin(admin.ModelAdmin):
     list_display   = ('ma_voucher', 'ten_khach_hang', 'hang_thanh_vien',
                       'da_su_dung_badge', 'NgayNhan', 'han_su_dung')
     list_display_links = ('ma_voucher', 'ten_khach_hang')
+    list_display_links = None
     list_filter    = ('DaSuDung', 'id_KhuyenMai', 'id_TaiKhoan__HangThanhVien')
     search_fields  = ('id_TaiKhoan__TenDangNhap', 'id_TaiKhoan__Email',
                       'id_KhuyenMai__MaKhuyenMai', 'id_KhuyenMai__TenKhuyenMai')
@@ -1165,6 +1416,7 @@ class TaiKhoanAdmin(admin.ModelAdmin):
 
     list_display       = ('email_with_avatar', 'ten_dang_nhap', 'SDT', 'hang_badge', 'trang_thai_toggle', 'NgayTao')
     # list_display_links = ('email_with_avatar', 'ten_dang_nhap')
+    list_display_links = None
     search_fields      = ('TenDangNhap', 'Username', 'Email', 'SDT')
     list_filter        = ('TrangThai_TaiKhoan', 'LoaiTaiKhoan', 'HangThanhVien')
     ordering           = ('-NgayTao',)
@@ -1472,6 +1724,7 @@ class TaiKhoanAdmin(admin.ModelAdmin):
 @admin.register(KhachHang, site=admin_site)
 class KhachHangAdmin(admin.ModelAdmin):
     list_display  = ('id_KhachHang', 'TenKhachHang', 'get_email', 'DiaChi', 'GioiTinh')
+    list_display_links = None
     search_fields = ('TenKhachHang', 'id_TaiKhoan__Email', 'id_TaiKhoan__Username')
     list_filter   = ('GioiTinh',)
     list_per_page = 25
@@ -1496,6 +1749,7 @@ class NhaCungCapAdmin(admin.ModelAdmin):
 # ─── PHIẾU NHẬP ──────────────────────────────────────────────
 @admin.register(PhieuNhap, site=admin_site)
 class PhieuNhapAdmin(admin.ModelAdmin):
+    change_list_template = "admin/app/phieunhap/change_list.html"
     change_form_template = "admin/phieunhap_change_form.html"
     add_form_template    = "admin/phieunhap_change_form.html"
  
@@ -1503,7 +1757,7 @@ class PhieuNhapAdmin(admin.ModelAdmin):
         'ma_phieu_display', 'ThoiGian', 'ten_nguoi_nhap',
         'ten_ncc', 'tong_tien_display', 'trang_thai_badge', 'so_san_pham'
     )
-    list_display_links = ('ma_phieu_display',)
+    list_display_links = None
     list_filter   = ('TrangThai', 'ThoiGian')
     search_fields = ('MaPhieu', 'id_TaiKhoan__TenDangNhap', 'id_NCC__Ten_NCC')
     ordering      = ('-ThoiGian',)
@@ -1511,12 +1765,26 @@ class PhieuNhapAdmin(admin.ModelAdmin):
  
     # ── List display helpers ──────────────────────────────────
     def ma_phieu_display(self, obj):
+
+        url = reverse('myadmin:app_phieunhap_change', args=[obj.pk])
+
         return format_html(
-            '<strong style="color:#4B672D;">{}</strong>',
+            '''
+            <a href="{}" style="
+                text-decoration:none;
+                color:#2d2d2d;
+                font-size:14px;
+                font-weight:600;
+            ">
+                {}
+            </a>
+            ''',
+            url,
             obj.MaPhieu or f'PN-{obj.id_PhieuNhap}'
         )
+
     ma_phieu_display.short_description = "Mã phiếu"
- 
+    
     def ten_nguoi_nhap(self, obj):
         if obj.id_TaiKhoan:
             return format_html(
@@ -1562,18 +1830,33 @@ class PhieuNhapAdmin(admin.ModelAdmin):
         count = obj.chi_tiet.count()
         return format_html('<span style="font-weight:600;">{} dòng</span>', count)
     so_san_pham.short_description = "Chi tiết"
+
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        try:
+            from django.urls import reverse
+            extra_context['xuat_excel_url'] = reverse('admin-api-xuat-excel') + '?tat_ca=1'
+        except Exception:
+            extra_context['xuat_excel_url'] = '/admin/api/xuat-excel/?tat_ca=1'
+        return super().changelist_view(request, extra_context=extra_context)
  
     # ── Change form context ───────────────────────────────────
     def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
+        if object_id and not str(object_id).isdigit():
+         raise Http404("object_id không hợp lệ")
         extra_context = extra_context or {}
  
         # Danh sách NCC + sản phẩm + tài khoản cho dropdowns
         extra_context['ncc_list']    = list(NhaCungCap.objects.values('id_NCC', 'Ten_NCC', 'SDT', 'Email'))
-        extra_context['san_pham_list'] = list(
-            SanPham.objects.select_related('id_ThuongHieu')
-            .values('id_SanPham', 'TenSanPham', 'id_ThuongHieu__TenThuongHieu')
-            .order_by('TenSanPham')
-        )
+        extra_context['san_pham_list'] = [
+            {
+                'id_SanPham': sp.pk,
+                'TenSanPham': sp.TenSanPham or '',
+                'id_ThuongHieu__TenThuongHieu': sp.id_ThuongHieu.TenThuongHieu if sp.id_ThuongHieu else '',
+            }
+            for sp in SanPham.objects.select_related('id_ThuongHieu').order_by('TenSanPham')
+        ]
         extra_context['tk_info'] = {
             'username': request.user.username,
             'role':     'Admin' if request.user.is_superuser else 'Staff',

@@ -5,10 +5,6 @@
 {{ block.super }}
 <link rel="stylesheet" href="{% static 'admin/css/ami_luxury.css' %}">
 <style>
-/* ═══════════════════════════════════════════════════════
-   PHIẾU NHẬP KHO — Layout 2 cột
-   Trái: Phiếu tổng thể | Phải: Thao tác nhập
-   ═══════════════════════════════════════════════════════ */
 :root {
   --ol:     #4B672D;
   --ol-lt:  #EBF6C4;
@@ -19,17 +15,16 @@
   --shadow: 0 2px 12px rgba(75,103,45,0.08);
 }
 
-/* ── LAYOUT ── */
 .pn-layout {
   display: grid;
-  grid-template-columns: 1fr 400px;
+  grid-template-columns: 1fr 500px;
   gap: 20px;
   margin-top: 8px;
   align-items: start;
 }
-@media (max-width: 1100px) { .pn-layout { grid-template-columns: 1fr; } }
+@media (max-width: 1280px) { .pn-layout { grid-template-columns: 1fr 460px; } }
+@media (max-width: 1050px) { .pn-layout { grid-template-columns: 1fr; } }
 
-/* ── CARD ── */
 .pn-card {
   background: #fff;
   border: 1px solid var(--border);
@@ -52,7 +47,6 @@
 }
 .pn-card-body { padding: 18px; }
 
-/* ── FORM CONTROLS ── */
 .pn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
 .pn-row-3 { grid-template-columns: 1fr 1fr 1fr; }
 .pn-row-1 { grid-template-columns: 1fr; }
@@ -70,9 +64,8 @@
 .pn-f input:focus, .pn-f select:focus, .pn-f textarea:focus {
   border-color: var(--ol); outline: none;
 }
-.pn-f input[readonly] { background: #f0f4ea; color: #666; cursor: default; }
 
-/* ── PHIẾU TỔNG THỂ (bên trái) ── */
+/* Phieu trai */
 .pn-phieu-wrap {
   background: #fff;
   border: 1.5px solid var(--border);
@@ -107,7 +100,6 @@
 .pn-meta-label { color: #999; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px; }
 .pn-meta-val { font-weight: 600; color: #333; font-size: 13px; }
 
-/* ── BẢNG CHI TIẾT PHIẾU ── */
 .pn-phieu-body { padding: 16px 20px; }
 .pn-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .pn-tbl th {
@@ -139,7 +131,7 @@
 .pn-tong-label { font-size: 12px; color: #666; font-weight: 600; }
 .pn-tong-val { font-size: 22px; font-weight: 700; color: var(--ol); }
 
-/* ── TRẠNG THÁI BADGE ── */
+/* Badges */
 .pn-status {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 3px 10px; border-radius: 20px;
@@ -150,7 +142,7 @@
 .pn-status.done      { background: #e8f5e9; color: #2e7d32; }
 .pn-status.cancelled { background: #fce4ec; color: #c62828; }
 
-/* ── BUTTONS ── */
+/* Buttons */
 .pn-btn {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 8px 15px; border-radius: 7px; border: none;
@@ -168,24 +160,7 @@
 .pn-btn-sm { padding: 6px 11px; font-size: 12px; }
 .pn-btn-full { width: 100%; justify-content: center; }
 
-/* ── SEARCH DROPDOWN ── */
-.pn-search-wrap { position: relative; }
-.pn-dropdown {
-  position: absolute; top: calc(100% + 4px); left: 0; right: 0;
-  background: #fff; border: 1.5px solid #c8e6a0; border-radius: 9px;
-  z-index: 999; box-shadow: 0 8px 24px rgba(75,103,45,0.15);
-  max-height: 220px; overflow-y: auto; list-style: none;
-  margin: 0; padding: 5px 0;
-}
-.pn-dropdown li {
-  padding: 9px 14px; cursor: pointer; font-size: 13px;
-  display: flex; justify-content: space-between; align-items: center;
-}
-.pn-dropdown li:hover { background: #f0f8e8; }
-.pn-dropdown li small { color: #888; font-size: 11px; }
-.pn-dropdown-empty { padding: 12px 14px; color: #999; font-size: 12px; font-style: italic; }
-
-/* ── ACCORDION SẢN PHẨM MỚI ── */
+/* Accordion san pham moi */
 .pn-accordion {
   border: 1.5px solid #c8e6a0; border-radius: var(--r);
   background: #f5fced; margin-top: 10px; overflow: hidden;
@@ -200,7 +175,6 @@
 .pn-acc-body { padding: 15px; border-top: 1px solid #c8e6a0; }
 .pn-acc-body.hidden { display: none; }
 
-/* ── BIẾN THỂ ITEM ── */
 .pn-bt-item {
   background: #fff; border: 1px solid var(--border);
   border-radius: 8px; padding: 11px; margin-bottom: 9px; position: relative;
@@ -212,14 +186,407 @@
 }
 .pn-divider { border: none; border-top: 1.5px dashed var(--border); margin: 14px 0; }
 
-/* ── ALERT ── */
 .pn-alert {
   padding: 9px 13px; border-radius: 8px; font-size: 13px;
   display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
 }
 .pn-alert-warn { background: #fff8e1; border: 1px solid #ffe082; color: #7c5c00; }
-.pn-alert-info { background: #e8f5e9; border: 1px solid #a5d6a7; color: #1b5e20; }
+
+/* Bang bien the inline */
+.pn-bt-table-wrap {
+  border: 1.5px solid #d4e9b0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+.pn-bt-table-wrap table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.pn-bt-table-wrap thead tr { background: #EBF6C4; }
+.pn-bt-table-wrap th {
+  padding: 6px 5px;
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .5px;
+  color: #4B672D; white-space: nowrap;
+}
+.pn-bt-table-wrap th:not(:first-child) { text-align: right; }
+.pn-bt-table-wrap td {
+  padding: 6px 5px;
+  border-top: 1px solid #edf7e0;
+  vertical-align: middle;
+}
+.pn-bt-table-wrap td:not(:first-child) { text-align: right; }
+.pn-bt-table-wrap tr:hover td { background: #fafdf5; }
+.bt-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1.5px solid #d4e9b0;
+  border-radius: 6px;
+  padding: 5px 4px;
+  font-size: 12px;
+  text-align: right;
+  background: #f8fdf3;
+  font-family: inherit;
+  transition: border-color .15s;
+  min-width: 0;
+}
+.bt-input:focus { border-color: var(--ol); outline: none; background: #fff; }
+/* Tat spinner so de khong chiem chieu rong */
+.bt-input::-webkit-outer-spin-button,
+.bt-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.bt-input[type=number] { -moz-appearance: textfield; }
+
+/* Chip san pham da chon */
+.pn-sp-chip {
+  display: flex; align-items: center; gap: 8px;
+  background: #f0f8e8; border: 1.5px solid #c8e6a0;
+  border-radius: 8px; padding: 8px 12px;
+  font-size: 13px; margin-top: 6px;
+}
+.pn-sp-chip-name { flex: 1; font-weight: 600; color: #3a5223; }
+.pn-sp-chip-clear {
+  background: none; border: none; color: #c62828;
+  cursor: pointer; font-size: 18px; line-height: 1; padding: 0;
+}
 </style>
+<script>
+/**
+ * phieunhap.js v3.1
+ */
+(function () {
+  'use strict';
+
+  let rows = [], newProducts = [], selSpId = null, selSpName = '', btNewIdx = 0;
+
+  function init() {
+    if (window.PN_CHI_TIET && PN_CHI_TIET.length) {
+      PN_CHI_TIET.forEach(function(ct) {
+        rows.push({
+          bien_the_id: ct.bien_the_id, san_pham: ct.san_pham,
+          thuong_hieu: ct.thuong_hieu || '', sku: ct.sku,
+          gia_nhap: parseFloat(ct.gia_nhap) || 0,
+          so_luong: parseInt(ct.so_luong) || 0,
+          is_new: false,
+        });
+      });
+      // Khi da co du lieu tu server, cap nhat summary (bang da duoc render boi Django)
+      updateSummaryFromServer();
+    }
+    // Sync NCC va TT tu gia tri hien tai
+    pnSyncNccInit(); pnSyncTT();
+  }
+
+  // Update summary tu du lieu server (khong renderTable lai de tranh xoa ban Django render)
+  function updateSummaryFromServer() {
+    var total = 0, qty = 0;
+    rows.forEach(function(r){ total += r.gia_nhap * r.so_luong; qty += r.so_luong; });
+    // Chi cap nhat neu khong co gia tri tu Django template
+    var tongEl = document.getElementById('ph_tong');
+    var qtyEl  = document.getElementById('ph_qty_summary');
+    // Uu tien hien thi tu Django, chi update neu dang la 0
+    if (tongEl && tongEl.textContent.trim() === '0 ₫') {
+      tongEl.textContent = fmtP(total);
+    }
+    if (qtyEl && qtyEl.textContent.trim() === '0 đòng') {
+      qtyEl.textContent = rows.length + ' dòng';
+    }
+  }
+
+  // Them ham pnUpdRowDjango cho cac input trong ban Django-rendered
+  window.pnUpdRowDjango = function(i, field, val) {
+    if (rows[i]) {
+      rows[i][field] = parseFloat(val) || 0;
+      var el = document.getElementById('row_tt_' + i);
+      if (el) el.textContent = fmtP(rows[i].gia_nhap * rows[i].so_luong);
+    }
+  };
+
+  // Sync NCC khi co original (select an co value san)
+  function pnSyncNccInit() {
+    var sel = document.getElementById('pn_ncc');
+    if (sel && sel.value) {
+      pnSyncNcc();
+    }
+  }
+
+  window.pnFilterCombo = function () {
+    var q = (document.getElementById('pn_sp_filter').value || '').toLowerCase().trim();
+    var sel = document.getElementById('pn_sp_select');
+    if (!sel) return;
+    var visible = 0;
+    Array.from(sel.options).forEach(function(opt) {
+      if (opt.value === '__new__') { opt.style.display = ''; return; }
+      if (!opt.value) { opt.style.display = q ? 'none' : ''; return; }
+      var match = !q || (opt.dataset.name||'').toLowerCase().indexOf(q)>=0
+                     || (opt.dataset.brand||'').toLowerCase().indexOf(q)>=0;
+      opt.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+    var nf = document.getElementById('pn_not_found');
+    var nfNm = document.getElementById('pn_nf_name');
+    if (q && visible === 0) {
+      if (nfNm) nfNm.textContent = document.getElementById('pn_sp_filter').value.trim();
+      if (nf) nf.style.display = '';
+    } else { if (nf) nf.style.display = 'none'; }
+  };
+
+  window.pnOnComboSelect = function () {
+    var sel = document.getElementById('pn_sp_select');
+    var val = sel.value;
+    if (!val) return;
+    if (val === '__new__') { sel.value = ''; pnShowNewProduct(); return; }
+    var opt = sel.options[sel.selectedIndex];
+    selSpId = parseInt(val, 10);
+    selSpName = opt.dataset.name || opt.textContent.split('\u00b7')[0].trim();
+    var brand = opt.dataset.brand || '';
+    var chosen = document.getElementById('pn_sp_chosen');
+    var chName = document.getElementById('pn_sp_chosen_name');
+    if (chosen) chosen.style.display = 'flex';
+    if (chName) chName.textContent = selSpName + (brand ? ' \u00b7 ' + brand : '');
+    var filter = document.getElementById('pn_sp_filter');
+    if (filter) filter.style.display = 'none';
+    sel.style.display = 'none';
+    hide('pn_not_found');
+    loadBienTheBang(selSpId, selSpName);
+  };
+
+  window.pnClearCombo = function () {
+    selSpId = null; selSpName = '';
+    var sel = document.getElementById('pn_sp_select');
+    var filter = document.getElementById('pn_sp_filter');
+    var chosen = document.getElementById('pn_sp_chosen');
+    if (sel) { sel.value = ''; sel.style.display = 'block'; }
+    if (filter) { filter.value = ''; filter.style.display = ''; pnFilterCombo(); }
+    if (chosen) chosen.style.display = 'none';
+    hide('pn_bt_bang_section'); hide('pn_not_found');
+  };
+
+  function loadBienTheBang(spId, spName) {
+    var section = document.getElementById('pn_bt_bang_section');
+    var tbody = document.getElementById('pn_bt_bang_tbody');
+    var title = document.getElementById('pn_bt_bang_title');
+    if (!section || !tbody) { console.error('[PN] Missing #pn_bt_bang_section or #pn_bt_bang_tbody'); return; }
+    if (title) title.textContent = spName;
+    section.style.display = '';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#999;">\u23f3 \u0110ang t\u1ea3i bi\u1ebfn th\u1ec3...</td></tr>';
+    if (typeof PN_BT_URL === 'undefined' || !PN_BT_URL) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:12px;color:#c62828;">L\u1ed7i: PN_BT_URL ch\u01b0a \u0111\u1ecbnh ngh\u0129a!</td></tr>';
+      return;
+    }
+    fetch(PN_BT_URL + '?sp_id=' + spId)
+      .then(function(res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+      .then(function(data) {
+        tbody.innerHTML = '';
+        if (!data.ok || !data.data || !data.data.length) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:16px;color:#aaa;font-style:italic;">S\u1ea3n ph\u1ea9m ch\u01b0a c\u00f3 bi\u1ebfn th\u1ec3</td></tr>';
+          return;
+        }
+        data.data.forEach(function(bt) {
+          var tr = document.createElement('tr');
+          tr.dataset.btId = bt.id; tr.dataset.sku = bt.sku || '';
+          var clr = (bt.ton_kho < 10) ? '#c62828' : '#2e7d32';
+          var attrs = bt.attrs ? '<div style="font-size:10px;color:#888;margin-top:2px;">' + bt.attrs + '</div>' : '';
+          tr.innerHTML =
+            '<td><code style="background:#f0f4ea;padding:2px 7px;border-radius:4px;font-size:11px;">' + bt.sku + '</code>' + attrs + '</td>' +
+            '<td style="text-align:right;"><span style="color:' + clr + ';font-weight:600;font-size:12px;">' + bt.ton_kho + '</span></td>' +
+            '<td style="text-align:right;"><input type="number" class="bt-gia-nhap bt-input" min="0" value="' + (bt.gia_nhap||0) + '" style="width:100%;box-sizing:border-box;" oninput="pnUpdBtTT(this)"></td>' +
+            '<td style="text-align:right;"><input type="number" class="bt-so-luong bt-input" min="0" value="0" style="width:100%;box-sizing:border-box;" oninput="pnUpdBtTT(this)"></td>' +
+            '<td class="bt-tt" style="text-align:right;font-weight:600;color:#4B672D;font-size:11px;">0\u20ab</td>';
+          tbody.appendChild(tr);
+        });
+      })
+      .catch(function(err) {
+        console.error('[PN] fetch error:', err);
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:12px;color:#c62828;">L\u1ed7i: ' + err.message + '</td></tr>';
+      });
+  }
+
+  window.pnUpdBtTT = function (input) {
+    var tr = input.closest('tr');
+    var gn = parseFloat(tr.querySelector('.bt-gia-nhap').value) || 0;
+    var sl = parseInt(tr.querySelector('.bt-so-luong').value) || 0;
+    var tt = tr.querySelector('.bt-tt');
+    if (tt) tt.textContent = fmtP(gn * sl);
+  };
+
+  window.pnBtBangXong = function () {
+    var tbody = document.getElementById('pn_bt_bang_tbody');
+    var trs = tbody.querySelectorAll('tr[data-bt-id]');
+    var added = 0;
+    trs.forEach(function(tr) {
+      var sl = parseInt(tr.querySelector('.bt-so-luong').value) || 0;
+      if (sl <= 0) return;
+      var btId = parseInt(tr.dataset.btId, 10);
+      var gn = parseFloat(tr.querySelector('.bt-gia-nhap').value) || 0;
+      var existing = rows.find(function(r) { return r.bien_the_id === btId && !r.is_new; });
+      if (existing) { existing.so_luong += sl; existing.gia_nhap = gn; }
+      else rows.push({ bien_the_id:btId, san_pham:selSpName, thuong_hieu:'', sku:tr.dataset.sku, gia_nhap:gn, so_luong:sl, is_new:false });
+      added++;
+    });
+    if (added === 0) { alert('Ch\u01b0a nh\u1eadp s\u1ed1 l\u01b0\u1ee3ng!'); return; }
+    renderTable(); updateSummary(); pnClearCombo(); hide('pn_bt_bang_section');
+  };
+
+  window.pnSyncNcc = function () {
+    var sel = document.getElementById('pn_ncc');
+    var opt = sel && sel.selectedOptions[0];
+    setText('ph_ncc_display', opt && opt.dataset.name ? opt.dataset.name : '\u2014');
+    setText('ph_sdt_display', opt && opt.dataset.phone ? opt.dataset.phone : '\u2014');
+  };
+
+  window.pnSyncTT = function () {
+    var val = document.getElementById('pn_tt').value;
+    var map = { draft:['draft','\ud83d\udcdd Nh\u00e1p'], confirmed:['confirmed','\u2705 X\u00e1c nh\u1eadn'], done:['done','\u2714 Ho\u00e0n t\u1ea5t'], cancelled:['cancelled','\u2716 Hu\u1ef7'] };
+    var pair = map[val] || map.draft;
+    var el = document.getElementById('ph_tt_display');
+    if (el) el.innerHTML = '<span class="pn-status ' + pair[0] + '">' + pair[1] + '</span>';
+  };
+
+  window.pnSyncGhiChu = function () {
+    setText('ph_ghichu_display', (document.getElementById('pn_ghichu').value||'').trim() || '\u2014');
+  };
+
+  window.pnSearchNcc = function () {
+    var input = document.getElementById('pn_ncc_search');
+    var sel = document.getElementById('pn_ncc');
+    var q = (input.value||'').trim().toLowerCase();
+    var matched = '';
+    Array.from(sel.options).forEach(function(o) {
+      if (!o.value) return;
+      if (!matched && (o.dataset.name||'').toLowerCase().indexOf(q)>=0) matched = o.value;
+    });
+    if (matched) { sel.value = matched; pnSyncNcc(); }
+    else { setText('ph_ncc_display', input.value||'\u2014'); setText('ph_sdt_display','\u2014'); }
+  };
+
+  function renderTable() {
+    var tbody = document.getElementById('ph_tbody');
+    var emptyRow = document.getElementById('ph_empty_row');
+    if (!rows.length) {
+      tbody.innerHTML = '<tr id="ph_empty_row"><td colspan="7" class="empty">Chưa có sản phẩm nào được thêm</td></tr>';
+      return;
+    }
+    tbody.innerHTML = '';
+    rows.forEach(function(r, i) {
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td style="color:#aaa;font-size:11px;">'+(i+1)+'</td>'+
+        '<td><strong>'+r.san_pham+'</strong>'+(r.is_new?'<span class="pn-badge-new">M\u1edaI</span>':'')+
+        (r.thuong_hieu?'<br><small style="color:#888;">'+r.thuong_hieu+'</small>':'')+'</td>'+
+        '<td><code style="background:#f0f4ea;padding:2px 7px;border-radius:4px;font-size:11px;">'+r.sku+'</code></td>'+
+        '<td class="r"><input type="number" value="'+r.gia_nhap+'" min="0" style="width:100px;" onchange="pnUpdRow('+i+',\'gia_nhap\',this.value)"></td>'+
+        '<td class="r"><input type="number" value="'+r.so_luong+'" min="1" style="width:64px;" onchange="pnUpdRow('+i+',\'so_luong\',this.value)"></td>'+
+        '<td class="r num" id="row_tt_'+i+'">'+ fmtP(r.gia_nhap*r.so_luong)+'</td>'+
+        '<td><button class="pn-btn pn-btn-d" onclick="pnDelRow('+i+')">\u2715</button></td>';
+      tbody.appendChild(tr);
+    });
+  }
+
+  window.pnUpdRow = function(i,field,val){ rows[i][field]=parseFloat(val)||0; var el=document.getElementById('row_tt_'+i); if(el) el.textContent=fmtP(rows[i].gia_nhap*rows[i].so_luong); updateSummary(); };
+  window.pnDelRow = function(i) {
+    rows.splice(i, 1);
+    // Re-render toan bo bang (ca Django rows lan JS rows)
+    renderTable();
+    updateSummary();
+    // Reload trang neu muon luu thay doi, hoac chi UI
+  };
+
+  function updateSummary() {
+    var exist=rows.filter(function(r){return !r.is_new;}).length;
+    var news=rows.filter(function(r){return r.is_new;}).length;
+    var total=0,qty=0; rows.forEach(function(r){total+=r.gia_nhap*r.so_luong;qty+=r.so_luong;});
+    setText('ph_tong',fmtP(total));
+    setText('ph_qty_summary',exist+' s\u1ea3n ph\u1ea9m \u00b7 '+news+' m\u1edbi \u00b7 '+qty+' \u0111v');
+  }
+
+  window.pnShowNewProduct = function () {
+    var name = (document.getElementById('pn_sp_filter')||{}).value||'';
+    name = name.trim();
+    document.getElementById('pn_np_ten').value = name;
+    document.getElementById('pn_np_name_title').textContent = name;
+    document.getElementById('pn_np_brand').value = '';
+    document.getElementById('pn_np_bt_list').innerHTML = '';
+    show('pn_new_sp_form'); hide('pn_not_found');
+    document.getElementById('pn_acc_body').classList.remove('hidden');
+    document.getElementById('pn_acc_chevron').textContent = '\u25bc';
+    pnAddNewBT();
+  };
+
+  window.pnToggleAcc = function () {
+    var body=document.getElementById('pn_acc_body'), chevron=document.getElementById('pn_acc_chevron');
+    chevron.textContent = body.classList.toggle('hidden') ? '\u25b6' : '\u25bc';
+  };
+
+  window.pnCancelNew = function () { hide('pn_new_sp_form'); pnClearCombo(); };
+
+  window.pnAddNewBT = function () {
+    var idx=btNewIdx++, c=document.getElementById('pn_np_bt_list'), d=document.createElement('div');
+    d.className='pn-bt-item'; d.id='np_bt_'+idx;
+    d.innerHTML='<button class="pn-bt-rm" onclick="document.getElementById(\'np_bt_'+idx+'\').remove()">\u2715</button>'+
+      '<div class="pn-row" style="margin-bottom:8px;">'+
+        '<div class="pn-f"><label>Thu\u1ed9c t\u00ednh</label><input type="text" class="np-attr-ten" placeholder="Dung t\u00edch"></div>'+
+        '<div class="pn-f"><label>Gi\u00e1 tr\u1ecb</label><input type="text" class="np-attr-val" placeholder="50ml"></div>'+
+      '</div>'+
+      '<div class="pn-row pn-row-3">'+
+        '<div class="pn-f"><label>SKU</label><input type="text" class="np-sku" placeholder="SKU-001"></div>'+
+        '<div class="pn-f"><label>Gi\u00e1 nh\u1eadp</label><input type="number" class="np-gnhap" min="0" value="0"></div>'+
+        '<div class="pn-f"><label>Gi\u00e1 b\u00e1n</label><input type="number" class="np-gban" min="0" value="0"></div>'+
+        '<div class="pn-f"><label>S\u1ed1 l\u01b0\u1ee3ng</label><input type="number" class="np-sl" min="1" value="1"></div>'+
+      '</div>';
+    c.appendChild(d);
+  };
+
+  window.pnConfirmNew = function () {
+    var ten=document.getElementById('pn_np_ten').value.trim();
+    var brand=document.getElementById('pn_np_brand').value.trim();
+    if(!ten){alert('T\u00ean tr\u1ed1ng!');return;}
+    var items=document.querySelectorAll('#pn_np_bt_list .pn-bt-item');
+    if(!items.length){alert('Th\u00eam bi\u1ebfn th\u1ec3!');return;}
+    var bien_the=[];
+    items.forEach(function(item){
+      var atTen=item.querySelector('.np-attr-ten').value.trim();
+      var atVal=item.querySelector('.np-attr-val').value.trim();
+      var sku=item.querySelector('.np-sku').value.trim();
+      var gn=parseFloat(item.querySelector('.np-gnhap').value)||0;
+      var gb=parseFloat(item.querySelector('.np-gban').value)||0;
+      var sl=parseInt(item.querySelector('.np-sl').value)||1;
+      bien_the.push({sku:sku||(ten+'-'+(atVal||'VAR')),attrs:atTen&&atVal?[{ten_thuoc_tinh:atTen,gia_tri:atVal}]:[],gia_nhap:gn,gia_ban:gb,so_luong:sl});
+      rows.push({bien_the_id:null,san_pham:ten,thuong_hieu:brand,sku:sku||atVal||'NEW',gia_nhap:gn,so_luong:sl,is_new:true,_np_idx:newProducts.length});
+    });
+    newProducts.push({ten_san_pham:ten,thuong_hieu:brand,bien_the:bien_the});
+    renderTable(); updateSummary();
+    document.getElementById('pn_acc_body').classList.add('hidden');
+    document.getElementById('pn_acc_chevron').textContent='\u25b6';
+    document.getElementById('pn_np_name_title').textContent=ten+' \u2714';
+    pnClearCombo(); hide('pn_not_found');
+  };
+
+  window.pnSave = function (forceTT) {
+    var tt=forceTT||document.getElementById('pn_tt').value;
+    var nccId=parseInt(document.getElementById('pn_ncc').value)||null;
+    var msg=document.getElementById('ph_save_msg');
+    var rowPayload=rows.filter(function(r){return !r.is_new&&r.bien_the_id;})
+      .map(function(r){return{bien_the_id:r.bien_the_id,so_luong:r.so_luong,gia_nhap:r.gia_nhap};});
+    msg.innerHTML='\u23f3 \u0110ang l\u01b0u...';
+    fetch(PN_SAVE_URL,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+      body:JSON.stringify({phieu_id:PN_PHIEU_ID,ncc_id:nccId,trang_thai:tt,rows:rowPayload,new_products:newProducts})})
+    .then(function(res){return res.json();})
+    .then(function(data){
+      if(data.ok){msg.innerHTML='<span style="color:#2e7d32;">\u2714 \u0110\u00e3 l\u01b0u <strong>'+data.ma_phieu+'</strong></span>';
+        setText('ph_ma_display','M\u00e3: '+data.ma_phieu);
+        setTimeout(function(){window.location.href='../';},1400);
+      } else { msg.innerHTML='<span style="color:#c62828;">\u2716 '+data.error+'</span>'; }
+    })
+    .catch(function(e){msg.innerHTML='<span style="color:#c62828;">\u2716 L\u1ed7i: '+e.message+'</span>';});
+  };
+
+  function fmtP(n){return Math.round(parseFloat(n)||0).toLocaleString('vi-VN')+'\u20ab';}
+  function setText(id,v){var e=document.getElementById(id);if(e)e.textContent=v;}
+  function show(id){var e=document.getElementById(id);if(e)e.style.display='';}
+  function hide(id){var e=document.getElementById(id);if(e)e.style.display='none';}
+  function getCsrf(){var c=document.cookie.split(';').find(function(x){return x.trim().startsWith('csrftoken=');});return c?decodeURIComponent(c.trim().slice('csrftoken='.length)):'';}
+
+  if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init);}else{init();}
+})();
+</script>
 {% endblock %}
 
 {% block content %}
@@ -239,111 +606,167 @@
 
 <div class="pn-layout">
 
-  {# ════════════════════
-     CỘT TRÁI — PHIẾU
-  ════════════════════ #}
+  <!-- ═══ COT TRAI: PHIEU ═══ -->
   <div>
     <div class="pn-phieu-wrap">
 
-      {# Header phiếu #}
       <div class="pn-phieu-head">
-        <div class="pn-phieu-title">📦 Phiếu Nhập Kho</div>
+        <div class="pn-phieu-title">&#128230; Phi&#7871;u Nh&#7853;p Kho</div>
         <div class="pn-phieu-ma" id="ph_ma_display">
-          {% if original %}Mã phiếu: {{ original.MaPhieu }}{% else %}Mã phiếu: (tự động){% endif %}
+          {% if original %}M&#227; phi&#7871;u: {{ original.MaPhieu }}{% else %}M&#227; phi&#7871;u: (t&#7921; &#273;&#7897;ng){% endif %}
         </div>
-        <div class="pn-phieu-date">Ngày nhập: <span id="ph_ngay_display">{{ now }}</span></div>
+        <div class="pn-phieu-date">Ng&#224;y nh&#7853;p: <span id="ph_ngay_display">{{ now }}</span></div>
       </div>
 
-      {# Meta: NCC, người nhập, trạng thái, ghi chú #}
       <div class="pn-phieu-meta">
         <div class="pn-meta-item">
-          <div class="pn-meta-label">Người nhập kho</div>
-          <div class="pn-meta-val" id="ph_nguoi_display">{{ tk_info.username }}</div>
-        </div>
-        <div class="pn-meta-item">
-          <div class="pn-meta-label">Nhà cung cấp</div>
-          <div class="pn-meta-val" id="ph_ncc_display">—</div>
-        </div>
-        <div class="pn-meta-item">
-          <div class="pn-meta-label">Trạng thái</div>
-          <div id="ph_tt_display">
-            <span class="pn-status draft">📝 Nháp</span>
+          <div class="pn-meta-label">Ng&#432;&#7901;i nh&#7853;p kho</div>
+          <div class="pn-meta-val" id="ph_nguoi_display">
+            {% if original and original.id_TaiKhoan %}{{ original.id_TaiKhoan.TenDangNhap }}{% else %}{{ tk_info.username }}{% endif %}
           </div>
         </div>
         <div class="pn-meta-item">
-          <div class="pn-meta-label">Ghi chú</div>
-          <div class="pn-meta-val" id="ph_ghichu_display" style="font-weight:400;color:#666;">—</div>
+          <div class="pn-meta-label">Nh&#224; cung c&#7845;p</div>
+          <div class="pn-meta-val" id="ph_ncc_display">
+            {% if original and original.id_NCC %}{{ original.id_NCC.Ten_NCC }}{% else %}&#8212;{% endif %}
+          </div>
+        </div>
+        <div class="pn-meta-item">
+          <div class="pn-meta-label">S&#272;T nh&#224; cung c&#7845;p</div>
+          <div class="pn-meta-val" id="ph_sdt_display">
+            {% if original and original.id_NCC %}{{ original.id_NCC.SDT|default:"&#8212;" }}{% else %}&#8212;{% endif %}
+          </div>
+        </div>
+        <div class="pn-meta-item">
+          <div class="pn-meta-label">Tr&#7841;ng th&#225;i</div>
+          <div id="ph_tt_display">
+            {% if original %}
+              {% with tt=original.TrangThai|default:"draft" %}
+                {% if tt == "confirmed" %}<span class="pn-status confirmed">&#9989; X&#225;c nh&#7853;n</span>
+                {% elif tt == "done" %}<span class="pn-status done">&#10004; Ho&#224;n t&#7845;t</span>
+                {% elif tt == "cancelled" %}<span class="pn-status cancelled">&#10006; Hu&#7927;</span>
+                {% else %}<span class="pn-status draft">&#128221; Nh&#225;p</span>{% endif %}
+              {% endwith %}
+            {% else %}
+              <span class="pn-status draft">&#128221; Nh&#225;p</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="pn-meta-item" style="grid-column:1/-1;">
+          <div class="pn-meta-label">Ghi ch&#250;</div>
+          <div class="pn-meta-val" id="ph_ghichu_display" style="font-weight:400;color:#666;">
+            {% if original %}{{ original.GhiChu|default:"&#8212;" }}{% else %}&#8212;{% endif %}
+          </div>
         </div>
       </div>
 
-      {# Bảng chi tiết #}
       <div class="pn-phieu-body">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ol);margin-bottom:10px;">
-          📑 Chi tiết sản phẩm nhập
+          &#128209; Chi ti&#7871;t s&#7843;n ph&#7849;m nh&#7853;p
         </div>
-
         <div style="overflow-x:auto;">
-          <table class="pn-tbl" id="ph_tbl">
+          <table class="pn-tbl">
             <thead>
               <tr>
                 <th>#</th>
-                <th>Tên sản phẩm</th>
-                <th>SKU / Biến thể</th>
-                <th class="r">Đơn giá</th>
+                <th>T&#234;n s&#7843;n ph&#7849;m</th>
+                <th>SKU / Bi&#7871;n th&#7875;</th>
+                <th class="r">&#272;&#417;n gi&#225;</th>
                 <th class="r">SL</th>
-                <th class="r">Thành tiền</th>
+                <th class="r">Th&#224;nh ti&#7873;n</th>
                 <th></th>
               </tr>
             </thead>
             <tbody id="ph_tbody">
+              {% if original and chi_tiet_list %}
+                {% for ct in chi_tiet_list %}
+                <tr>
+                  <td style="color:#aaa;font-size:11px;">{{ forloop.counter }}</td>
+                  <td>
+                    <strong style="font-size:13px;">{{ ct.san_pham }}</strong>
+                    {% if ct.thuong_hieu %}<br><small style="color:#888;">{{ ct.thuong_hieu }}</small>{% endif %}
+                  </td>
+                  <td><code style="background:#f0f4ea;padding:2px 7px;border-radius:4px;font-size:11px;">{{ ct.sku }}</code></td>
+                  <td class="r">
+                    <input type="number" value="{{ ct.gia_nhap }}" min="0" style="width:100px;"
+                      onchange="pnUpdRowDjango({{ forloop.counter0 }}, 'gia_nhap', this.value)">
+                  </td>
+                  <td class="r">
+                    <input type="number" value="{{ ct.so_luong }}" min="1" style="width:64px;"
+                      onchange="pnUpdRowDjango({{ forloop.counter0 }}, 'so_luong', this.value)">
+                  </td>
+                  <td class="r num" id="row_tt_{{ forloop.counter0 }}">
+                    {% widthratio ct.gia_nhap 1 ct.so_luong as tt_raw %}{{ ct.gia_nhap|floatformat:0 }}&#8363;
+                  </td>
+                  <td>
+                    <button class="pn-btn pn-btn-d"
+                      onclick="pnDelRow({{ forloop.counter0 }})">&#10005;</button>
+                  </td>
+                </tr>
+                {% endfor %}
+              {% else %}
               <tr id="ph_empty_row">
-                <td colspan="7" class="empty">Chưa có sản phẩm nào được thêm</td>
+                <td colspan="7" class="empty">Ch&#432;a c&#243; s&#7843;n ph&#7849;m n&#224;o &#273;&#432;&#7907;c th&#234;m</td>
               </tr>
+              {% endif %}
             </tbody>
           </table>
         </div>
       </div>
 
-      {# Footer tổng tiền + nút lưu #}
       <div class="pn-phieu-footer">
         <div>
-          <div class="pn-tong-label">TỔNG TIỀN NHẬP</div>
-          <div style="font-size:11px;color:#999;margin-top:2px;" id="ph_qty_summary">0 dòng · 0 sản phẩm</div>
+          <div class="pn-tong-label">T&#7892;NG TI&#7872;N NH&#7852;P</div>
+          <div style="font-size:11px;color:#999;margin-top:2px;" id="ph_qty_summary">
+            {% if original and chi_tiet_list %}{{ chi_tiet_list|length }} d&#242;ng{% else %}0 d&#242;ng{% endif %}
+          </div>
         </div>
-        <div class="pn-tong-val" id="ph_tong">0 ₫</div>
+        <div class="pn-tong-val" id="ph_tong">
+          {% if original and original.TongTien %}{{ original.TongTien|floatformat:0 }}&#8363;{% else %}0 &#8363;{% endif %}
+        </div>
       </div>
 
-      {# Nút lưu phiếu #}
-      <div style="padding:0 20px 18px;display:flex;gap:10px;">
+      <div style="padding:0 20px 18px;display:flex;gap:10px;flex-wrap:wrap;">
         <button class="pn-btn pn-btn-p pn-btn-full" style="padding:12px;font-size:14px;" onclick="pnSave('confirmed')">
-          💾 Tạo phiếu & Xác nhận
+          &#128190; {% if original %}C&#7853;p nh&#7853;t phi&#7871;u{% else %}T&#7841;o phi&#7871;u &amp; X&#225;c nh&#7853;n{% endif %}
         </button>
         <button class="pn-btn pn-btn-g" style="padding:12px 16px;" onclick="pnSave('draft')">
-          📝 Lưu nháp
+          &#128221; L&#432;u nh&#225;p
         </button>
+        {% if original %}
+        <a href="{% url 'admin-api-xuat-excel' %}?phieu_id={{ original.id_PhieuNhap }}"
+           class="pn-btn" style="background:#1565c0;color:#fff;padding:12px 16px;"
+           download>
+          &#128196; Xu&#7845;t Excel
+        </a>
+        {% endif %}
       </div>
       <div id="ph_save_msg" style="padding:0 20px 14px;font-size:13px;text-align:center;"></div>
 
     </div>
   </div>
 
-  {# ════════════════════
-     CỘT PHẢI — THAO TÁC
-  ════════════════════ #}
+  <!-- ═══ COT PHAI: THAO TAC ═══ -->
   <div>
 
-    {# Card 1: Thông tin phiếu #}
+    <!-- Card 1: NCC + Trang thai -->
     <div class="pn-card">
-      <div class="pn-card-head">📋 Thông tin phiếu</div>
+      <div class="pn-card-head">&#10133; Th&#244;ng tin phi&#7871;u</div>
       <div class="pn-card-body">
         <div class="pn-row">
           <div class="pn-f">
-            <label>Nhà cung cấp</label>
-            <select id="pn_ncc" onchange="pnSyncNcc()">
-              <option value="">— Chọn NCC —</option>
+            <label>Nh&#224; cung c&#7845;p</label>
+            <input type="text" id="pn_ncc_search" list="pn_ncc_list"
+              placeholder="G&#245; t&#234;n NCC..." oninput="pnSearchNcc()">
+            <datalist id="pn_ncc_list">
+              {% for ncc in ncc_list %}<option value="{{ ncc.Ten_NCC }}"></option>{% endfor %}
+            </datalist>
+            <select id="pn_ncc" onchange="pnSyncNcc()" style="display:none;">
+              <option value="">&#8212; Ch&#7885;n NCC &#8212;</option>
               {% for ncc in ncc_list %}
               <option value="{{ ncc.id_NCC }}"
                 data-name="{{ ncc.Ten_NCC }}"
+                data-phone="{{ ncc.SDT|default:'' }}"
                 {% if original and original.id_NCC_id == ncc.id_NCC %}selected{% endif %}>
                 {{ ncc.Ten_NCC }}
               </option>
@@ -351,123 +774,165 @@
             </select>
           </div>
           <div class="pn-f">
-            <label>Trạng thái</label>
+            <label>Tr&#7841;ng th&#225;i</label>
             <select id="pn_tt" onchange="pnSyncTT()">
-              <option value="draft">📝 Nháp</option>
-              <option value="confirmed">✅ Xác nhận</option>
-              <option value="done">✔ Hoàn tất</option>
-              <option value="cancelled">✖ Huỷ</option>
+              <option value="draft">&#128221; Nh&#225;p</option>
+              <option value="confirmed">&#9989; X&#225;c nh&#7853;n</option>
+              <option value="done">&#10003; Ho&#224;n t&#7845;t</option>
+              <option value="cancelled">&#10006; Hu&#7927;</option>
             </select>
           </div>
         </div>
         <div class="pn-f">
-          <label>Ghi chú</label>
-          <textarea id="pn_ghichu" rows="2" placeholder="Lý do nhập kho, ghi chú thêm..."
+          <label>Ghi ch&#250;</label>
+          <textarea id="pn_ghichu" rows="2"
+            placeholder="L&#253; do nh&#7853;p kho, ghi ch&#250; th&#234;m..."
             oninput="pnSyncGhiChu()"></textarea>
         </div>
       </div>
     </div>
 
-    {# Card 2: Thêm sản phẩm #}
+    <!-- Card 2: Chon san pham + Bang bien the -->
     <div class="pn-card">
-      <div class="pn-card-head">➕ Thêm sản phẩm</div>
+      <div class="pn-card-head">&#128230; Ch&#7885;n s&#7843;n ph&#7849;m &amp; bi&#7871;n th&#7875;</div>
       <div class="pn-card-body">
 
-        {# Tìm sản phẩm #}
-        <div class="pn-f pn-search-wrap" style="margin-bottom:12px;">
-          <label>Tìm tên sản phẩm</label>
-          <input type="text" id="pn_sp_search"
-            placeholder="Nhập tên sản phẩm..."
-            autocomplete="off">
-          <ul class="pn-dropdown" id="pn_dropdown" style="display:none;"></ul>
+        <!-- Combobox chon san pham -->
+        <div class="pn-f" style="margin-bottom:10px;">
+          <label>S&#7843;n ph&#7849;m</label>
+          <input type="text" id="pn_sp_filter"
+            placeholder="&#128269; G&#245; t&#234;n &#273;&#7875; l&#7885;c..."
+            autocomplete="off"
+            oninput="pnFilterCombo()" onfocus="pnFilterCombo()"
+            style="margin-bottom:5px;">
+          <select id="pn_sp_select" size="5"
+            style="width:100%;border:1.5px solid var(--border);border-radius:8px;
+                   background:#fafaf8;font-size:13px;padding:3px 0;display:block;"
+            onchange="pnOnComboSelect()" onclick="pnOnComboSelect()">
+            <option value="" disabled selected style="color:#aaa;font-style:italic;">
+              &#8212; Ch&#7885;n s&#7843;n ph&#7849;m &#8212;
+            </option>
+            {% for sp in san_pham_list %}
+            <option value="{{ sp.id_SanPham }}"
+              data-name="{{ sp.TenSanPham }}"
+              data-brand="{{ sp.id_ThuongHieu__TenThuongHieu|default:'' }}">
+              {{ sp.TenSanPham }}{% if sp.id_ThuongHieu__TenThuongHieu %} &middot; {{ sp.id_ThuongHieu__TenThuongHieu }}{% endif %}
+            </option>
+            {% endfor %}
+            <option value="__new__"
+              style="color:#1565c0;font-weight:700;padding-top:6px;border-top:1px solid #ddd;">
+              &#10133; Th&#234;m s&#7843;n ph&#7849;m m&#7899;i...
+            </option>
+          </select>
+
+          <!-- Chip san pham da chon -->
+          <div id="pn_sp_chosen" class="pn-sp-chip" style="display:none;">
+            <span id="pn_sp_chosen_name" class="pn-sp-chip-name"></span>
+            <button class="pn-sp-chip-clear" onclick="pnClearCombo()" title="&#272;&#7893;i s&#7843;n ph&#7849;m">&#215;</button>
+          </div>
         </div>
 
-        {# Alert sản phẩm chưa tồn tại #}
-        <div id="pn_not_found" style="display:none;" class="pn-alert pn-alert-warn">
-          <span>⚠️</span>
+        <!-- Alert khong tim thay -->
+        <div id="pn_not_found" class="pn-alert pn-alert-warn" style="display:none;">
+          <span>&#9888;&#65039;</span>
           <div>
-            Sản phẩm "<strong id="pn_nf_name"></strong>" chưa có.
+            S&#7843;n ph&#7849;m "<strong id="pn_nf_name"></strong>" ch&#432;a c&#243;.
             <button class="pn-btn pn-btn-g pn-btn-sm" style="margin-left:8px;" onclick="pnShowNewProduct()">
-              + Thêm mới
+              + Th&#234;m m&#7899;i
             </button>
           </div>
         </div>
 
-        {# Biến thể + số lượng + giá (hiện khi đã chọn SP) #}
-        <div id="pn_bt_section" style="display:none;">
-          <div class="pn-row pn-row-3" style="margin-bottom:10px;">
-            <div class="pn-f" style="grid-column:1/-1;">
-              <label>Biến thể / SKU</label>
-              <select id="pn_bt_select" onchange="pnOnBtChange()">
-                <option value="">— Chọn biến thể —</option>
-              </select>
+        <!-- Bang bien the — hien ngay sau khi chon SP -->
+        <div id="pn_bt_bang_section" style="display:none;margin-top:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;
+                        letter-spacing:.8px;color:var(--ol);">
+              Bi&#7871;n th&#7875;:
+              <span id="pn_bt_bang_title" style="font-weight:600;color:#333;
+                    text-transform:none;letter-spacing:0;font-size:13px;"></span>
             </div>
-          </div>
-          <div class="pn-row pn-row-3">
-            <div class="pn-f">
-              <label>Số lượng</label>
-              <input type="number" id="pn_soluong" min="1" value="1">
-            </div>
-            <div class="pn-f">
-              <label>Giá nhập (₫)</label>
-              <input type="number" id="pn_gianhap" min="0" value="0">
-            </div>
-            <div class="pn-f">
-              <label>&nbsp;</label>
-              <button class="pn-btn pn-btn-p" onclick="pnAddRow()" style="height:38px;">
-                + Thêm
-              </button>
-            </div>
+            <button class="pn-btn pn-btn-d pn-btn-sm" onclick="pnClearCombo()">
+              &#8592; &#272;&#7893;i SP
+            </button>
           </div>
 
-          {# Preview biến thể #}
-          <div id="pn_bt_preview" style="display:none;background:#f5fced;border-radius:8px;padding:10px;font-size:12px;margin-top:6px;">
+          <div class="pn-bt-table-wrap">
+            <table style="table-layout:fixed;width:100%;">
+              <colgroup>
+                <col style="width:30%;"><!-- SKU / Thuoc tinh -->
+                <col style="width:9%;"><!-- Ton -->
+                <col style="width:26%;"><!-- Gia nhap input -->
+                <col style="width:17%;"><!-- So luong input -->
+                <col style="width:18%;"><!-- Thanh tien -->
+              </colgroup>
+              <thead>
+                <tr>
+                  <th style="text-align:left;">SKU / Thu&#7897;c t&#237;nh</th>
+                  <th>T&#7891;n</th>
+                  <th>Gi&#225; nh&#7853;p (&#8363;)</th>
+                  <th>SL</th>
+                  <th>T.Ti&#7873;n</th>
+                </tr>
+              </thead>
+              <tbody id="pn_bt_bang_tbody">
+                <tr>
+                  <td colspan="5" style="text-align:center;padding:20px;color:#bbb;font-style:italic;">
+                    &#9203; &#272;ang t&#7843;i bi&#7871;n th&#7875;...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end;">
+            <button class="pn-btn pn-btn-s" onclick="pnBtBangXong()" style="font-size:13px;">
+              &#10003; Xong &#8594; &#272;&#432;a v&#224;o phi&#7871;u
+            </button>
+            <button class="pn-btn" style="background:#eee;color:#666;" onclick="pnClearCombo()">
+              H&#7911;y
+            </button>
           </div>
         </div>
 
-        {# ── Accordion: Sản phẩm mới ── #}
+        <!-- Accordion san pham moi -->
         <div class="pn-accordion" id="pn_new_sp_form" style="display:none;">
           <div class="pn-acc-head" onclick="pnToggleAcc()">
-            <span>🆕 Thông tin sản phẩm mới: <em id="pn_np_name_title"></em></span>
-            <span id="pn_acc_chevron">▼</span>
+            <span>&#128315; S&#7843;n ph&#7849;m m&#7899;i: <em id="pn_np_name_title"></em></span>
+            <span id="pn_acc_chevron">&#9660;</span>
           </div>
           <div class="pn-acc-body" id="pn_acc_body">
-
             <div class="pn-row">
               <div class="pn-f">
-                <label>Tên sản phẩm</label>
-                <input type="text" id="pn_np_ten" readonly>
+                <label>T&#234;n s&#7843;n ph&#7849;m</label>
+                <input type="text" id="pn_np_ten">
               </div>
               <div class="pn-f">
-                <label>Thương hiệu</label>
+                <label>Th&#432;&#417;ng hi&#7879;u</label>
                 <input type="text" id="pn_np_brand" placeholder="VD: Chanel...">
               </div>
             </div>
-
             <hr class="pn-divider">
-            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ol);margin-bottom:10px;">
-              📦 Biến thể sản phẩm mới
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;
+                        letter-spacing:1px;color:var(--ol);margin-bottom:10px;">
+              &#128230; Bi&#7871;n th&#7875; s&#7843;n ph&#7849;m m&#7899;i
             </div>
-
             <div id="pn_np_bt_list"></div>
-
             <button class="pn-btn pn-btn-g pn-btn-sm" onclick="pnAddNewBT()" style="margin-bottom:12px;">
-              + Thêm biến thể
+              + Th&#234;m bi&#7871;n th&#7875;
             </button>
-
             <div style="display:flex;gap:8px;justify-content:flex-end;">
-              <button class="pn-btn pn-btn-s" onclick="pnConfirmNew()">✔ Xong</button>
-              <button class="pn-btn" style="background:#eee;color:#555;" onclick="pnCancelNew()">Huỷ</button>
+              <button class="pn-btn pn-btn-s" onclick="pnConfirmNew()">&#10004; Xong</button>
+              <button class="pn-btn" style="background:#eee;color:#555;" onclick="pnCancelNew()">H&#7911;y</button>
             </div>
-
           </div>
         </div>
 
       </div>
     </div>
 
-  </div>{# end cột phải #}
-</div>{# end layout #}
+  </div>
+</div>
 
 </div>
 {% endblock %}

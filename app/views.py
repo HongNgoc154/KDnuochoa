@@ -6,7 +6,7 @@ from django.shortcuts import render, redirect
 from django.utils.text import slugify
 from .models import LoaiSanPham, NhomHuong
 import json
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
@@ -50,7 +50,9 @@ from .models import (
     ThuongHieu,
     YeuThich,
     LichSuDiem,
-    CauHinhThanhVien,NhaCungCap, PhieuNhap, ChiTietNhap
+    CauHinhThanhVien,NhaCungCap, PhieuNhap, ChiTietNhap,
+    AIRecommendClick,
+    ChatbotFeedback, 
 )
 from collections import defaultdict
 
@@ -3282,3 +3284,482 @@ def personalized_recommend_api(request):
     }, json_dumps_params={"ensure_ascii": False})
 
 
+def admin_phieunhap_list(request):
+    """Trang lich su phieu nhap kho."""
+    from .models import PhieuNhap, NhaCungCap, ChiTietNhap
+    from django.db.models import Count, Sum, Q
+    from django.utils import timezone as tz
+    import datetime
+ 
+    # Query tat ca phieu, sort moi nhat truoc
+    phieu_qs = PhieuNhap.objects.select_related(
+        'id_TaiKhoan', 'id_NCC'
+    ).order_by('-ThoiGian')
+ 
+    # Them so_dong vao tung phieu
+    phieu_list = []
+    for p in phieu_qs:
+        p.so_dong = ChiTietNhap.objects.filter(id_PhieuNhap=p).count()
+        phieu_list.append(p)
+ 
+    # Stats
+    now = tz.now()
+    tong_tien_val = PhieuNhap.objects.filter(
+        TrangThai__in=['confirmed', 'done']
+    ).aggregate(s=Sum('TongTien'))['s'] or 0
+ 
+    thang_nay = PhieuNhap.objects.filter(
+        ThoiGian__year=now.year,
+        ThoiGian__month=now.month
+    ).count()
+ 
+    stats = {
+        'tong_phieu': PhieuNhap.objects.count(),
+        'hoan_tat':   PhieuNhap.objects.filter(TrangThai__in=['confirmed','done']).count(),
+        'tong_tien':  f"{int(tong_tien_val):,}".replace(",", ".") + "₫",
+        'thang_nay':  thang_nay,
+    }
+ 
+    context = {
+        'phieu_list': phieu_list,
+        'ncc_list':   list(NhaCungCap.objects.values('id_NCC', 'Ten_NCC')),
+        'stats':      stats,
+        'title':      'Lịch sử phiếu nhập kho',
+    }
+    return render(request, 'admin/phieunhap_list.html', context)
+ 
+ 
+def admin_api_chi_tiet_phieu(request):
+    """API tra ve chi tiet cua 1 phieu nhap."""
+    phieu_id = request.GET.get('phieu_id')
+    if not phieu_id:
+        return JsonResponse({'ok': False, 'error': 'Thieu phieu_id'})
+ 
+    from .models import PhieuNhap, ChiTietNhap, BienThe
+ 
+    try:
+        phieu = PhieuNhap.objects.get(pk=phieu_id)
+        chi_tiet = ChiTietNhap.objects.select_related(
+            'id_BienThe__id_SanPham__id_ThuongHieu'
+        ).filter(id_PhieuNhap=phieu)
+ 
+        rows = []
+        for ct in chi_tiet:
+            bt = ct.id_BienThe
+            sp = bt.id_SanPham if bt else None
+            rows.append({
+                'san_pham':   sp.TenSanPham if sp else '—',
+                'thuong_hieu': sp.id_ThuongHieu.TenThuongHieu if sp and sp.id_ThuongHieu else '',
+                'sku':        bt.Sku if bt else '—',
+                'gia_nhap':   float(ct.GiaNhap or 0),
+                'so_luong':   ct.SoLuongNhap or 0,
+            })
+ 
+        return JsonResponse({
+            'ok':       True,
+            'ma_phieu': phieu.MaPhieu or f'PN-{phieu.id_PhieuNhap}',
+            'rows':     rows,
+        })
+    except PhieuNhap.DoesNotExist:
+        return JsonResponse({'ok': False, 'error': 'Khong tim thay phieu'})
+ 
+ 
+def admin_api_xuat_excel(request):
+    """Xuat file Excel cho 1 phieu hoac tat ca phieu."""
+    from .models import PhieuNhap, ChiTietNhap
+ 
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.utils import get_column_letter
+    except ImportError:
+        return HttpResponse('Chua cai openpyxl. Chay: pip install openpyxl', status=500)
+ 
+    phieu_id = request.GET.get('phieu_id')
+    tat_ca   = request.GET.get('tat_ca') == '1'
+ 
+    wb = openpyxl.Workbook()
+ 
+    # === Styles ===
+    OL_COLOR   = '4B672D'
+    OL_LT      = 'EBF6C4'
+    WHITE      = 'FFFFFF'
+    GRAY_BG    = 'F5F5F5'
+    BORDER_CLR = 'D0D0D0'
+ 
+    def make_border():
+        side = Side(style='thin', color=BORDER_CLR)
+        return Border(left=side, right=side, top=side, bottom=side)
+ 
+    def style_header(cell, bg=OL_COLOR, fg=WHITE, size=11, bold=True):
+        cell.font      = Font(bold=bold, color=fg, size=size, name='Calibri')
+        cell.fill      = PatternFill('solid', fgColor=bg)
+        cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        cell.border    = make_border()
+ 
+    def style_cell(cell, bold=False, align='left', color='333333'):
+        cell.font      = Font(bold=bold, color=color, size=10, name='Calibri')
+        cell.alignment = Alignment(horizontal=align, vertical='center')
+        cell.border    = make_border()
+ 
+    def fmt_vnd(val):
+        try:
+            return f"{int(float(val)):,}".replace(',', '.') + '₫'
+        except:
+            return '—'
+ 
+    def write_phieu_sheet(ws, phieu):
+        """Ghi 1 phieu vao 1 sheet."""
+        ws.title = (phieu.MaPhieu or f'PN-{phieu.id_PhieuNhap}')[:31]
+ 
+        # === TIEU DE PHIEU ===
+        ws.merge_cells('A1:F1')
+        c = ws['A1']
+        c.value = f'PHIẾU NHẬP KHO — {phieu.MaPhieu or phieu.id_PhieuNhap}'
+        c.font      = Font(bold=True, size=14, color=OL_COLOR, name='Calibri')
+        c.alignment = Alignment(horizontal='center', vertical='center')
+        c.fill      = PatternFill('solid', fgColor=OL_LT)
+        ws.row_dimensions[1].height = 32
+ 
+        # === META INFO ===
+        meta = [
+            ('Mã phiếu',       phieu.MaPhieu or '—'),
+            ('Thời gian',      phieu.ThoiGian.strftime('%d/%m/%Y %H:%M') if phieu.ThoiGian else '—'),
+            ('Người nhập',     phieu.id_TaiKhoan.TenDangNhap if phieu.id_TaiKhoan else '—'),
+            ('Nhà cung cấp',   phieu.id_NCC.Ten_NCC if phieu.id_NCC else '—'),
+            ('Trạng thái',     {'draft':'Nháp','confirmed':'Xác nhận','done':'Hoàn tất','cancelled':'Huỷ'}.get(phieu.TrangThai or '', phieu.TrangThai or '—')),
+            ('Tổng tiền',      fmt_vnd(phieu.TongTien) if phieu.TongTien else '—'),
+        ]
+        for i, (label, val) in enumerate(meta):
+            row = i + 2
+            ws.cell(row=row, column=1, value=label).font = Font(bold=True, color='666666', size=10, name='Calibri')
+            ws.cell(row=row, column=1).fill = PatternFill('solid', fgColor='F8FCF0')
+            ws.cell(row=row, column=1).border = make_border()
+            ws.merge_cells(f'B{row}:F{row}')
+            c2 = ws.cell(row=row, column=2, value=val)
+            c2.font   = Font(bold=(label in ['Tổng tiền','Mã phiếu']), size=10, name='Calibri',
+                             color=OL_COLOR if label == 'Tổng tiền' else '333333')
+            c2.border = make_border()
+ 
+        # === HEADER BANG CHI TIET ===
+        HDR_ROW = 9
+        headers = ['#', 'Tên sản phẩm', 'Thương hiệu', 'SKU / Biến thể', 'Đơn giá nhập', 'Số lượng', 'Thành tiền']
+        for col, h in enumerate(headers, 1):
+            cell = ws.cell(row=HDR_ROW, column=col, value=h)
+            style_header(cell)
+        ws.row_dimensions[HDR_ROW].height = 24
+ 
+        # === CHI TIET ===
+        chi_tiet = ChiTietNhap.objects.select_related(
+            'id_BienThe__id_SanPham__id_ThuongHieu'
+        ).filter(id_PhieuNhap=phieu)
+ 
+        tong = 0
+        for i, ct in enumerate(chi_tiet):
+            bt = ct.id_BienThe
+            sp = bt.id_SanPham if bt else None
+            ten_sp    = sp.TenSanPham if sp else '—'
+            thuong_hieu = sp.id_ThuongHieu.TenThuongHieu if sp and sp.id_ThuongHieu else '—'
+            sku       = bt.Sku if bt else '—'
+            gia_nhap  = float(ct.GiaNhap or 0)
+            so_luong  = ct.SoLuongNhap or 0
+            thanh_tien = gia_nhap * so_luong
+            tong += thanh_tien
+ 
+            dr = HDR_ROW + 1 + i
+            bg = 'FFFFFF' if i % 2 == 0 else 'F8FCF0'
+            row_data = [i+1, ten_sp, thuong_hieu, sku, gia_nhap, so_luong, thanh_tien]
+            for col, val in enumerate(row_data, 1):
+                cell = ws.cell(row=dr, column=col, value=val)
+                align = 'center' if col == 1 else ('right' if col in [5,6,7] else 'left')
+                bold  = col in [2, 7]
+                color = OL_COLOR if col == 7 else '333333'
+                cell.font      = Font(bold=bold, color=color, size=10, name='Calibri')
+                cell.alignment = Alignment(horizontal=align, vertical='center')
+                cell.border    = make_border()
+                cell.fill      = PatternFill('solid', fgColor=bg)
+                if col in [5, 7]:
+                    cell.number_format = '#,##0'
+ 
+        # === TONG CONG ===
+        tong_row = HDR_ROW + 1 + len(list(chi_tiet))
+        ws.merge_cells(f'A{tong_row}:F{tong_row}')
+        tc = ws.cell(row=tong_row, column=1, value='TỔNG CỘNG')
+        tc.font      = Font(bold=True, size=11, color=WHITE, name='Calibri')
+        tc.fill      = PatternFill('solid', fgColor=OL_COLOR)
+        tc.alignment = Alignment(horizontal='right', vertical='center')
+        tc.border    = make_border()
+        tv = ws.cell(row=tong_row, column=7, value=tong)
+        tv.font         = Font(bold=True, size=12, color=WHITE, name='Calibri')
+        tv.fill         = PatternFill('solid', fgColor=OL_COLOR)
+        tv.alignment    = Alignment(horizontal='right', vertical='center')
+        tv.border       = make_border()
+        tv.number_format = '#,##0'
+        ws.row_dimensions[tong_row].height = 26
+ 
+        # === COL WIDTH ===
+        col_widths = [5, 30, 20, 20, 16, 12, 16]
+        for i, w in enumerate(col_widths, 1):
+            ws.column_dimensions[get_column_letter(i)].width = w
+ 
+    # === XUAT ===
+    if tat_ca:
+        phieu_list = PhieuNhap.objects.select_related('id_TaiKhoan','id_NCC').order_by('-ThoiGian')
+        # Sheet tong hop
+        ws_sum = wb.active
+        ws_sum.title = 'Tong_hop'
+ 
+        ws_sum['A1'] = 'LỊCH SỬ PHIẾU NHẬP KHO — AMI PERFUMERY'
+        ws_sum['A1'].font      = Font(bold=True, size=14, color=OL_COLOR, name='Calibri')
+        ws_sum['A1'].fill      = PatternFill('solid', fgColor=OL_LT)
+        ws_sum['A1'].alignment = Alignment(horizontal='center')
+        ws_sum.merge_cells('A1:G1')
+ 
+        hdrs = ['Mã phiếu', 'Thời gian', 'Người nhập', 'Nhà cung cấp', 'Trạng thái', 'Số dòng', 'Tổng tiền']
+        for col, h in enumerate(hdrs, 1):
+            style_header(ws_sum.cell(row=2, column=col, value=h))
+ 
+        total_all = 0
+        for i, p in enumerate(phieu_list):
+            dr = i + 3
+            so_dong = ChiTietNhap.objects.filter(id_PhieuNhap=p).count()
+            tt_val  = float(p.TongTien or 0)
+            total_all += tt_val
+            row_vals = [
+                p.MaPhieu or f'PN-{p.id_PhieuNhap}',
+                p.ThoiGian.strftime('%d/%m/%Y %H:%M') if p.ThoiGian else '—',
+                p.id_TaiKhoan.TenDangNhap if p.id_TaiKhoan else '—',
+                p.id_NCC.Ten_NCC if p.id_NCC else '—',
+                {'draft':'Nháp','confirmed':'Xác nhận','done':'Hoàn tất','cancelled':'Huỷ'}.get(p.TrangThai or '', '—'),
+                so_dong,
+                tt_val,
+            ]
+            bg = 'FFFFFF' if i % 2 == 0 else 'F8FCF0'
+            for col, val in enumerate(row_vals, 1):
+                cell = ws_sum.cell(row=dr, column=col, value=val)
+                align = 'right' if col in [6, 7] else 'left'
+                cell.font      = Font(size=10, name='Calibri',
+                                      bold=(col==7), color=(OL_COLOR if col==7 else '333333'))
+                cell.alignment = Alignment(horizontal=align, vertical='center')
+                cell.border    = make_border()
+                cell.fill      = PatternFill('solid', fgColor=bg)
+                if col == 7: cell.number_format = '#,##0'
+ 
+            # Sheet chi tiet cho tung phieu
+            ws_p = wb.create_sheet()
+            write_phieu_sheet(ws_p, p)
+ 
+        # Dong tong
+        tr = len(list(phieu_list)) + 3
+        ws_sum.merge_cells(f'A{tr}:F{tr}')
+        c = ws_sum.cell(row=tr, column=1, value='TỔNG CỘNG')
+        c.font = Font(bold=True, size=11, color=WHITE, name='Calibri')
+        c.fill = PatternFill('solid', fgColor=OL_COLOR)
+        c.alignment = Alignment(horizontal='right')
+        c.border = make_border()
+        tv = ws_sum.cell(row=tr, column=7, value=total_all)
+        tv.font = Font(bold=True, size=12, color=WHITE, name='Calibri')
+        tv.fill = PatternFill('solid', fgColor=OL_COLOR)
+        tv.alignment = Alignment(horizontal='right')
+        tv.border = make_border()
+        tv.number_format = '#,##0'
+ 
+        for i, w in enumerate([18, 18, 16, 20, 14, 10, 16], 1):
+            ws_sum.column_dimensions[get_column_letter(i)].width = w
+ 
+        filename = f'LichSuPhieuNhap_{timezone.now().strftime("%Y%m%d_%H%M")}.xlsx'
+ 
+    else:
+        # Xuat 1 phieu
+        try:
+            phieu = PhieuNhap.objects.select_related('id_TaiKhoan','id_NCC').get(pk=phieu_id)
+        except PhieuNhap.DoesNotExist:
+            return HttpResponse('Khong tim thay phieu', status=404)
+ 
+        ws = wb.active
+        write_phieu_sheet(ws, phieu)
+        filename = f'PhieuNhap_{phieu.MaPhieu or phieu_id}_{timezone.now().strftime("%Y%m%d")}.xlsx'
+ 
+    # Response
+    from io import BytesIO
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+ 
+    response = HttpResponse(
+        buf.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+# ════════════════════════════════════════════════════
+# GIAI ĐOẠN 4 — Ghi nhận click AI recommendation
+# ════════════════════════════════════════════════════
+@csrf_exempt
+@require_POST
+def ai_track_click(request):
+    """
+    POST /api/ai/track-click/
+    Body: { "product_id": 9, "source": "content_based" }
+    Ghi nhận mỗi lần khách nhấp vào sản phẩm được AI gợi ý.
+    """
+    try:
+        data       = _json.loads(request.body)
+        product_id = data.get("product_id")
+        source     = data.get("source", "content_based")
+        account_id = request.session.get("account_id")
+
+        if not product_id:
+            return JsonResponse({"ok": False})
+
+        product = SanPham.objects.filter(id_SanPham=product_id).first()
+        if not product:
+            return JsonResponse({"ok": False})
+
+        account = None
+        if account_id:
+            account = TaiKhoan.objects.filter(
+                id_TaiKhoan=account_id
+            ).first()
+
+        AIRecommendClick.objects.create(
+            id_TaiKhoan=account,
+            id_SanPham=product,
+            source=source,
+        )
+        return JsonResponse({"ok": True})
+
+    except Exception:
+        return JsonResponse({"ok": False})
+    
+
+@csrf_exempt
+@require_POST
+def ai_chatbot_feedback(request):
+    """
+    POST /api/ai/chatbot-feedback/
+    Body: { "rating": 5, "content": "Tư vấn rất tốt" }
+    """
+    import json as _json
+    try:
+        data       = _json.loads(request.body)
+        rating     = int(data.get("rating") or 0)
+        content    = (data.get("content") or "").strip()[:500]
+        account_id = request.session.get("account_id")
+
+        if rating < 1 or rating > 5:
+            return JsonResponse({"ok": False, "error": "Rating từ 1–5"})
+
+        account = None
+        if account_id:
+            account = TaiKhoan.objects.filter(
+                id_TaiKhoan=account_id
+            ).first()
+
+        ChatbotFeedback.objects.create(
+            id_TaiKhoan=account,
+            Rating=rating,
+            NoiDung=content or None,
+        )
+        return JsonResponse({"ok": True})
+
+    except Exception:
+        return JsonResponse({"ok": False})
+    
+def ai_dashboard_api(request):
+    """
+    GET /api/admin/ai-dashboard/
+    Trả về thống kê hiệu quả AI cho admin dashboard.
+    """
+    from django.db.models import Count, Avg
+    from datetime import timedelta
+
+    # Cách 1: Đăng nhập qua Django Admin (/admin/)
+    is_django_admin = bool(
+        getattr(request, "user", None)
+        and request.user.is_authenticated
+        and request.user.is_staff
+    )
+
+    # Cách 2: Đăng nhập qua session tự định nghĩa
+    account_id = request.session.get("account_id")
+    account    = TaiKhoan.objects.filter(
+        id_TaiKhoan=account_id
+    ).first() if account_id else None
+    is_custom_admin = bool(
+        account and account.LoaiTaiKhoan in ('admin', 'staff')
+    )
+
+    if not is_django_admin and not is_custom_admin:
+        return JsonResponse({"ok": False}, status=403)
+
+    # Khoảng thời gian 30 ngày gần nhất
+    since = timezone.now() - timedelta(days=30)
+
+    # ── 1. Click-through rate theo nguồn ──────────────────────
+    clicks_by_source = list(
+        AIRecommendClick.objects
+        .filter(NgayClick__gte=since)
+        .values('source')
+        .annotate(total=Count('id_Click'))
+        .order_by('-total')
+    )
+
+    # ── 2. Click theo ngày (7 ngày gần nhất) ──────────────────
+    clicks_by_day = []
+    for i in range(6, -1, -1):
+        day = timezone.now().date() - timedelta(days=i)
+        count = AIRecommendClick.objects.filter(
+            NgayClick__date=day
+        ).count()
+        clicks_by_day.append({
+            "date":  day.strftime("%d/%m"),
+            "count": count,
+        })
+
+    # ── 3. Chatbot satisfaction ───────────────────────────────
+    feedback_avg = ChatbotFeedback.objects.filter(
+        NgayTao__gte=since
+    ).aggregate(avg=Avg('Rating'))['avg'] or 0
+
+    feedback_dist = list(
+        ChatbotFeedback.objects
+        .filter(NgayTao__gte=since)
+        .values('Rating')
+        .annotate(total=Count('id_Feedback'))
+        .order_by('Rating')
+    )
+
+    total_feedback = ChatbotFeedback.objects.filter(
+        NgayTao__gte=since
+    ).count()
+
+    # ── 4. Top sản phẩm được gợi ý nhiều nhất ─────────────────
+    top_products = list(
+        AIRecommendClick.objects
+        .filter(NgayClick__gte=since)
+        .values('id_SanPham__TenSanPham', 'id_SanPham__id_SanPham')
+        .annotate(total=Count('id_Click'))
+        .order_by('-total')[:5]
+    )
+
+    return JsonResponse({
+        "ok":             True,
+        "clicks_by_source": clicks_by_source,
+        "clicks_by_day":    clicks_by_day,
+        "feedback_avg":     round(float(feedback_avg), 1),
+        "feedback_dist":    feedback_dist,
+        "total_feedback":   total_feedback,
+        "top_products":     top_products,
+    }, json_dumps_params={"ensure_ascii": False})
+
+def ai_dashboard_page(request):
+    account_id = request.session.get("account_id")
+    account    = TaiKhoan.objects.filter(
+        id_TaiKhoan=account_id
+    ).first() if account_id else None
+    if not account or account.LoaiTaiKhoan not in ('admin', 'staff'):
+        return redirect('/')
+    return render(request, "app/ai_dashboard.html")

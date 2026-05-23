@@ -685,3 +685,35 @@ class ChiTietNhap(models.Model):
     def __str__(self):
         bt = self.id_BienThe
         return f"{bt.id_SanPham.TenSanPham} - {bt.Sku}" if bt else f"CTN-{self.id_ChiTietNhap}"
+    
+
+class AIRecommendClick(models.Model):
+    id_Click    = models.AutoField(primary_key=True)
+    id_TaiKhoan = models.ForeignKey(
+        'TaiKhoan', on_delete=models.SET_NULL,
+        null=True, blank=True, db_column='id_TaiKhoan'
+    )
+    id_SanPham  = models.ForeignKey(
+        'SanPham', on_delete=models.CASCADE,
+        db_column='id_SanPham'
+    )
+    source      = models.CharField(max_length=50)
+    NgayClick   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        managed  = False
+        db_table = 'AIRecommendClick'
+
+class ChatbotFeedback(models.Model):
+    id_Feedback = models.AutoField(primary_key=True)
+    id_TaiKhoan = models.ForeignKey(
+        'TaiKhoan', on_delete=models.SET_NULL,
+        null=True, blank=True, db_column='id_TaiKhoan'
+    )
+    Rating   = models.IntegerField()
+    NoiDung  = models.CharField(max_length=500, null=True, blank=True)
+    NgayTao  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        managed  = False
+        db_table = 'ChatbotFeedback'

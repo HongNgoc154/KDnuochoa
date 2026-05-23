@@ -115,11 +115,11 @@
 </div>
 
 <!-- APP MODEL GRID -->
-<h2 style="font-family:var(--fd);font-size:22px;font-weight:300;color:var(--text);margin-bottom:16px;">
+{% comment %} <h2 style="font-family:var(--fd);font-size:22px;font-weight:300;color:var(--text);margin-bottom:16px;">
   Quản lý <em>nội dung</em>
-</h2>
+</h2> {% endcomment %}
 
-<div class="ami-app-grid">
+{% comment %} <div class="ami-app-grid">
   {% for app in app_list %}
   <div class="ami-app-card">
     <div class="ami-app-card-head">
@@ -150,6 +150,173 @@
     </div>
   </div>
   {% endfor %}
+</div> {% endcomment %}
+
+<!-- ═══ AI DASHBOARD SECTION ═══ -->
+<div style="margin-top:40px;">
+  <h2 style="font-family:'Cormorant Garamond',serif;font-size:24px;
+             font-weight:400;margin-bottom:8px;">
+    Hiệu quả <em>AI</em>
+  </h2>
+  <p style="color:#888;font-size:13px;margin-bottom:24px;">
+    30 ngày gần nhất · Tự động cập nhật
+  </p>
+
+  <!-- KPI Cards -->
+  <div id="aiKpiCards"
+       style="display:grid;grid-template-columns:repeat(3,1fr);
+              gap:16px;margin-bottom:28px;">
+    <div style="background:#fff;border-radius:12px;padding:20px;
+                border-left:4px solid #4B672D;border:1px solid #e8e4dc;">
+      <p style="font-size:11px;color:#888;margin:0 0 8px;">Tổng lượt click AI</p>
+      <p id="aiTotalClicks"
+         style="font-size:28px;font-family:'Cormorant Garamond',serif;
+                color:#4B672D;margin:0;">—</p>
+      <p style="font-size:11px;color:#aaa;margin:4px 0 0;">30 ngày gần nhất</p>
+    </div>
+    <div style="background:#fff;border-radius:12px;padding:20px;
+                border-left:4px solid #c9a96e;border:1px solid #e8e4dc;">
+      <p style="font-size:11px;color:#888;margin:0 0 8px;">
+        Điểm hài lòng chatbot
+      </p>
+      <p id="aiAvgRating"
+         style="font-size:28px;font-family:'Cormorant Garamond',serif;
+                color:#c9a96e;margin:0;">—</p>
+      <p id="aiTotalFeedback"
+         style="font-size:11px;color:#aaa;margin:4px 0 0;">— phản hồi</p>
+    </div>
+    <div style="background:#fff;border-radius:12px;padding:20px;
+                border-left:4px solid #534AB7;border:1px solid #e8e4dc;">
+      <p style="font-size:11px;color:#888;margin:0 0 8px;">
+        Nguồn gợi ý nhiều nhất
+      </p>
+      <p id="aiTopSource"
+         style="font-size:20px;font-family:'Cormorant Garamond',serif;
+                color:#534AB7;margin:0;">—</p>
+      <p id="aiTopSourceCount"
+         style="font-size:11px;color:#aaa;margin:4px 0 0;">— clicks</p>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;
+              gap:20px;margin-bottom:28px;">
+    <div style="background:#fff;border-radius:12px;padding:20px;
+                border:1px solid #e8e4dc;">
+      <h3 style="font-size:13px;font-weight:600;margin:0 0 16px;">
+        Click AI theo ngày (7 ngày)
+      </h3>
+      <canvas id="aiChartDay" height="180"></canvas>
+    </div>
+    <div style="background:#fff;border-radius:12px;padding:20px;
+                border:1px solid #e8e4dc;">
+      <h3 style="font-size:13px;font-weight:600;margin:0 0 16px;">
+        Phân bố đánh giá chatbot
+      </h3>
+      <canvas id="aiChartFeedback" height="180"></canvas>
+    </div>
+  </div>
+
+  <!-- Top sản phẩm -->
+  <div style="background:#fff;border-radius:12px;padding:20px;
+              border:1px solid #e8e4dc;">
+    <h3 style="font-size:13px;font-weight:600;margin:0 0 16px;">
+      Top sản phẩm được AI gợi ý nhiều nhất
+    </h3>
+    <div id="aiTopProducts"></div>
+  </div>
 </div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+fetch('/api/admin/ai-dashboard/')
+  .then(r => r.json())
+  .then(data => {
+    if (!data.ok) return;
+
+    // KPI
+    const totalClicks = data.clicks_by_source
+      .reduce((s, x) => s + x.total, 0);
+    document.getElementById('aiTotalClicks').textContent = totalClicks;
+    document.getElementById('aiAvgRating').textContent =
+      data.feedback_avg + ' / 5';
+    document.getElementById('aiTotalFeedback').textContent =
+      data.total_feedback + ' phản hồi';
+
+    const top = data.clicks_by_source[0];
+    if (top) {
+      document.getElementById('aiTopSource').textContent =
+        top.source.replace(/_/g, ' ');
+      document.getElementById('aiTopSourceCount').textContent =
+        top.total + ' clicks';
+    }
+
+    // Chart 1: Click theo ngày
+    new Chart(document.getElementById('aiChartDay'), {
+      type: 'bar',
+      data: {
+        labels: data.clicks_by_day.map(d => d.date),
+        datasets: [{
+          label: 'Lượt click',
+          data: data.clicks_by_day.map(d => d.count),
+          backgroundColor: '#4B672D',
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+      }
+    });
+
+    // Chart 2: Feedback
+    const starCounts = [1,2,3,4,5].map(s => {
+      const f = data.feedback_dist.find(x => x.Rating === s);
+      return f ? f.total : 0;
+    });
+    new Chart(document.getElementById('aiChartFeedback'), {
+      type: 'bar',
+      data: {
+        labels: ['1★','2★','3★','4★','5★'],
+        datasets: [{
+          label: 'Số phản hồi',
+          data: starCounts,
+          backgroundColor: [
+            '#e74c3c','#e67e22','#f1c40f','#2ecc71','#4B672D'
+          ],
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+      }
+    });
+
+    // Top products
+    const container = document.getElementById('aiTopProducts');
+    if (!data.top_products.length) {
+      container.innerHTML =
+        '<p style="color:#aaa;font-size:13px;">Chưa có dữ liệu click.</p>';
+      return;
+    }
+    container.innerHTML = data.top_products.map((p, i) => `
+      <div style="display:flex;align-items:center;gap:12px;
+                  padding:10px 0;border-bottom:1px solid #f0ece4;">
+        <span style="width:26px;height:26px;background:#4B672D;color:#fff;
+                     border-radius:50%;display:flex;align-items:center;
+                     justify-content:center;font-size:11px;font-weight:600;
+                     flex-shrink:0;">${i+1}</span>
+        <span style="flex:1;font-size:13px;">
+          ${p.id_SanPham__TenSanPham}
+        </span>
+        <span style="font-size:12px;color:#4B672D;font-weight:600;">
+          ${p.total} clicks
+        </span>
+      </div>`).join('');
+  })
+  .catch(() => {});
+</script>
 
 {% endblock %}

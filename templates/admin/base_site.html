@@ -407,8 +407,13 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
   <nav class="ami-nav">
     <div class="ami-nav-group">
       <span class="ami-nav-label">Tổng quan</span>
-      <a href="{% url 'myadmin:index' %}" class="ami-nav-item{% if request.path == '/admin/' %} active{% endif %}">
-        <span class="ami-nav-icon">📊</span> Dashboard
+      <a href="/quan-tri/ai-dashboard/"
+        style="display:flex;align-items:center;gap:8px;
+                padding:10px 16px;border-radius:8px;
+                background:rgba(75,103,45,0.08);
+                color:#4B672D;text-decoration:none;
+                font-size:13px;margin-top:8px;">
+        📊 AI Dashboard
       </a>
       <a href="/admin-orders/" class="ami-nav-item{% if 'admin-orders' in request.path %} active{% endif %}">
         <span class="ami-nav-icon">📦</span> Quản lý đơn hàng
@@ -432,6 +437,10 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       <a href="{% url 'myadmin:app_nhomhuong_changelist' %}" class="ami-nav-item{% if 'nhomhuong' in request.path %} active{% endif %}">
         <span class="ami-nav-icon">🌸</span> Nhóm hương
       </a>
+      <a href="{% url 'myadmin:app_phieunhap_changelist' %}"
+      class="ami-nav-item{% if 'phieunhap' in request.path %} active{% endif %}">
+        <span class="ami-nav-icon">📥</span> Phiếu nhập
+    </a>
       
     </div>
 

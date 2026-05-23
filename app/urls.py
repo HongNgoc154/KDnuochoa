@@ -8,6 +8,10 @@ urlpatterns = [
     path('api/recommend/<int:product_id>/', views.ai_recommend_api, name='ai-recommend'),
     path('api/chatbot/', views.chatbot_api, name='chatbot-api'),
     path('api/recommend/personal/', views.personalized_recommend_api, name='personal-recommend'),
+    path('api/ai/track-click/', views.ai_track_click, name='ai-track-click'),
+    path('api/ai/chatbot-feedback/', views.ai_chatbot_feedback, name='ai-chatbot-feedback'),
+    path('api/admin/ai-dashboard/', views.ai_dashboard_api, name='ai-dashboard-api'),
+    path('quan-tri/ai-dashboard/', views.ai_dashboard_page, name='ai-dashboard-page'),
 
     path('', views.home, name='home'),
     path('nuoc-hoa/', views.category, name='category-all'),
@@ -62,6 +66,9 @@ urlpatterns = [
     path('admin-api/bien-the/',    views.admin_api_bien_the,   name='admin-api-bien-the'),
     path('admin-api/luu-phieu/',   views.admin_api_luu_phieu,  name='admin-api-luu-phieu'),
     path('admin-api/them-sp-moi/', views.admin_api_them_sp_moi,name='admin-api-them-sp-moi'),
+    # path('admin/phieunhap-list/',          views.admin_phieunhap_list,         name='admin-phieunhap-list'),
+    # path('admin/api/chi-tiet-phieu/',      views.admin_api_chi_tiet_phieu,     name='admin-api-chi-tiet-phieu'),
+    path('admin/api/xuat-excel/', views.admin_api_xuat_excel, name='admin-api-xuat-excel'),
 
     # ── Admin helper: Thuộc tính & Giá trị thuộc tính ──
     path('api/admin/thuoc-tinh/',          views.api_thuoc_tinh_list,       name='api-thuoc-tinh'),

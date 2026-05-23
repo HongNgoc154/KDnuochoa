@@ -34,6 +34,7 @@
   let isLoading   = false;
   let chatHistory = [];
   let hasUnread   = false;
+  let turnCount   = 0;
 
   /* ─────────────────────────────────────────
      TOGGLE
@@ -178,6 +179,12 @@
         chatHistory = data.history || [];
         appendBotMsg(data.reply || 'Xin lỗi, tôi chưa hiểu. Bạn có thể nói rõ hơn không?');
         appendProductCards(data.suggestions);
+         // ── Hiện rating bar sau lượt thứ 2 ──
+        turnCount++;
+        if (turnCount >= 2) {
+          const ratingBar = document.getElementById('chatRatingBar');
+          if (ratingBar) ratingBar.style.display = 'block';
+        }
 
         if (!isOpen) {
           hasUnread = true;
@@ -235,6 +242,51 @@
   function getCsrf() {
     const c = document.cookie.split(';').find(x => x.trim().startsWith('csrftoken='));
     return c ? decodeURIComponent(c.trim().slice('csrftoken='.length)) : '';
+  }
+
+  /* ─────────────────────────────────────────
+     CHAT RATING — Giai đoạn 4
+  ───────────────────────────────────────── */
+  const ratingBar = document.getElementById('chatRatingBar');
+  if (ratingBar) {
+    const stars = ratingBar.querySelectorAll('.ami-chat__star');
+
+    // Hover — thắp sáng từ đầu đến vị trí hover
+    stars.forEach((btn, idx) => {
+      btn.addEventListener('mouseenter', () => {
+        stars.forEach((s, i) => s.classList.toggle('lit', i <= idx));
+      });
+      btn.addEventListener('mouseleave', () => {
+        stars.forEach(s => s.classList.remove('lit'));
+      });
+    });
+
+    // Click — gửi feedback lên server
+    ratingBar.addEventListener('click', (e) => {
+      const btn = e.target.closest('.ami-chat__star');
+      if (!btn) return;
+
+      const val = parseInt(btn.dataset.val);
+
+      fetch('/api/ai/chatbot-feedback/', {
+        method:  'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken':  getCsrf(),
+        },
+        body: JSON.stringify({ rating: val, content: '' }),
+      });
+
+      // Hiện cảm ơn rồi ẩn
+      ratingBar.innerHTML = `
+        <p style="font-size:12px;color:#4B672D;
+                  margin:0;padding:6px 0;text-align:center;">
+          ✓ Cảm ơn phản hồi của bạn!
+        </p>`;
+      setTimeout(() => {
+        ratingBar.style.display = 'none';
+      }, 2000);
+    });
   }
 
 })();

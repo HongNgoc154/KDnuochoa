@@ -245,7 +245,19 @@
     <div class="ami-chat__typing" id="chatTyping" hidden>
       <span></span><span></span><span></span>
     </div>
- 
+
+    <!-- RATING BAR — hiện sau khi bot trả lời >= 2 lượt -->
+    <div class="ami-chat__rating" id="chatRatingBar" style="display:none;">
+      <p style="font-size:11px;color:#888;margin:0 0 6px;">Cuộc trò chuyện có hữu ích không?</p>
+      <div style="display:flex;gap:6px;justify-content:center;">
+        <button class="ami-chat__star" data-val="1">★</button>
+        <button class="ami-chat__star" data-val="2">★</button>
+        <button class="ami-chat__star" data-val="3">★</button>
+        <button class="ami-chat__star" data-val="4">★</button>
+        <button class="ami-chat__star" data-val="5">★</button>
+      </div>
+    </div>
+
     <!-- INPUT -->
     <div class="ami-chat__input-wrap">
       <input
