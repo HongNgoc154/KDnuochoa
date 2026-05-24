@@ -4,9 +4,6 @@
 {% block body_class %}brand-page{% endblock %}
 
 {% block extra_css %}
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{% static 'app/css/brand.css' %}">
 {% endblock %}
 
@@ -27,14 +24,17 @@
     {% if brands %}
       <div class="brand-masonry" id="brandMasonry">
         {% for brand in brands %}
-        <a href="{% url 'brand-detail' brand.slug %}"
-           class="brand-card reveal"
-           style="animation-delay: {{ forloop.counter0 }}00ms;"
-           aria-label="Xem thương hiệu {{ brand.TenThuongHieu }}">
+        <div class="brand-card reveal"
+             style="animation-delay: {{ forloop.counter0 }}00ms; cursor:pointer;"
+             aria-label="{{ brand.TenThuongHieu }}"
+             data-name="{{ brand.TenThuongHieu }}"
+             data-desc="{{ brand.MoTa|default:'Khám phá bộ sưu tập nước hoa cao cấp' }}"
+             data-logo="{% if brand.LogoUrl %}{{ brand.LogoUrl.url }}{% endif %}"
+             data-link="{% url 'category-all' %}?q={{ brand.TenThuongHieu }}">
 
           <div class="bc-logo-wrap">
             {% if brand.LogoUrl %}
-              <img src="{{ brand.LogoUrl }}"
+              <img src="{{ brand.LogoUrl.url }}"
                    alt="Logo {{ brand.TenThuongHieu }}"
                    class="bc-logo-img"
                    loading="lazy">
@@ -47,16 +47,10 @@
 
           <div class="bc-dot"></div>
           <span class="bc-name">{{ brand.TenThuongHieu }}</span>
-
-          {% if brand.LoaiThuongHieu %}
-            <span class="bc-type">{{ brand.LoaiThuongHieu }}</span>
-          {% endif %}
-
           <div class="bc-hover-line"></div>
-        </a>
+        </div>
         {% endfor %}
       </div>
-
     {% else %}
       <div class="brand-empty">
         <p>Chưa có thương hiệu nào. Vui lòng thêm dữ liệu.</p>
@@ -64,9 +58,96 @@
     {% endif %}
   </section>
 
+  <!-- PANEL SLIDE-IN -->
+  <div class="brand-panel-overlay" id="brandOverlay"></div>
+  <div class="brand-panel" id="brandPanel">
+    <button class="brand-panel-close" id="brandPanelClose">
+      <i class="bi bi-x-lg"></i>
+    </button>
+    <div class="brand-panel-body" id="brandPanelBody"></div>
+  </div>
+
 </main>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'app/js/brand.js' %}"></script>
+<script>
+// ── Tooltip theo chuột ──
+const cursorTooltip = document.createElement('div');
+cursorTooltip.style.cssText = `
+  display:none; position:fixed; z-index:9999; pointer-events:none;
+  background:#fff; border:1px solid rgba(75,103,45,0.15);
+  border-radius:14px; box-shadow:0 12px 32px rgba(43,56,28,0.14);
+  padding:14px 16px; width:200px; text-align:center;
+`;
+document.body.appendChild(cursorTooltip);
+
+document.querySelectorAll('.brand-card').forEach((card) => {
+  const name = card.dataset.name || '';
+  const desc = card.dataset.desc || '';
+  const link = card.dataset.link || '#';
+
+  card.addEventListener('mouseenter', () => {
+    cursorTooltip.innerHTML = `
+      <span style="display:block;font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:500;color:#2a311e;margin-bottom:5px;letter-spacing:1px;">${name}</span>
+      <span style="display:block;font-size:11px;color:#7a8260;line-height:1.6;margin-bottom:10px;">${desc.length > 80 ? desc.slice(0,80)+'...' : desc}</span>
+      <span style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#4B672D;">Click để xem thêm →</span>
+    `;
+    cursorTooltip.style.display = 'block';
+  });
+  card.addEventListener('mouseleave', () => {
+    cursorTooltip.style.display = 'none';
+  });
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (cursorTooltip.style.display === 'none') return;
+  const offset = 14;
+  let x = e.clientX + offset;
+  let y = e.clientY + offset;
+  if (x + 215 > window.innerWidth)  x = e.clientX - 215 - offset;
+  if (y + 140  > window.innerHeight) y = e.clientY - 140  - offset;
+  cursorTooltip.style.left = x + 'px';
+  cursorTooltip.style.top  = y + 'px';
+});
+
+// ── Panel slide-in khi click ──
+const panel      = document.getElementById('brandPanel');
+const overlay    = document.getElementById('brandOverlay');
+const panelClose = document.getElementById('brandPanelClose');
+const panelBody  = document.getElementById('brandPanelBody');
+
+const openPanel = (card) => {
+  const name = card.dataset.name || '';
+  const desc = card.dataset.desc || 'Khám phá bộ sưu tập nước hoa cao cấp';
+
+  panelBody.innerHTML = `
+    <span class="bp-label">Thương hiệu</span>
+    <h2 class="bp-name">${name}</h2>
+    <div class="bp-divider"></div>
+    <p class="bp-desc">${desc}</p>
+  `;
+
+  panel.classList.add('active');
+  overlay.classList.add('active');
+  document.body.style.overflow = 'hidden';
+};
+
+const closePanel = () => {
+  panel.classList.remove('active');
+  overlay.classList.remove('active');
+  document.body.style.overflow = '';
+};
+
+document.querySelectorAll('.brand-card').forEach((card) => {
+  card.addEventListener('click', () => openPanel(card));
+});
+
+panelClose?.addEventListener('click', closePanel);
+overlay?.addEventListener('click', closePanel);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closePanel();
+});
+</script>
 {% endblock %}

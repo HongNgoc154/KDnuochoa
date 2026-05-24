@@ -174,7 +174,7 @@ EMAIL_PORT         = 587
 EMAIL_USE_TLS      = True
 EMAIL_HOST_USER    = 'lhngocc1304@gmail.com'      # ← đổi thành email của bạn
 EMAIL_HOST_PASSWORD = 'drtp jeuw vnim ztqb'         # ← App Password (không phải mk thường)
-DEFAULT_FROM_EMAIL = 'Ami Perfumery <your_gmail@gmail.com>'
+DEFAULT_FROM_EMAIL = 'Ami Perfumery <lhngocc1304@gmail.com>'
 
 
 # ═══════════════════════════════════════════════════════

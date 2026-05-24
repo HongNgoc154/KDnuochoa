@@ -145,6 +145,7 @@ class ThuongHieu(models.Model):
 
     TenThuongHieu = models.CharField(max_length=255)
     LogoUrl = models.ImageField(upload_to='brands/', null=True, blank=True)
+    MoTa = models.CharField(max_length=500, null=True, blank=True)
 
     class Meta:
         managed = False

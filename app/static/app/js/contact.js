@@ -4,6 +4,7 @@
   const confettiCanvas = document.querySelector('[data-confetti]');
 
   // Scroll reveal animation.
+  (() => {
   const reveals = [...document.querySelectorAll('.reveal')];
   const observer = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
@@ -11,8 +12,9 @@
       entry.target.classList.add('in-view');
       observer.unobserve(entry.target);
     });
-  }, { threshold: 0.16 });
+  }, { threshold: 0.12 });
   reveals.forEach((node) => observer.observe(node));
+})();
 
   document.querySelectorAll('[data-faq]').forEach((faq) => {
     faq.querySelector('.faq-q')?.addEventListener('click', () => faq.classList.toggle('open'));

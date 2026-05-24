@@ -9,79 +9,91 @@
 {% endblock %}
 
 {% block content %}
-
 <main>
+
+  <!-- HERO -->
   <section class="blog-hero reveal">
     <p class="section-label">Ami Journal</p>
-    <h1>Kiến thức & Cảm hứng</h1>
-    <p>Chúng tôi chia sẻ kiến thức mùi hương, gợi ý chọn nước hoa phù hợp và những câu chuyện thương hiệu giàu cảm xúc.</p>
+    <h1>Bài viết <em>nổi bật</em></h1>
+    <p>Khám phá thế giới nước hoa qua những bài viết chuyên sâu, hướng dẫn chọn hương và câu chuyện thương hiệu.</p>
   </section>
 
+  <!-- NỔI BẬT -->
   <section class="blog-featured section-space reveal">
     <div class="container featured-grid">
       {% for article in featured_articles %}
       <a href="{% url 'article-detail' article.id_BaiViet %}" class="feature-card">
         {% if article.AnhDaiDien %}
-            <img src="{{ article.AnhDaiDien.url }}">
+          <img src="{{ article.AnhDaiDien.url }}" alt="{{ article.TieuDe }}">
+        {% else %}
+          <img src="https://images.unsplash.com/photo-1588405748880-12d1d2a59a75?auto=format&fit=crop&w=900&q=80" alt="{{ article.TieuDe }}">
         {% endif %}
         <div class="feature-content">
           <span>{{ article.TacGia }}</span>
           <h2>{{ article.TieuDe }}</h2>
-          <p>{{ article.NoiDung|truncatewords:20 }}</p>
+          <p>{{ article.NoiDung|striptags|truncatewords:20 }}</p>
         </div>
       </a>
       {% endfor %}
     </div>
   </section>
 
-  <section class="blog-main section-space reveal">
+  <!-- BÀI VIẾT GẦN ĐÂY -->
+  <section class="blog-main section-space">
     <div class="container">
-      <div class="blog-tabs" data-blog-tabs>
-        <button class="blog-tab is-active" type="button" data-filter="all">Tất cả</button>
-        <button class="blog-tab" type="button" data-filter="Guide">Guide</button>
-        <button class="blog-tab" type="button" data-filter="Brand Story">Brand Story</button>
-        <button class="blog-tab" type="button" data-filter="For Him">For Him</button>
+      <div class="recent-header reveal">
+        <p class="section-label" style="text-align:left;margin-bottom:8px;">Bài viết gần đây</p>
       </div>
 
-      <div class="blog-layout">
-        <div>
-          <div class="bento-grid" data-bento-grid>
-            {% for article in bento_articles %}
-            <a href="{% url 'article-detail' article.id_BaiViet %}" class="bento-card">
-              <img src="{{ article.AnhDaiDien }}">
-              <div class="bento-overlay"></div>
-              <div class="bento-content">
-                <span>{{ article.TacGia }}</span>
-                <h3>{{ article.TieuDe }}</h3>
-              </div>
-            </a>
-            {% endfor %}
+      <div class="recent-grid" id="recentGrid">
+        {% for article in bento_articles %}
+        <a href="{% url 'article-detail' article.id_BaiViet %}" class="recent-card reveal">
+          <div class="recent-card-img">
+            {% if article.AnhDaiDien %}
+              <img src="{{ article.AnhDaiDien.url }}" alt="{{ article.TieuDe }}" loading="lazy">
+            {% else %}
+              <img src="https://images.unsplash.com/photo-1588405748880-12d1d2a59a75?auto=format&fit=crop&w=600&q=80" alt="{{ article.TieuDe }}" loading="lazy">
+            {% endif %}
           </div>
-          <div class="pagination" data-pagination></div>
-        </div>
+          <div class="recent-card-body">
+            <span class="recent-card-author">{{ article.TacGia }}</span>
+            <h3 class="recent-card-title">{{ article.TieuDe }}</h3>
+            <p class="recent-card-desc">{{ article.NoiDung|striptags|truncatewords:18 }}</p>
+            <span class="recent-card-date">{{ article.NgayTao|date:"d/m/Y" }}</span>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
 
-        <aside class="blog-sidebar">
-          <h3>Bài viết nổi bật</h3>
-          {% for item in popular_articles %}
-          <a href="{% url 'article-detail' item.id_BaiViet %}" class="sidebar-post">
-              
-              {% if item.AnhDaiDien %}
-                  <img src="{{ item.AnhDaiDien.url }}">
-              {% endif %}
-
-              <div>
-                  <span>{{ item.TacGia }}</span>
-                  <p>{{ item.TieuDe }}</p>
-              </div>
-          </a>
-          {% endfor %}
-        </aside>
+      <div class="blog-load-more" id="blogLoadMore" style="display:none;">
+        <button class="btn-load-more" id="btnLoadMore">
+          <span>Xem thêm bài viết</span>
+          <i class="bi bi-arrow-down"></i>
+        </button>
       </div>
     </div>
   </section>
+
 </main>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'app/js/blog.js' %}"></script>
+<script>
+(function(){
+  const grid = document.getElementById('recentGrid');
+  const btn = document.getElementById('btnLoadMore');
+  const wrap = document.getElementById('blogLoadMore');
+  if (!grid) return;
+  const cards = [...grid.querySelectorAll('.recent-card')];
+  const PAGE = 6;
+  let shown = PAGE;
+  const update = () => {
+    cards.forEach((c, i) => { c.style.display = i < shown ? '' : 'none'; });
+    wrap.style.display = shown >= cards.length ? 'none' : 'flex';
+  };
+  btn?.addEventListener('click', () => { shown += PAGE; update(); });
+  update();
+})();
+</script>
 {% endblock %}

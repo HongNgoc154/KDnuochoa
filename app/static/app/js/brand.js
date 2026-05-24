@@ -29,3 +29,55 @@
     });
   });
 })();
+
+
+/// ── Tooltip theo chuột — gắn vào document để luôn theo kịp ──
+const tooltip = document.createElement('div');
+tooltip.className = 'bc-cursor-tooltip';
+tooltip.style.cssText = `
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  background: #fff;
+  border: 1px solid rgba(75,103,45,0.15);
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(43,56,28,0.14);
+  padding: 16px 18px;
+  width: 200px;
+  text-align: center;
+`;
+document.body.appendChild(tooltip);
+
+document.querySelectorAll('.brand-card').forEach((card) => {
+  const name = card.querySelector('.bc-name')?.textContent?.trim() || '';
+  const desc = card.querySelector('.bc-tooltip-desc')?.textContent?.trim() || '';
+  const link = card.querySelector('.bc-tooltip-btn')?.href || '#';
+
+  card.addEventListener('mouseenter', () => {
+    tooltip.innerHTML = `
+      <span style="display:block;font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:500;color:#2a311e;margin-bottom:6px;letter-spacing:1px;">${name}</span>
+      <span style="display:block;font-size:12px;color:#7a8260;line-height:1.6;margin-bottom:12px;">${desc}</span>
+      <a href="${link}" style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#4B672D;text-decoration:none;border-bottom:1px solid rgba(75,103,45,0.3);padding-bottom:2px;">XEM SẢN PHẨM →</a>
+    `;
+    tooltip.style.display = 'block';
+  });
+
+  card.addEventListener('mouseleave', () => {
+    tooltip.style.display = 'none';
+  });
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (tooltip.style.display === 'none') return;
+
+  const offset = 14;
+  let x = e.clientX + offset;
+  let y = e.clientY + offset;
+
+  if (x + 220 > window.innerWidth)  x = e.clientX - 220 - offset;
+  if (y + 160  > window.innerHeight) y = e.clientY - 160  - offset;
+
+  tooltip.style.left = x + 'px';
+  tooltip.style.top  = y + 'px';
+});

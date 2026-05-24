@@ -23,6 +23,7 @@ urlpatterns = [
     path('bai-viet/', views.blog_list, name='blog-list'),
     path('bai-viet/<int:id>/', views.article_detail, name='article-detail'),
     path('lien-he/', views.contact_page, name='contact-page'),
+    path('lien-he/send/', views.contact_send, name='contact-send'),
     path('gio-hang/', views.cart_page, name='cart-page'),
     path('auth/', views.auth_page, name='auth-page'),
     path('auth/login/', views.login_api, name='login-api'),

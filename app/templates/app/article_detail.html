@@ -1,6 +1,5 @@
 {% extends 'app/base.html' %}
 {% load static %}
-<!DOCTYPE html>
 
 {% block title %}Ami Perfumery – {{ article.title }}{% endblock %}
 {% block body_class %}article-page{% endblock %}
@@ -10,100 +9,80 @@
 {% endblock %}
 
 {% block content %}
-
-
 <main>
+
+  <!-- HERO -->
   <section class="article-hero" data-article-parallax>
     <img src="{{ article.cover }}" alt="{{ article.title }}" loading="lazy">
     <div class="article-overlay"></div>
-    <div class="article-hero-content reveal">
-      <span>{{ article.category }}</span>
+    <div class="article-hero-content">
+      <span class="article-hero-label">Ami Journal</span>
       <h1>{{ article.title }}</h1>
-      <p>{{ article.author }} · {{ article.published_at }}</p>
+      <div class="article-hero-meta">
+        <span class="article-hero-author">{{ article.author }}</span>
+        <span class="article-hero-sep">·</span>
+        <span class="article-hero-date">{{ article.published_at }}</span>
+      </div>
     </div>
   </section>
 
+  <!-- NỘI DUNG -->
   <article class="article-body container section-space">
     {% for block in article.body %}
       {% if block.type == 'h3' %}
-      <h3 class="reveal">{{ block.text }}</h3>
+        <h3 class="reveal">{{ block.text }}</h3>
       {% elif block.type == 'quote' %}
-      <blockquote class="reveal">{{ block.text }}</blockquote>
+        <blockquote class="reveal">{{ block.text }}</blockquote>
       {% else %}
-      <p class="reveal">{{ block.text }}</p>
+        <p class="reveal">{{ block.text|safe }}</p>
       {% endif %}
     {% endfor %}
 
     <div class="article-share reveal">
-      <p>Chia sẻ bài viết:</p>
+      <span>Chia sẻ:</span>
       <a href="#" class="share-btn">Facebook</a>
-      <a href="#" class="share-btn">Messenger</a>
+      <a href="#" class="share-btn">Zalo</a>
     </div>
   </article>
 
-  <section class="related-articles section-space reveal">
+  <!-- BÀI VIẾT LIÊN QUAN -->
+  {% if related_articles %}
+  <section class="related-articles section-space">
     <div class="container">
-      <p class="section-label">Bài viết liên quan</p>
-      <div class="mini-carousel" data-mini-carousel>
-        <button type="button" class="edge-arrow edge-arrow-left" data-mini-prev aria-label="Scroll trái">←</button>
-        <button type="button" class="edge-arrow edge-arrow-right" data-mini-next aria-label="Scroll phải">→</button>
-        <div class="mini-track" data-mini-track>
-          {% for item in related_articles %}
-            <a href="{% url 'article-detail' item.id %}" class="mini-card">
+      <p class="section-label" style="text-align:left;margin-bottom:24px;">Bài viết liên quan</p>
+      <div class="related-grid">
+        {% for item in related_articles %}
+        <a href="{% url 'article-detail' item.id %}" class="recent-card reveal">
+          <div class="recent-card-img">
             <img src="{{ item.cover }}" alt="{{ item.title }}" loading="lazy">
-            <div>
-              <span>{{ item.category }}</span>
-              <h4>{{ item.title }}</h4>
-            </div>
-          </a>
-          {% endfor %}
-        </div>
+          </div>
+          <div class="recent-card-body">
+            <h3 class="recent-card-title">{{ item.title }}</h3>
+          </div>
+        </a>
+        {% endfor %}
       </div>
     </div>
   </section>
+  {% endif %}
 
-  <section class="related-products section-space reveal">
-    <div class="container">
-      <p class="section-label">Sản phẩm liên quan</p>
-      <div class="mini-carousel" data-mini-carousel>
-        <button type="button" class="edge-arrow edge-arrow-left" data-mini-prev aria-label="Scroll trái">←</button>
-        <button type="button" class="edge-arrow edge-arrow-right" data-mini-next aria-label="Scroll phải">→</button>
-        <div class="mini-track" data-mini-track>
-          {% for product in suggested_products %}
-          <article class="mini-product-card">
-            <img src="{{ product.image }}" alt="{{ product.name }}" loading="lazy">
-            <div>
-              <h4>{{ product.name }}</h4>
-              <p>{{ product.price }}</p>
-            </div>
-          </article>
-          {% endfor %}
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="article-survey section-space reveal">
-    <div class="container survey-box">
-      <h3>Bạn thấy bài viết này có hữu ích không?</h3>
-      <div class="survey-actions" data-survey>
-        <button type="button" class="survey-btn" data-feedback="helpful">👍 Hữu ích</button>
-        <a href="https://zalo.me" class="survey-btn" data-feedback="interest" target="_blank" rel="noopener">💬 Quan tâm</a>
-      </div>
-      <p class="survey-message" data-survey-message></p>
-    </div>
-  </section>
-
+  <!-- CTA -->
   <section class="article-cta section-space reveal">
     <div class="container">
+      <div class="article-cta-decor">
+        <span class="cta-line"></span>
+        <span class="cta-dot"></span>
+        <span class="cta-line"></span>
+      </div>
       <h3>Tìm mùi hương phù hợp với bạn</h3>
       <p>Đội ngũ Ami sẽ gợi ý mùi hương theo cá tính, hoàn cảnh sử dụng và ngân sách của bạn.</p>
       <a href="{% url 'category-all' %}" class="btn-primary">Khám phá bộ sưu tập</a>
     </div>
   </section>
+
 </main>
 {% endblock %}
-{% block extra_js %}
 
+{% block extra_js %}
 <script src="{% static 'app/js/blog.js' %}"></script>
 {% endblock %}

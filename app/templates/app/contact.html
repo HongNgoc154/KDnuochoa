@@ -1,96 +1,177 @@
 {% extends 'app/base.html' %}
 {% load static %}
 {% block title %}Ami Perfumery – Liên hệ{% endblock %}
-{% block body_class %}contact-page light{% endblock %}
-{% block body_attrs %}data-theme="light"{% endblock %}
+{% block body_class %}contact-page{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'app/css/contact.css' %}">
 {% endblock %}
 
 {% block content %}
+<main class="contact-wrap">
 
-<main>
-  <section class="contact-hero" data-contact-parallax>
-    <video autoplay muted loop playsinline poster="https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&w=1800&q=80">
-      <source src="https://cdn.coverr.co/videos/coverr-applying-perfume-1576750999709?download=1080p" type="video/mp4">
-    </video>
-    <div class="contact-overlay"></div>
-    <div class="contact-hero-content reveal">
-      <h1>Liên hệ với chúng tôi</h1>
-      <p>Chúng tôi luôn sẵn sàng lắng nghe và phục vụ bạn.</p>
-    </div>
+  <!-- HEADER -->
+  <section class="contact-header reveal">
+    <p class="contact-eyebrow">Liên hệ</p>
+    <h1 class="contact-title">Chúng tôi luôn<br><em>lắng nghe bạn</em></h1>
+    <p class="contact-subtitle">Đội ngũ Ami Perfumery sẵn sàng tư vấn và hỗ trợ bạn mọi lúc.</p>
+    <div class="contact-title-line"></div>
   </section>
 
-  <section class="section-space contact-main reveal">
-    <div class="container contact-grid">
-      <div class="contact-form-wrap">
-        <h2>Gửi tin nhắn</h2>
-        <form data-contact-form>
-          <input type="text" name="name" placeholder="Họ tên" required>
-          <input type="email" name="email" placeholder="Email" required>
-          <input type="tel" name="phone" placeholder="Số điện thoại" required>
-          <input type="text" name="subject" placeholder="Chủ đề" required>
-          <textarea name="message" placeholder="Nội dung" rows="4" required></textarea>
-          <button class="btn-send" type="submit">Gửi tin nhắn</button>
-        </form>
-        <div class="toast" data-contact-toast>Đã gửi thành công. Ami sẽ phản hồi sớm nhất ✨</div>
-        <canvas data-confetti></canvas>
+  <!-- BODY -->
+  <section class="contact-body container">
+    <div class="contact-grid">
 
-        <div class="faq-list">
-          <h3>FAQ nhanh</h3>
-          {% for faq in faq_items %}
-          <article class="faq-item" data-faq>
-            <button type="button" class="faq-q">{{ faq.question }}</button>
-            <div class="faq-a">{{ faq.answer }}</div>
-          </article>
-          {% endfor %}
+      <!-- FORM -->
+      <div class="contact-form-card reveal">
+        <div class="contact-form-header">
+          <span class="contact-form-label">Gửi tin nhắn</span>
+          <p class="contact-form-sub">Điền thông tin bên dưới, chúng tôi sẽ phản hồi trong vòng 24 giờ.</p>
         </div>
+
+        <form id="contactForm" novalidate>
+          {% csrf_token %}
+          <div class="form-row">
+            <div class="form-field">
+              <label for="cf-name">Họ tên</label>
+              <input type="text" id="cf-name" name="name" placeholder="Nguyễn Văn A" required>
+            </div>
+            <div class="form-field">
+              <label for="cf-phone">Số điện thoại</label>
+              <input type="tel" id="cf-phone" name="phone" placeholder="0901 234 567" required>
+            </div>
+          </div>
+          <div class="form-field">
+            <label for="cf-email">Email</label>
+            <input type="email" id="cf-email" name="email" placeholder="you@example.com" required>
+          </div>
+          <div class="form-field">
+            <label for="cf-subject">Chủ đề</label>
+            <input type="text" id="cf-subject" name="subject" placeholder="Tôi muốn hỏi về..." required>
+          </div>
+          <div class="form-field">
+            <label for="cf-message">Nội dung</label>
+            <textarea id="cf-message" name="message" rows="5" placeholder="Nội dung chi tiết..." required></textarea>
+          </div>
+
+          <button class="contact-btn-send" type="submit" id="contactSubmit">
+            <span class="btn-text">Gửi tin nhắn</span>
+            <span class="btn-icon"><i class="bi bi-send"></i></span>
+          </button>
+        </form>
+
+        <div class="contact-toast" id="contactToast"></div>
       </div>
 
-      <aside>
-        <article class="info-card">
+      <!-- INFO -->
+      <div class="contact-info-col">
+
+        <!-- Thông tin -->
+        <div class="contact-info-card reveal">
+          <div class="info-card-icon"><i class="bi bi-shop"></i></div>
           <h3>Ami Perfumery Boutique</h3>
-          <p>📍 123 Đường 30/4, Cần Thơ</p>
-          <p>📞 0901 234 567</p>
-          <p>✉️ hello@amiperfumery.vn</p>
-          <p>🕒 10:00 – 21:30 (T2 – CN)</p>
-        </article>
-
-        <article class="info-card map-card">
-          <iframe title="Ami Map" loading="lazy" src="https://www.google.com/maps?q=Can+Tho&output=embed"></iframe>
-          <a class="direction-btn" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=Can+Tho">Chỉ đường</a>
-        </article>
-
-        <article class="info-card review-card" data-review-carousel>
-          <h3>Khách hàng nói gì</h3>
-          <div class="review-track">
-            {% for review in reviews %}
-            <blockquote class="review-item{% if forloop.first %} is-active{% endif %}">
-              <p>“{{ review.comment }}”</p>
-              <cite>— {{ review.name }}</cite>
-            </blockquote>
-            {% endfor %}
+          <div class="info-rows">
+            <div class="info-row">
+              <i class="bi bi-geo-alt"></i>
+              <span>123 Đường 30/4, Phường Hưng Lợi, Quận Ninh Kiều, Cần Thơ</span>
+            </div>
+            <div class="info-row">
+              <i class="bi bi-telephone"></i>
+              <span>0901 234 567</span>
+            </div>
+            <div class="info-row">
+              <i class="bi bi-envelope"></i>
+              <span>hello@amiperfumery.vn</span>
+            </div>
+            <div class="info-row">
+              <i class="bi bi-clock"></i>
+              <span>Thứ 2 – Chủ nhật: 8:00 – 21:00</span>
+            </div>
           </div>
-        </article>
+        </div>
 
-        <article class="info-card appointment-card">
-          <h3>Book Appointment</h3>
-          <p>Đặt lịch tư vấn mùi hương riêng cùng chuyên gia của Ami.</p>
-          <a href="https://zalo.me" target="_blank" rel="noopener">Đặt lịch ngay</a>
-        </article>
-      </aside>
+        <!-- Bản đồ -->
+        <div class="contact-map-card reveal">
+          <iframe
+            title="Ami Perfumery Map"
+            loading="lazy"
+            src="https://www.google.com/maps?q=Ninh+Kieu+Can+Tho&output=embed"
+            allowfullscreen>
+          </iframe>
+          <a class="contact-direction-btn"
+             href="https://www.google.com/maps/dir/?api=1&destination=Ninh+Kieu+Can+Tho"
+             target="_blank" rel="noopener">
+            <i class="bi bi-map"></i> Chỉ đường
+          </a>
+        </div>
+
+        <!-- Mạng xã hội -->
+        <div class="contact-social-card reveal">
+          <p class="social-label">Kết nối với Ami</p>
+          <div class="social-btns">
+            <a href="#" class="social-btn-item">
+              <i class="bi bi-facebook"></i>
+              <span>Facebook</span>
+            </a>
+            <a href="#" class="social-btn-item">
+              <i class="bi bi-instagram"></i>
+              <span>Instagram</span>
+            </a>
+            <a href="#" class="social-btn-item">
+              <i class="bi bi-tiktok"></i>
+              <span>TikTok</span>
+            </a>
+            <a href="https://zalo.me" target="_blank" rel="noopener" class="social-btn-item">
+              <span class="zalo-icon">Z</span>
+              <span>Zalo</span>
+            </a>
+          </div>
+        </div>
+
+      </div>
     </div>
   </section>
 
-  <div class="floating-social">
-    <a href="#" title="Facebook">f</a>
-    <a href="#" title="Messenger">✉</a>
-    <a href="https://zalo.me" title="Zalo" target="_blank" rel="noopener">Z</a>
-  </div>
 </main>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'app/js/contact.js' %}"></script>
+<script>
+document.getElementById('contactForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const btn = document.getElementById('contactSubmit');
+  const toast = document.getElementById('contactToast');
+  const form = this;
+
+  btn.disabled = true;
+  btn.querySelector('.btn-text').textContent = 'Đang gửi...';
+
+  const data = new FormData(form);
+
+  try {
+    const res = await fetch('{% url "contact-send" %}', {
+      method: 'POST',
+      body: data,
+      headers: { 'X-CSRFToken': data.get('csrfmiddlewaretoken') }
+    });
+    const json = await res.json();
+
+    if (json.ok) {
+      toast.className = 'contact-toast contact-toast--success show';
+      toast.textContent = '✨ Gửi thành công! Ami sẽ phản hồi sớm nhất có thể.';
+      form.reset();
+    } else {
+      toast.className = 'contact-toast contact-toast--error show';
+      toast.textContent = json.message || 'Có lỗi xảy ra, vui lòng thử lại.';
+    }
+  } catch {
+    toast.className = 'contact-toast contact-toast--error show';
+    toast.textContent = 'Lỗi kết nối, vui lòng thử lại sau.';
+  }
+
+  btn.disabled = false;
+  btn.querySelector('.btn-text').textContent = 'Gửi tin nhắn';
+  setTimeout(() => toast.classList.remove('show'), 4000);
+});
+</script>
 {% endblock %}

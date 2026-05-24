@@ -69,13 +69,40 @@ const I18N = {
   const img   = document.getElementById('profileAvatar');
   if (!wrap || !input || !img) return;
 
-  wrap.addEventListener('click', () => input.click());
-  input.addEventListener('change', () => {
+  // Click vào wrap → mở file picker
+  wrap.addEventListener('click', (e) => {
+    e.stopPropagation();
+    input.click();
+  });
+
+  input.addEventListener('change', async () => {
     const file = input.files[0];
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    img.src = url;
-    showToast('Ảnh đại diện đã được cập nhật ✓');
+
+    // Preview tạm
+    img.src = URL.createObjectURL(file);
+
+    // Gửi lên server ngay
+    const fd = new FormData();
+    fd.append('avatar',    file);
+    fd.append('full_name', document.getElementById('pName')?.value?.trim()     || '');
+    fd.append('username',  document.getElementById('pUsername')?.value?.trim() || '');
+    fd.append('email',     document.getElementById('pEmail')?.value?.trim()    || '');
+    fd.append('phone',     document.getElementById('pPhone')?.value?.trim()    || '');
+    fd.append('gender',    document.getElementById('pGender')?.value           || '');
+
+    try {
+      const res  = await fetch('/api/update-profile/', { method: 'POST', body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (data.ok) {
+        if (data.avatar) img.src = data.avatar;
+        showToast('Ảnh đại diện đã được lưu ✓');
+      } else {
+        showToast(data.message || 'Không thể lưu ảnh.');
+      }
+    } catch {
+      showToast('Lỗi kết nối khi lưu ảnh.');
+    }
   });
 })();
 
@@ -553,6 +580,22 @@ document.getElementById('profileForm')?.addEventListener('submit', async e => {
   if (!username) {
     document.getElementById('pUsername')?.closest('.field-group')?.querySelector('.field-error')?.replaceChildren(document.createTextNode('Vui lòng nhập tên đăng nhập.'));
     showToast('Vui lòng nhập tên đăng nhập.');
+    return;
+  }
+
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    document.getElementById('pEmail')?.closest('.field-group')
+      ?.querySelector('.field-error')
+      ?.replaceChildren(document.createTextNode('Email không đúng định dạng.'));
+    showToast('Email không đúng định dạng.');
+    return;
+  }
+
+  if (phone && !/^(0|\+84)[0-9]{8,10}$/.test(phone.replace(/\s/g, ''))) {
+    document.getElementById('pPhone')?.closest('.field-group')
+      ?.querySelector('.field-error')
+      ?.replaceChildren(document.createTextNode('Số điện thoại không đúng định dạng (VD: 0901234567).'));
+    showToast('Số điện thoại không đúng định dạng.');
     return;
   }
 

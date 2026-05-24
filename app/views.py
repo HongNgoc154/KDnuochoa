@@ -929,21 +929,21 @@ def product_detail(request, product_id=None):
 
 
 def brand_list(request):
-    brand_rows = list(ThuongHieu.objects.values("TenThuongHieu", "LogoUrl"))
-    brands = []
-    for row in brand_rows:
-        name = row["TenThuongHieu"]
-        slug = slugify(name)
-        brands.append(
-            {
-                "slug": slug,
-                "name": name,
-                "tagline": "Tinh hoa mùi hương đẳng cấp",
-                "palette": "#6f7d62",
-                "poster_image": row["LogoUrl"] or FALLBACK_IMAGES["brand_poster"],
-                "category": "Designer" if len(name) % 2 == 0 else "Niche",
-            }
-        )
+    brands = list(ThuongHieu.objects.all().order_by("TenThuongHieu"))
+    # brands = []
+    # for row in brand_rows:
+    #     name = row["TenThuongHieu"]
+    #     slug = slugify(name)
+    #     brands.append(
+    #         {
+    #             "slug": slug,
+    #             "name": name,
+    #             "tagline": "Tinh hoa mùi hương đẳng cấp",
+    #             "palette": "#6f7d62",
+    #             "poster_image": row["LogoUrl"] or FALLBACK_IMAGES["brand_poster"],
+    #             "category": "Designer" if len(name) % 2 == 0 else "Niche",
+    #         }
+    #     )
     return render(request, "app/brand_list.html", {"brands": brands})
 
 
@@ -1010,7 +1010,7 @@ def article_detail(request, id):
         "title": article_obj.TieuDe,
         "author": article_obj.TacGia,
         "published_at": article_obj.NgayTao.strftime("%d/%m/%Y") if article_obj.NgayTao else "",
-        "cover": getattr(article_obj, "AnhDaiDien", ""),
+        "cover": article_obj.AnhDaiDien.url if article_obj.AnhDaiDien else FALLBACK_IMAGES["article_cover"],
         "body": [{"type": "p", "text": article_obj.NoiDung or ""}],
     }
 
@@ -1018,7 +1018,7 @@ def article_detail(request, id):
         {
             "id": item.id_BaiViet,
             "title": item.TieuDe,
-            "cover": getattr(item, "AnhDaiDien", ""),
+            "cover": item.AnhDaiDien.url if item.AnhDaiDien else FALLBACK_IMAGES["article_cover"],
         }
         for item in articles_qs
         if item.id_BaiViet != article_obj.id_BaiViet
@@ -1032,6 +1032,79 @@ def article_detail(request, id):
 
 def contact_page(request):
     return render(request, 'app/contact.html')
+
+@csrf_exempt
+@require_POST
+def contact_send(request):
+    name    = (request.POST.get('name')    or '').strip()
+    email   = (request.POST.get('email')   or '').strip()
+    phone   = (request.POST.get('phone')   or '').strip()
+    subject = (request.POST.get('subject') or '').strip()
+    message = (request.POST.get('message') or '').strip()
+
+    if not all([name, email, subject, message]):
+        return JsonResponse({'ok': False, 'message': 'Vui lòng điền đầy đủ thông tin.'})
+
+    from django.core.mail import EmailMessage
+
+    # ── Email gửi đến cửa hàng ──
+    body_store = f"""Tin nhắn mới từ website Ami Perfumery
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Họ tên:        {name}
+Email:         {email}
+Số điện thoại: {phone}
+Chủ đề:        {subject}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{message}
+
+↩ Reply email này để trả lời trực tiếp cho khách: {email}
+"""
+
+    # ── Email xác nhận gửi cho khách ──
+    body_customer = f"""Xin chào {name},
+
+Ami Perfumery đã nhận được tin nhắn của bạn.
+Chúng tôi sẽ phản hồi trong vòng 24 giờ!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Nội dung bạn đã gửi:
+Chủ đề: {subject}
+
+{message}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Trân trọng,
+Ami Perfumery
+📍 123 Đường 30/4, Quận Ninh Kiều, Cần Thơ
+📞 0901 234 567
+"""
+
+    try:
+        # Gửi cho cửa hàng
+        mail_store = EmailMessage(
+            subject=f'[Ami Web] {subject} — {name}',
+            body=body_store,
+            from_email='Ami Perfumery <lhngocc1304@gmail.com>',
+            to=['lhngocc1304@gmail.com'],
+            reply_to=[f'{name} <{email}>'],
+        )
+        mail_store.send(fail_silently=False)
+
+        # Gửi xác nhận cho khách
+        mail_customer = EmailMessage(
+            subject='Ami Perfumery đã nhận tin nhắn của bạn ✨',
+            body=body_customer,
+            from_email='Ami Perfumery <lhngocc1304@gmail.com>',
+            to=[email],
+        )
+        mail_customer.send(fail_silently=False)
+
+        return JsonResponse({'ok': True})
+
+    except Exception as e:
+        print(f'[contact_send] Lỗi gửi mail: {e}')
+        return JsonResponse({'ok': False, 'message': 'Không thể gửi email. Vui lòng thử lại sau.'})
 
 
 def cart_page(request):
@@ -1461,12 +1534,6 @@ def forgot_password_api(request):
     account.save(update_fields=["MatKhau"])
     return JsonResponse({"ok": True, "message": "Đổi mật khẩu thành công."})
 
-# ═══════════════════════════════════════════════════════════════
-# Trong views.py — thay hàm profile_page
-# FIX: query DanhGia dùng đúng field NgayDanhGia (không có NgayTao)
-#       filter chỉ parent_id__isnull=True (bỏ Q(parent_id=0))
-# ═══════════════════════════════════════════════════════════════
-
 # ═══════════════════════════════════════════════════════
 # Thay hàm profile_page trong views.py
 # Thêm phần lấy wishlist_data từ DB
@@ -1483,6 +1550,7 @@ def profile_page(request):
         .select_related("id_TaiKhoan")
         .filter(id_TaiKhoan_id=account_id)
     )
+    print(f"[DEBUG] account={account_id}, customer={customer}, gender={customer.GioiTinh if customer else 'NO CUSTOMER'}")
 
     # ── Đánh giá ──────────────────────────────────────────────
     review_data = []
@@ -2821,95 +2889,69 @@ def admin_new_orders_count(request):
 @csrf_exempt
 @require_POST
 def update_profile_api(request):
-
     account_id = request.session.get("account_id")
+
     def profile_json(payload, status=200):
-        return JsonResponse(
-            payload,
-            status=status,
-            json_dumps_params={"ensure_ascii": False},
-        )
+        return JsonResponse(payload, status=status,
+                            json_dumps_params={"ensure_ascii": False})
 
     if not account_id:
-        return profile_json({
-            "ok": False,
-            "need_login": True,
-            "message": "Vui lòng đăng nhập để cập nhật hồ sơ."
-        }, status=401)
+        return profile_json({"ok": False, "need_login": True,
+                             "message": "Vui lòng đăng nhập."}, status=401)
 
-    account = TaiKhoan.objects.filter(
-        id_TaiKhoan=account_id
-    ).first()
-
-    # customer = KhachHang.objects.filter(
-    #     id_TaiKhoan_id=account_id
-    # ).first()
-
+    account = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first()
     if not account:
-        return profile_json({
-            "ok": False,
-            "message": "Không tìm thấy tài khoản."
-        }, status=404)
+        return profile_json({"ok": False, "message": "Không tìm thấy tài khoản."}, status=404)
 
     full_name = (request.POST.get("full_name") or "").strip()
-    username = (request.POST.get("username") or "").strip()
-    email = (request.POST.get("email") or "").strip()
-    phone = (request.POST.get("phone") or "").strip()
-    gender = (request.POST.get("gender") or "").strip()
+    username  = (request.POST.get("username")  or "").strip()
+    email     = (request.POST.get("email")     or "").strip()
+    phone     = (request.POST.get("phone")     or "").strip()
+    gender    = (request.POST.get("gender")    or "").strip()
+    avatar    = request.FILES.get("avatar")
 
+    # ── Validate ──
     if not full_name:
-        return profile_json({
-            "ok": False,
-            "message": "Vui lòng nhập họ và tên."
-        }, status=400)
-
+        return profile_json({"ok": False, "message": "Vui lòng nhập họ và tên."}, status=400)
     if not username:
-        return profile_json({
-            "ok": False,
-            "message": "Vui lòng nhập tên đăng nhập."
-        }, status=400)
+        return profile_json({"ok": False, "message": "Vui lòng nhập tên đăng nhập."}, status=400)
 
-    duplicated_username = TaiKhoan.objects.filter(
-        Username__iexact=username
-    ).exclude(id_TaiKhoan=account.id_TaiKhoan).exists()
-    if duplicated_username:
-        return profile_json({
-            "ok": False,
-            "message": "Tên đăng nhập đã tồn tại."
-        }, status=409)
+    import re
+    if email and not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+        return profile_json({"ok": False, "message": "Email không đúng định dạng."}, status=400)
+    if phone and not re.match(r'^(0|\+84)[0-9]{8,10}$', phone.replace(' ', '')):
+        return profile_json({"ok": False, "message": "Số điện thoại không đúng định dạng (VD: 0901234567)."}, status=400)
 
-    avatar = request.FILES.get("avatar")
+    if TaiKhoan.objects.filter(Username__iexact=username).exclude(id_TaiKhoan=account_id).exists():
+        return profile_json({"ok": False, "message": "Tên đăng nhập đã tồn tại."}, status=409)
 
-    # cập nhật tài khoản
+    # ── Lưu TaiKhoan ──
     account.TenDangNhap = full_name
-    account.Username = username
-    account.Email = email
-    account.SDT = phone
-
+    account.Username    = username
+    account.Email       = email
+    account.SDT         = phone
     if avatar:
         account.AnhDaiDien = avatar
 
-    account.save(update_fields=[
-        "TenDangNhap",
-        "Username",
-        "Email",
-        "SDT",
-        "AnhDaiDien",
-    ])
+    fields = ["TenDangNhap", "Username", "Email", "SDT"]
+    if avatar:
+        fields.append("AnhDaiDien")
+    account.save(update_fields=fields)
 
-    # Cập nhật hoặc tạo bảng KhachHang để lần tải trang sau vẫn thấy dữ liệu mới.
+    # ── Lưu KhachHang ──
     customer = KhachHang.objects.filter(id_TaiKhoan=account).first()
-    if not customer:
-        customer = KhachHang.objects.create(
+    if customer:
+        customer.TenKhachHang = full_name
+        customer.GioiTinh     = gender
+        customer.save(update_fields=["TenKhachHang", "GioiTinh"])
+        print(f"[DEBUG] Saved gender='{gender}' for customer id={customer.id_KhachHang}")
+        customer.save(update_fields=["TenKhachHang", "GioiTinh"])
+    else:
+        KhachHang.objects.create(
             id_TaiKhoan=account,
             TenKhachHang=full_name,
-            DiaChi="",
-            GioiTinh=gender,
+            DiaChi="", GioiTinh=gender,
         )
-    else:
-        customer.TenKhachHang = full_name
-        customer.GioiTinh = gender
-        customer.save(update_fields=["TenKhachHang", "GioiTinh"])
 
     request.session["account_name"] = full_name
 
@@ -2917,14 +2959,14 @@ def update_profile_api(request):
 
     return profile_json({
         "ok": True,
-        "message": "Cập nhật thông tin cá nhân thành công.",
+        "message": "Cập nhật thành công.",
         "profile": {
             "full_name": full_name,
-            "username": username,
-            "email": email,
-            "phone": phone,
-            "gender": gender,
-            "avatar": avatar_url,
+            "username":  username,
+            "email":     email,
+            "phone":     phone,
+            "gender":    gender,
+            "avatar":    avatar_url,
         },
         "avatar": avatar_url,
     })

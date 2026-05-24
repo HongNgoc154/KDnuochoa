@@ -1241,59 +1241,44 @@ body {
   .vou-right { padding: 12px 10px; }
 }
 
-.avatar-wrap{
-    position: relative;
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    overflow: hidden;
-    cursor: pointer;
-    margin: 0 auto;
-    flex-shrink: 0;
+/* ── Avatar wrap — cuối file, override toàn bộ rule cũ ── */
+.avatar-wrap {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  cursor: pointer;
+  margin: 0 auto 16px;
+  flex-shrink: 0;
+  /* KHÔNG dùng overflow:hidden — để input không bị clip */
 }
-
-.avatar-wrap img{
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-    border-radius: 50%;
+.avatar-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 50%;
+  border: 3px solid var(--beige-dark);
 }
-
-.avatar-overlay{
-    position: absolute;
-    inset: 0;
-
-    background: rgba(0,0,0,.45);
-
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-
-    gap: 6px;
-
-    color: white;
-    font-size: 12px;
-    font-weight: 600;
-
-    opacity: 0;
-    transition: .25s ease;
-
-    pointer-events: none;
+.avatar-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(0,0,0,.45);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0;
+  transition: .25s ease;
+  pointer-events: none;
 }
+.avatar-wrap:hover .avatar-overlay { opacity: 1; }
 
-.avatar-wrap:hover .avatar-overlay{
-    opacity: 1;
-}
-
-#avatarInput{
-    position: absolute;
-    inset: 0;
-
-    width: 100%;
-    height: 100%;
-
-    opacity: 0;
-    cursor: pointer;
+#avatarInput {
+  display: none; /* JS sẽ trigger click, không cần phủ toàn bộ */
 }

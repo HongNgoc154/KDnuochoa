@@ -612,7 +612,7 @@ class ThuongHieuAdmin(admin.ModelAdmin):
     change_form_template = "admin/thuonghieu_change_form.html"
     add_form_template    = "admin/thuonghieu_change_form.html"
  
-    list_display   = ('logo_preview', 'TenThuongHieu', 'so_san_pham')
+    list_display   = ('logo_preview', 'TenThuongHieu', 'so_san_pham', 'MoTa')
     list_display_links = None
     search_fields  = ('TenThuongHieu',)
     list_per_page  = 20
