@@ -26,6 +26,7 @@
   const typing       = document.getElementById('chatTyping');
   const badge        = document.getElementById('chatBadge');
   const quickReplies = document.getElementById('chatQuickReplies');
+  
 
   if (!chat || !trigger) return;
 
@@ -33,6 +34,7 @@
   let isOpen      = false;
   let isLoading   = false;
   let chatHistory = [];
+  let pendingSuggestions = [];
   let hasUnread   = false;
   let turnCount   = 0;
 
@@ -62,9 +64,9 @@
   trigger.addEventListener('click', () => isOpen ? closeChat() : openChat());
   closeBtn.addEventListener('click', closeChat);
 
-  document.addEventListener('click', (e) => {
-    if (isOpen && !chat.contains(e.target)) closeChat();
-  });
+  // document.addEventListener('click', (e) => {
+  //   if (isOpen && !chat.contains(e.target)) closeChat();
+  // });
 
   /* ─────────────────────────────────────────
      SCROLL
@@ -93,6 +95,7 @@
     row.innerHTML = `<div class="ami-chat__bubble">${formatted}</div>`;
     messages.appendChild(row);
     scrollToBottom();
+    return row;
   }
 
   /* ─────────────────────────────────────────
@@ -147,17 +150,28 @@
   /* ─────────────────────────────────────────
      GỬI TIN NHẮN
   ───────────────────────────────────────── */
+function setComposerLoading(loading) {
+    isLoading = loading;
+    sendBtn.disabled = loading;
+
+    // Input tuyệt đối không bị khóa sau khi bot từ chối / báo lỗi.
+    // Một số trình duyệt có thể giữ lại thuộc tính disabled/readOnly nếu request
+    // bị ngắt giữa chừng, nên luôn chủ động mở lại ô nhập trong finally.
+    inputEl.disabled = false;
+    inputEl.readOnly = false;
+  }
+
+
   async function sendMessage(text) {
     text = (text || inputEl.value).trim();
-    if (!text || isLoading) return;
+    if (!text) return;
+    if (isLoading) return;
 
-    // Ẩn quick replies sau lần gửi đầu
     if (quickReplies && quickReplies.parentNode) quickReplies.remove();
 
     appendUserMsg(text);
     inputEl.value = '';
-    sendBtn.disabled = true;
-    isLoading = true;
+    setComposerLoading(true);
 
     typing.removeAttribute('hidden');
     scrollToBottom();
@@ -165,44 +179,114 @@
     try {
       const res = await fetch('/api/chatbot/', {
         method:  'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken':  getCsrf(),
-        },
-        body: JSON.stringify({ message: text, history: chatHistory }),
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+        body: JSON.stringify({
+          message:    text,
+          history:    chatHistory,
+          session_id: window.amiChatSessionId || null,
+        }),
       });
 
-      const data = await res.json();
-      typing.setAttribute('hidden', '');
+      const contentType = res.headers.get('content-type') || '';
 
-      if (data.ok) {
-        chatHistory = data.history || [];
-        appendBotMsg(data.reply || 'Xin lỗi, tôi chưa hiểu. Bạn có thể nói rõ hơn không?');
-        appendProductCards(data.suggestions);
-         // ── Hiện rating bar sau lượt thứ 2 ──
-        turnCount++;
-        if (turnCount >= 2) {
-          const ratingBar = document.getElementById('chatRatingBar');
-          if (ratingBar) ratingBar.style.display = 'block';
+      // ── JSON (off-topic, error) ──────────────────────────
+      if (contentType.includes('application/json')) {
+        // typing.setAttribute('hidden', '');
+        const data = await res.json();
+        if (data.ok) {
+          chatHistory = data.history || [];
+          window.amiChatSessionId = data.session_id || window.amiChatSessionId;
+          appendBotMsg(data.reply || '');
+          appendProductCards(data.suggestions || []);
+          if (data.intent) showIntentBadge(data.intent);
+          turnCount++;
+          if (turnCount >= 2) {
+            const rb = document.getElementById('chatRatingBar');
+            if (rb) rb.style.display = 'block';
+          }
+          if (!isOpen) { hasUnread = true; badge.removeAttribute('hidden'); }
+        } else {
+          appendBotMsg(data.error || data.reply || 'Có lỗi xảy ra. Vui lòng thử lại nhé! 🙏');
+          isLoading = false;
+          sendBtn.disabled = false;
+          inputEl.focus();
+          return;
         }
-
-        if (!isOpen) {
-          hasUnread = true;
-          badge.removeAttribute('hidden');
-        }
-      } else {
-        appendBotMsg('Có lỗi xảy ra. Vui lòng thử lại nhé! 🙏');
+        return;
       }
-    } catch (err) {
+
+      // ── SSE Streaming ────────────────────────────────────
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let botDiv    = null;
+      let fullText  = '';
+      let buf       = '';
+      pendingSuggestions = [];   // reset mỗi lần gửi
+
       typing.setAttribute('hidden', '');
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop();
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          let evt;
+          try { evt = JSON.parse(line.slice(6)); } catch { continue; }
+
+          if (evt.t === 'meta') {
+            window.amiChatSessionId = evt.session_id || window.amiChatSessionId;
+            pendingSuggestions = evt.suggestions_data || [];  // lưu tạm, chưa hiện
+            if (evt.intent) showIntentBadge(evt.intent);
+          }
+
+          if (evt.t === 'token') {
+            fullText += evt.text;
+            if (!botDiv) botDiv = appendBotMsg('');
+            const bubble = botDiv.querySelector('.ami-chat__bubble');
+            if (bubble) {
+              bubble.innerHTML = fullText
+                .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                .replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+            }
+            scrollToBottom();
+          }
+
+          if (evt.t === 'done') {
+            chatHistory = evt.history || [];
+
+            // Chỉ hiện sản phẩm khi chatbot chủ động gợi ý
+            if (evt.show_products && pendingSuggestions.length) {
+              appendProductCards(pendingSuggestions);
+            }
+
+            turnCount++;
+            if (turnCount >= 2) {
+              const rb = document.getElementById('chatRatingBar');
+              if (rb) rb.style.display = 'block';
+            }
+            if (!isOpen) { hasUnread = true; badge.removeAttribute('hidden'); }
+          }
+        }
+      }
+
+    } catch (err) {
+      // typing.setAttribute('hidden', '');
       appendBotMsg('Mất kết nối. Vui lòng kiểm tra internet và thử lại.');
       console.error('[AmiChat]', err);
+      } finally {
+      typing.setAttribute('hidden', '');
+      setComposerLoading(false);
+      inputEl.focus();
     }
-
-    isLoading = false;
-    sendBtn.disabled = false;
-    inputEl.focus();
   }
+
+
+
 
   /* ─────────────────────────────────────────
      EVENTS
@@ -290,3 +374,53 @@
   }
 
 })();
+
+function showIntentBadge(intent) {
+  if (!intent || (!intent.scents && !intent.gender && !intent.occasions)) return;
+ 
+  const badges = [];
+  if (intent.gender === 'nam') badges.push('👔 Nam');
+  if (intent.gender === 'nu')  badges.push('🌸 Nữ');
+  if (intent.scents)           badges.push(...intent.scents.map(s => `🌿 ${s}`).slice(0, 2));
+  if (intent.occasions)        badges.push(...intent.occasions.map(o => `✨ ${o}`).slice(0, 1));
+ 
+  if (!badges.length) return;
+ 
+  const bar = document.createElement('div');
+  bar.className = 'ami-chat__intent-bar';
+  bar.innerHTML = badges.map(b => `<span class="ami-chat__intent-tag">${b}</span>`).join('');
+ 
+  const messages = document.getElementById('chatMessages');
+  if (messages) {
+    messages.appendChild(bar);
+    messages.scrollTop = messages.scrollHeight;
+  }
+ 
+  // Tự ẩn sau 4 giây
+  setTimeout(() => bar.remove(), 4000);
+}
+ 
+/* CSS cho intent badge — thêm vào chat.css hoặc inline */
+const intentCSS = `
+.ami-chat__intent-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 12px;
+  margin: 4px 0;
+  animation: fadeIn .3s ease;
+}
+.ami-chat__intent-tag {
+  background: #EBF6C4;
+  color: #4B672D;
+  border: 1px solid rgba(75,103,45,.2);
+  border-radius: 999px;
+  font-size: 11px;
+  padding: 3px 10px;
+  font-weight: 500;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+`;
+const styleEl = document.createElement('style');
+styleEl.textContent = intentCSS;
+document.head.appendChild(styleEl);

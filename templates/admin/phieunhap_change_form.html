@@ -385,10 +385,21 @@
           var clr = (bt.ton_kho < 10) ? '#c62828' : '#2e7d32';
           var attrs = bt.attrs ? '<div style="font-size:10px;color:#888;margin-top:2px;">' + bt.attrs + '</div>' : '';
           tr.innerHTML =
-            '<td><code style="background:#f0f4ea;padding:2px 7px;border-radius:4px;font-size:11px;">' + bt.sku + '</code>' + attrs + '</td>' +
-            '<td style="text-align:right;"><span style="color:' + clr + ';font-weight:600;font-size:12px;">' + bt.ton_kho + '</span></td>' +
-            '<td style="text-align:right;"><input type="number" class="bt-gia-nhap bt-input" min="0" value="' + (bt.gia_nhap||0) + '" style="width:100%;box-sizing:border-box;" oninput="pnUpdBtTT(this)"></td>' +
-            '<td style="text-align:right;"><input type="number" class="bt-so-luong bt-input" min="0" value="0" style="width:100%;box-sizing:border-box;" oninput="pnUpdBtTT(this)"></td>' +
+            '<td>' +
+              '<code style="background:#f0f4ea;padding:2px 7px;border-radius:4px;font-size:11px;">'
+              + bt.sku + '</code>' + attrs +
+            '</td>' +
+            '<td style="text-align:right;">' +
+              '<span style="color:' + clr + ';font-weight:600;font-size:12px;">' + bt.ton_kho + '</span>' +
+            '</td>' +
+            '<td style="text-align:right;">' +
+              '<input type="number" class="bt-gia-nhap bt-input" min="0" value="' + (bt.gia_nhap||0) + '"' +
+              ' style="width:100%;box-sizing:border-box;" oninput="pnUpdBtTT(this)">' +
+            '</td>' +
+            '<td style="text-align:right;">' +
+              '<input type="number" class="bt-so-luong bt-input" min="0" value="0"' +
+              ' style="width:100%;box-sizing:border-box;" oninput="pnUpdBtTT(this)">' +
+            '</td>' +
             '<td class="bt-tt" style="text-align:right;font-weight:600;color:#4B672D;font-size:11px;">0\u20ab</td>';
           tbody.appendChild(tr);
         });
@@ -424,6 +435,140 @@
     if (added === 0) { alert('Ch\u01b0a nh\u1eadp s\u1ed1 l\u01b0\u1ee3ng!'); return; }
     renderTable(); updateSummary(); pnClearCombo(); hide('pn_bt_bang_section');
   };
+
+
+  /* Load thuộc tính vào select của form thêm biến thể mới */
+  var _addbt_tt_cache = {};
+
+  window.pnShowAddNewBT = function () {
+  var form = document.getElementById('pn_add_bt_form');
+  if (!form) return;
+
+  // Reset các field hiện có (KHÔNG reset addbt_gia_ban vì đã xóa khỏi form)
+  document.getElementById('addbt_sku').value       = '';
+  document.getElementById('addbt_gia_nhap').value  = '0';
+  document.getElementById('addbt_so_luong').value  = '1';
+
+  // Load thuộc tính vào select
+  var selTT = document.getElementById('addbt_thuoc_tinh');
+  if (!selTT) return;
+  if (selTT.options.length <= 1 || (selTT.options[0] && selTT.options[0].value === '')) {
+    selTT.innerHTML = '<option value="">⏳ Đang tải...</option>';
+    fetch('/api/admin/thuoc-tinh/')
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        selTT.innerHTML = '<option value="">-- Chọn thuộc tính --</option>';
+        if (data.ok && data.data) {
+          data.data.forEach(function(tt){
+            var o = document.createElement('option');
+            o.value = tt.id; o.textContent = tt.name;
+            selTT.appendChild(o);
+          });
+        }
+      })
+      .catch(function(){ selTT.innerHTML = '<option value="">Lỗi tải</option>'; });
+  }
+
+  // Reset giá trị select
+  var selGT = document.getElementById('addbt_gia_tri');
+  if (selGT) selGT.innerHTML = '<option value="">-- Chọn giá trị --</option>';
+
+  form.style.display = '';
+  selTT.focus();
+};
+
+  window.pnLoadGiaTriForAddBT = function () {
+    var ttId  = document.getElementById('addbt_thuoc_tinh').value;
+    var selGT = document.getElementById('addbt_gia_tri');
+    selGT.innerHTML = '<option value="">⏳ Đang tải...</option>';
+    if (!ttId) { selGT.innerHTML = '<option value="">-- Chọn giá trị --</option>'; return; }
+
+    if (_addbt_tt_cache[ttId]) {
+      _fillGiaTriSelect(selGT, _addbt_tt_cache[ttId]); return;
+    }
+    fetch('/api/admin/gia-tri-thuoc-tinh/?thuoc_tinh_id=' + ttId)
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        if (data.ok && data.data) {
+          _addbt_tt_cache[ttId] = data.data;
+          _fillGiaTriSelect(selGT, data.data);
+        } else {
+          selGT.innerHTML = '<option value="">Chưa có giá trị</option>';
+        }
+      })
+      .catch(function(){ selGT.innerHTML = '<option value="">Lỗi kết nối</option>'; });
+  };
+
+  function _fillGiaTriSelect(sel, items) {
+    sel.innerHTML = '<option value="">-- Chọn giá trị --</option>';
+    items.forEach(function(gt){
+      var o = document.createElement('option');
+      o.value = gt.id; o.dataset.name = gt.name; o.textContent = gt.name;
+      sel.appendChild(o);
+    });
+  }
+
+  window.pnConfirmAddNewBT = function () {
+    if (!selSpId || !selSpName) { alert('Chưa chọn sản phẩm!'); return; }
+
+    var selTT  = document.getElementById('addbt_thuoc_tinh');
+    var selGT  = document.getElementById('addbt_gia_tri');
+    var sku    = document.getElementById('addbt_sku').value.trim();
+    var gn     = parseFloat(document.getElementById('addbt_gia_nhap').value) || 0;
+    var sl     = parseInt(document.getElementById('addbt_so_luong').value)   || 1;
+
+    var ttId   = selTT.value;
+    var ttName = ttId ? (selTT.options[selTT.selectedIndex].textContent) : '';
+    var gtId   = selGT.value;
+    var gtName = gtId ? (selGT.options[selGT.selectedIndex].dataset.name || selGT.options[selGT.selectedIndex].textContent) : '';
+
+    if (!ttId)   { alert('Vui lòng chọn thuộc tính!'); return; }
+    if (!gtId)   { alert('Vui lòng chọn giá trị!'); return; }
+    if (gn <= 0) { alert('Vui lòng nhập giá nhập!'); return; }
+    if (sl <= 0) { alert('Số lượng phải lớn hơn 0!'); return; }
+
+    // Tự sinh SKU nếu bỏ trống
+    var finalSku = sku || (selSpName.substring(0,6).replace(/\s/g,'').toUpperCase() + '-' + gtName.replace(/\s/g,''));
+
+    var btEntry = {
+      sku:      finalSku,
+      attrs:    [{ ten_thuoc_tinh: ttName, gia_tri: gtName }],
+      gia_nhap: gn,
+      gia_ban:  0,
+      so_luong: sl,
+    };
+
+    var npIdx = newProducts.findIndex(function(p){ return p._spId === selSpId; });
+    if (npIdx >= 0) {
+      newProducts[npIdx].bien_the.push(btEntry);
+    } else {
+      newProducts.push({ ten_san_pham: selSpName, _spId: selSpId, bien_the: [btEntry] });
+    }
+
+    rows.push({ bien_the_id: null, san_pham: selSpName, thuong_hieu: '',
+      sku: finalSku, gia_nhap: gn, so_luong: sl, is_new: true });
+
+    renderTable(); updateSummary();
+
+    // Preview row trong bảng biến thể
+    var tbody = document.getElementById('pn_bt_bang_tbody');
+    if (tbody) {
+      var tr = document.createElement('tr');
+      tr.style.background = '#f0fce8';
+      tr.innerHTML =
+        '<td><code style="background:#d4f0b0;padding:2px 7px;border-radius:4px;font-size:11px;">'
+        + finalSku + '</code>'
+        + '<div style="font-size:10px;color:#4B672D;margin-top:2px;">✨ Mới · ' + ttName + ': ' + gtName + '</div></td>'
+        + '<td style="text-align:right;">—</td>'
+        + '<td style="text-align:right;"><input class="bt-input" value="' + gn + '" disabled style="width:100%;box-sizing:border-box;"></td>'
+        + '<td style="text-align:right;"><input class="bt-input" value="' + sl + '" disabled style="width:100%;box-sizing:border-box;"></td>'
+        + '<td style="text-align:right;font-weight:600;color:#4B672D;">' + fmtP(gn*sl) + '</td>';
+      tbody.appendChild(tr);
+    }
+
+    document.getElementById('pn_add_bt_form').style.display = 'none';
+  };
+
 
   window.pnSyncNcc = function () {
     var sel = document.getElementById('pn_ncc');
@@ -475,7 +620,7 @@
         '<td class="r"><input type="number" value="'+r.gia_nhap+'" min="0" style="width:100px;" onchange="pnUpdRow('+i+',\'gia_nhap\',this.value)"></td>'+
         '<td class="r"><input type="number" value="'+r.so_luong+'" min="1" style="width:64px;" onchange="pnUpdRow('+i+',\'so_luong\',this.value)"></td>'+
         '<td class="r num" id="row_tt_'+i+'">'+ fmtP(r.gia_nhap*r.so_luong)+'</td>'+
-        '<td><button class="pn-btn pn-btn-d" onclick="pnDelRow('+i+')">\u2715</button></td>';
+        '<td><button type="button" class="pn-btn pn-btn-d" onclick="pnDelRow('+i+')">\u2715</button></td>';
       tbody.appendChild(tr);
     });
   }
@@ -517,21 +662,102 @@
 
   window.pnCancelNew = function () { hide('pn_new_sp_form'); pnClearCombo(); };
 
+  var _np_tt_cache = null;
+var _np_gt_cache = {};
+
+window.pnLoadThuocTinhForNewBT = function(selectEl) {
+  selectEl.innerHTML = '<option value="">⏳ Đang tải...</option>';
+
+  if (_np_tt_cache) {
+    fillThuocTinhNewBT(selectEl, _np_tt_cache);
+    return;
+  }
+
+  fetch('/api/admin/thuoc-tinh/')
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      _np_tt_cache = data.data || [];
+      fillThuocTinhNewBT(selectEl, _np_tt_cache);
+    })
+    .catch(function(){
+      selectEl.innerHTML = '<option value="">Lỗi tải thuộc tính</option>';
+    });
+};
+
+function fillThuocTinhNewBT(selectEl, items) {
+  selectEl.innerHTML = '<option value="">-- Chọn thuộc tính --</option>';
+  items.forEach(function(tt){
+    var o = document.createElement('option');
+    o.value = tt.id;
+    o.dataset.name = tt.name;
+    o.textContent = tt.name;
+    selectEl.appendChild(o);
+  });
+}
+
+window.pnLoadGiaTriForNewBT = function(selectEl) {
+  var item = selectEl.closest('.pn-bt-item');
+  var gtSelect = item.querySelector('.np-attr-val');
+  var ttId = selectEl.value;
+
+  gtSelect.innerHTML = '<option value="">⏳ Đang tải...</option>';
+
+  if (!ttId) {
+    gtSelect.innerHTML = '<option value="">-- Chọn giá trị --</option>';
+    return;
+  }
+
+  if (_np_gt_cache[ttId]) {
+    fillGiaTriNewBT(gtSelect, _np_gt_cache[ttId]);
+    return;
+  }
+
+  fetch('/api/admin/gia-tri-thuoc-tinh/?thuoc_tinh_id=' + ttId)
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      _np_gt_cache[ttId] = data.data || [];
+      fillGiaTriNewBT(gtSelect, _np_gt_cache[ttId]);
+    })
+    .catch(function(){
+      gtSelect.innerHTML = '<option value="">Lỗi tải giá trị</option>';
+    });
+};
+
+function fillGiaTriNewBT(selectEl, items) {
+  selectEl.innerHTML = '<option value="">-- Chọn giá trị --</option>';
+  items.forEach(function(gt){
+    var o = document.createElement('option');
+    o.value = gt.id;
+    o.dataset.name = gt.name;
+    o.textContent = gt.name;
+    selectEl.appendChild(o);
+  });
+}
+
+
   window.pnAddNewBT = function () {
     var idx=btNewIdx++, c=document.getElementById('pn_np_bt_list'), d=document.createElement('div');
     d.className='pn-bt-item'; d.id='np_bt_'+idx;
-    d.innerHTML='<button class="pn-bt-rm" onclick="document.getElementById(\'np_bt_'+idx+'\').remove()">\u2715</button>'+
+    d.innerHTML='<button type="button" class="pn-bt-rm" onclick="document.getElementById(\'np_bt_'+idx+'\').remove()">\u2715</button>'+
       '<div class="pn-row" style="margin-bottom:8px;">'+
-        '<div class="pn-f"><label>Thu\u1ed9c t\u00ednh</label><input type="text" class="np-attr-ten" placeholder="Dung t\u00edch"></div>'+
-        '<div class="pn-f"><label>Gi\u00e1 tr\u1ecb</label><input type="text" class="np-attr-val" placeholder="50ml"></div>'+
+        '<div class="pn-f"><label>Thuộc tính</label>'+
+        '<select class="np-attr-ten" onchange="pnLoadGiaTriForNewBT(this)">'+
+          '<option value="">-- Chọn thuộc tính --</option>'+
+        '</select>'+
+      '</div>'+
+      '<div class="pn-f"><label>Giá trị</label>'+
+        '<select class="np-attr-val">'+
+          '<option value="">-- Chọn giá trị --</option>'+
+        '</select>'+
+      '</div>'+
       '</div>'+
       '<div class="pn-row pn-row-3">'+
         '<div class="pn-f"><label>SKU</label><input type="text" class="np-sku" placeholder="SKU-001"></div>'+
         '<div class="pn-f"><label>Gi\u00e1 nh\u1eadp</label><input type="number" class="np-gnhap" min="0" value="0"></div>'+
-        '<div class="pn-f"><label>Gi\u00e1 b\u00e1n</label><input type="number" class="np-gban" min="0" value="0"></div>'+
         '<div class="pn-f"><label>S\u1ed1 l\u01b0\u1ee3ng</label><input type="number" class="np-sl" min="1" value="1"></div>'+
       '</div>';
     c.appendChild(d);
+    pnLoadThuocTinhForNewBT(d.querySelector('.np-attr-ten'));
   };
 
   window.pnConfirmNew = function () {
@@ -542,13 +768,15 @@
     if(!items.length){alert('Th\u00eam bi\u1ebfn th\u1ec3!');return;}
     var bien_the=[];
     items.forEach(function(item){
-      var atTen=item.querySelector('.np-attr-ten').value.trim();
-      var atVal=item.querySelector('.np-attr-val').value.trim();
+      var selTT = item.querySelector('.np-attr-ten');
+      var selGT = item.querySelector('.np-attr-val');
+
+      var atTen = selTT.value ? selTT.options[selTT.selectedIndex].dataset.name : '';
+      var atVal = selGT.value ? selGT.options[selGT.selectedIndex].dataset.name : '';
       var sku=item.querySelector('.np-sku').value.trim();
       var gn=parseFloat(item.querySelector('.np-gnhap').value)||0;
-      var gb=parseFloat(item.querySelector('.np-gban').value)||0;
       var sl=parseInt(item.querySelector('.np-sl').value)||1;
-      bien_the.push({sku:sku||(ten+'-'+(atVal||'VAR')),attrs:atTen&&atVal?[{ten_thuoc_tinh:atTen,gia_tri:atVal}]:[],gia_nhap:gn,gia_ban:gb,so_luong:sl});
+      bien_the.push({sku:sku||(ten+'-'+(atVal||'VAR')),attrs:atTen&&atVal?[{ten_thuoc_tinh:atTen,gia_tri:atVal}]:[],gia_nhap:gn,gia_ban:0,so_luong:sl});
       rows.push({bien_the_id:null,san_pham:ten,thuong_hieu:brand,sku:sku||atVal||'NEW',gia_nhap:gn,so_luong:sl,is_new:true,_np_idx:newProducts.length});
     });
     newProducts.push({ten_san_pham:ten,thuong_hieu:brand,bien_the:bien_the});
@@ -699,7 +927,7 @@
                     {% widthratio ct.gia_nhap 1 ct.so_luong as tt_raw %}{{ ct.gia_nhap|floatformat:0 }}&#8363;
                   </td>
                   <td>
-                    <button class="pn-btn pn-btn-d"
+                    <button type="button" class="pn-btn pn-btn-d"
                       onclick="pnDelRow({{ forloop.counter0 }})">&#10005;</button>
                   </td>
                 </tr>
@@ -727,10 +955,10 @@
       </div>
 
       <div style="padding:0 20px 18px;display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="pn-btn pn-btn-p pn-btn-full" style="padding:12px;font-size:14px;" onclick="pnSave('confirmed')">
+        <button type="button" class="pn-btn pn-btn-p pn-btn-full" style="padding:12px;font-size:14px;" onclick="pnSave('confirmed')">
           &#128190; {% if original %}C&#7853;p nh&#7853;t phi&#7871;u{% else %}T&#7841;o phi&#7871;u &amp; X&#225;c nh&#7853;n{% endif %}
         </button>
-        <button class="pn-btn pn-btn-g" style="padding:12px 16px;" onclick="pnSave('draft')">
+        <button type="button" class="pn-btn pn-btn-g" style="padding:12px 16px;" onclick="pnSave('draft')">
           &#128221; L&#432;u nh&#225;p
         </button>
         {% if original %}
@@ -828,7 +1056,7 @@
           <!-- Chip san pham da chon -->
           <div id="pn_sp_chosen" class="pn-sp-chip" style="display:none;">
             <span id="pn_sp_chosen_name" class="pn-sp-chip-name"></span>
-            <button class="pn-sp-chip-clear" onclick="pnClearCombo()" title="&#272;&#7893;i s&#7843;n ph&#7849;m">&#215;</button>
+            <button type="button" class="pn-sp-chip-clear" onclick="pnClearCombo()" title="&#272;&#7893;i s&#7843;n ph&#7849;m">&#215;</button>
           </div>
         </div>
 
@@ -837,7 +1065,7 @@
           <span>&#9888;&#65039;</span>
           <div>
             S&#7843;n ph&#7849;m "<strong id="pn_nf_name"></strong>" ch&#432;a c&#243;.
-            <button class="pn-btn pn-btn-g pn-btn-sm" style="margin-left:8px;" onclick="pnShowNewProduct()">
+            <button type="button" class="pn-btn pn-btn-g pn-btn-sm" style="margin-left:8px;" onclick="pnShowNewProduct()">
               + Th&#234;m m&#7899;i
             </button>
           </div>
@@ -852,7 +1080,7 @@
               <span id="pn_bt_bang_title" style="font-weight:600;color:#333;
                     text-transform:none;letter-spacing:0;font-size:13px;"></span>
             </div>
-            <button class="pn-btn pn-btn-d pn-btn-sm" onclick="pnClearCombo()">
+            <button type="button" class="pn-btn pn-btn-d pn-btn-sm" onclick="pnClearCombo()">
               &#8592; &#272;&#7893;i SP
             </button>
           </div>
@@ -861,7 +1089,7 @@
             <table style="table-layout:fixed;width:100%;">
               <colgroup>
                 <col style="width:30%;"><!-- SKU / Thuoc tinh -->
-                <col style="width:9%;"><!-- Ton -->
+                <col style="width:10%;"><!-- Ton -->
                 <col style="width:26%;"><!-- Gia nhap input -->
                 <col style="width:17%;"><!-- So luong input -->
                 <col style="width:18%;"><!-- Thanh tien -->
@@ -884,14 +1112,62 @@
               </tbody>
             </table>
           </div>
+          <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end;flex-wrap:wrap;">
+            <button type="button" class="pn-btn pn-btn-s" onclick="pnBtBangXong()" style="font-size:13px;">
+              ✓ Xong → Đưa vào phiếu
+            </button>
+            <button type="button" class="pn-btn pn-btn-g" onclick="pnShowAddNewBT()" style="font-size:13px;">
+              + Thêm biến thể mới
+            </button>
+            <button type="button" class="pn-btn" style="background:#eee;color:#666;" onclick="pnClearCombo()">
+              Hủy
+            </button>
+          </div>
 
-          <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end;">
-            <button class="pn-btn pn-btn-s" onclick="pnBtBangXong()" style="font-size:13px;">
-              &#10003; Xong &#8594; &#272;&#432;a v&#224;o phi&#7871;u
-            </button>
-            <button class="pn-btn" style="background:#eee;color:#666;" onclick="pnClearCombo()">
-              H&#7911;y
-            </button>
+          <!-- Form thêm biến thể mới cho SP hiện có -->
+          <div id="pn_add_bt_form" style="display:none;margin-top:12px;background:#f5fced;
+              border:1.5px solid #c8e6a0;border-radius:10px;padding:14px;">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;
+                        letter-spacing:1px;color:#4B672D;margin-bottom:10px;">
+              ➕ Biến thể mới cho sản phẩm này
+            </div>
+            <div class="pn-row" style="margin-bottom:8px;">
+              <div class="pn-f">
+                <label>Thuộc tính</label>
+                <select id="addbt_thuoc_tinh" onchange="pnLoadGiaTriForAddBT()">
+                  <option value="">-- Chọn thuộc tính --</option>
+                </select>
+              </div>
+              <div class="pn-f">
+                <label>Giá trị</label>
+                <select id="addbt_gia_tri">
+                  <option value="">-- Chọn giá trị --</option>
+                </select>
+              </div>
+            </div>
+            <div class="pn-row pn-row-3" style="margin-bottom:8px;">
+              <div class="pn-f">
+                <label>SKU</label>
+                <input type="text" id="addbt_sku" placeholder="SKU-NEW">
+              </div>
+              <div class="pn-f">
+                <label>Giá nhập (₫)</label>
+                <input type="number" id="addbt_gia_nhap" min="0" value="0">
+              </div>
+              {% comment %} <div class="pn-f">
+                <label>Giá bán (₫)</label>
+                <input type="number" id="addbt_gia_ban" min="0" value="0">
+              </div> {% endcomment %}
+              <div class="pn-f">
+                <label>Số lượng nhập</label>
+                <input type="number" id="addbt_so_luong" min="1" value="1">
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+              <button class="pn-btn pn-btn-s pn-btn-sm" onclick="pnConfirmAddNewBT()">✓ Xác nhận</button>
+              <button class="pn-btn pn-btn-sm" style="background:#eee;color:#666;"
+                      onclick="document.getElementById('pn_add_bt_form').style.display='none'">Hủy</button>
+            </div>
           </div>
         </div>
 
@@ -918,12 +1194,12 @@
               &#128230; Bi&#7871;n th&#7875; s&#7843;n ph&#7849;m m&#7899;i
             </div>
             <div id="pn_np_bt_list"></div>
-            <button class="pn-btn pn-btn-g pn-btn-sm" onclick="pnAddNewBT()" style="margin-bottom:12px;">
+            <button type="button" class="pn-btn pn-btn-g pn-btn-sm" onclick="pnAddNewBT()" style="margin-bottom:12px;">
               + Th&#234;m bi&#7871;n th&#7875;
             </button>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
-              <button class="pn-btn pn-btn-s" onclick="pnConfirmNew()">&#10004; Xong</button>
-              <button class="pn-btn" style="background:#eee;color:#555;" onclick="pnCancelNew()">H&#7911;y</button>
+              <button type="button" class="pn-btn pn-btn-s" onclick="pnConfirmNew()">&#10004; Xong</button>
+              <button type="button" class="pn-btn" style="background:#eee;color:#555;" onclick="pnCancelNew()">H&#7911;y</button>
             </div>
           </div>
         </div>

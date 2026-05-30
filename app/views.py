@@ -54,6 +54,7 @@ from .models import (
     AIRecommendClick,
     ChatbotFeedback, 
 )
+from app.models import LichSuXemSanPham, AIUserProfile, ChatbotHistory
 from collections import defaultdict
 
 
@@ -147,6 +148,86 @@ def _send_order_status_email(order, status):
         print(f"[order_email] Không gửi được email đơn {order_code} tới {email}: {exc}")
         return False
 
+
+def _restore_inventory_on_cancel(order):
+    """Hoàn lại tồn kho khi admin xác nhận hủy đơn."""
+    from django.db import models as db_models
+    details = ChiTietDonHang.objects.filter(id_DonHang=order)
+    for d in details:
+        if d.id_BienThe and d.SoLuong:
+            BienThe.objects.filter(pk=d.id_BienThe_id).update(
+                SoLuong=db_models.F("SoLuong") + d.SoLuong
+            )
+
+
+def _send_cancel_confirmation_email(order):
+    """Gửi email xác nhận hủy đơn thành công đến khách hàng."""
+    account = _order_account(order)
+    email = (getattr(account, "Email", "") or "").strip() if account else ""
+    if not email:
+        return False
+
+    customer_name = _account_display_name(account)
+    order_code = order.MaDonHang or f"#{order.id_DonHang}"
+
+    # Lấy lý do hủy từ GhiChu GiaoHang
+    gh = order.id_GiaoHang
+    reason = ""
+    if gh and gh.GhiChu and "[YÊU CẦU HỦY]:" in (gh.GhiChu or ""):
+        for line in gh.GhiChu.splitlines():
+            if "[YÊU CẦU HỦY]:" in line:
+                reason = line.replace("[YÊU CẦU HỦY]:", "").strip()
+                break
+
+    subject = f"Ami Perfumery — Đơn hàng {order_code} đã được hủy thành công"
+    body = f"""Xin chào {customer_name},
+
+Đơn hàng {order_code} của bạn đã được hủy thành công theo yêu cầu.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Mã đơn:    {order_code}
+  Tổng tiền: {_format_currency(order.TongTien)}
+  Lý do hủy: {reason or "Theo yêu cầu khách hàng"}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Nếu bạn đã thanh toán online, số tiền sẽ được hoàn lại trong vòng 3-5 ngày làm việc.
+Điểm thưởng đã sử dụng (nếu có) sẽ được hoàn trả vào tài khoản của bạn.
+
+Nếu có bất kỳ thắc mắc nào, vui lòng liên hệ:
+📞 0901 234 567 | ✉️ hello@amiperfumery.vn
+
+Trân trọng,
+Ami Perfumery 🌿
+"""
+    try:
+        from django.core.mail import send_mail
+        from django.conf import settings as dj_settings
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=getattr(dj_settings, "DEFAULT_FROM_EMAIL", "noreply@ami.com"),
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        return True
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"[cancel_email] {e}")
+        return False
+
+
+def _deduct_inventory_on_order(order):
+    """Trừ tồn kho ngay khi đặt hàng thành công."""
+    from django.db import models as db_models
+    details = ChiTietDonHang.objects.filter(id_DonHang=order)
+    for d in details:
+        if d.id_BienThe and d.SoLuong:
+            BienThe.objects.filter(
+                pk=d.id_BienThe_id,
+                SoLuong__gte=d.SoLuong   # chỉ trừ nếu đủ tồn
+            ).update(
+                SoLuong=db_models.F("SoLuong") - d.SoLuong
+            )
 
 def _extract_voucher_code(order):
     note = ""
@@ -1477,8 +1558,32 @@ def login_api(request):
 
     request.session["account_id"] = account.id_TaiKhoan
     request.session["account_name"] = account.TenDangNhap
-    return JsonResponse({"ok": True, "message": "Đăng nhập thành công."})
+    # ── Kích hoạt AI Personalization ──
+    try:
+        from app.ai.personalize import get_personalized_recommendations
+        get_personalized_recommendations(account.id_TaiKhoan, top_n=8)
+    except Exception as e:
+        print(f'[AI] Login personalization failed: {e}')
+    return JsonResponse({
+        "ok":      True,
+        "message": "Đăng nhập thành công.",
+        "user": {
+            "name":   account.TenDangNhap,
+            "email":  account.Email,
+            "level":  account.HangThanhVien or "Member",
+            "points": account.DiemTichLuy or 0,
+        }
+    })
 
+def social_complete(request):
+    """
+    Sau khi social_django xử lý xong, redirect về đây.
+    Session đã được set bởi pipeline.
+    """
+    next_url = request.GET.get('next') or '/'
+    if request.session.get('account_id'):
+        return redirect(next_url)
+    return redirect('auth-page')
 
 @csrf_exempt
 @require_POST
@@ -1790,6 +1895,9 @@ def place_order_api(request):
                 )
             else:
                 print(f"[place_order] WARNING: Không tìm thấy BienThe cho productId={product_id}, variantId={variant_id}")
+
+        # ── Trừ tồn kho ngay khi đặt hàng ──────────────────────
+        _deduct_inventory_on_order(don_hang)
  
         # ── 4. Đánh dấu voucher đã dùng ─────────────────────────
         if voucher_cd and account_id:
@@ -2529,7 +2637,47 @@ def confirm_received_api(request):
         "new_status": "Khách đã nhận hàng",
     })
  
- 
+def _notify_admin_cancel_request(order, reason):
+    """Gửi email cho admin khi khách yêu cầu hủy đơn."""
+    from django.conf import settings as dj_settings
+    admin_email = getattr(dj_settings, "ADMIN_NOTIFY_EMAIL",
+                  getattr(dj_settings, "DEFAULT_FROM_EMAIL", "admin@amiperfumery.vn"))
+
+    account = _order_account(order)
+    customer_name = _account_display_name(account) if account else "Khách hàng"
+    customer_email = (getattr(account, "Email", "") or "").strip() if account else ""
+    order_code = order.MaDonHang or f"#{order.id_DonHang}"
+    gh = order.id_GiaoHang
+
+    body = f"""Ami Perfumery — Thông báo yêu cầu hủy đơn
+
+Khách hàng: {customer_name}
+Email: {customer_email}
+Mã đơn: {order_code}
+Tổng tiền: {_format_currency(order.TongTien)}
+Địa chỉ: {gh.DiaChi if gh else 'N/A'}
+SĐT: {gh.SDT if gh else 'N/A'}
+
+Lý do hủy: {reason}
+
+Truy cập trang quản lý để xác nhận hủy:
+http://localhost:8000/admin-orders/
+
+Sau khi xác nhận hủy, email xác nhận sẽ được gửi tự động đến khách hàng.
+"""
+    try:
+        send_mail(
+            subject=f"[AMI] Yêu cầu hủy đơn {order_code} từ {customer_name}",
+            message=body,
+            from_email=getattr(dj_settings, "DEFAULT_FROM_EMAIL", "noreply@ami.com"),
+            recipient_list=[admin_email],
+            fail_silently=True,
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"[cancel_notify] {e}")
+
+
 # ── 3. API: Khách hủy đơn hàng ────────────────────────────────────
 # URL: POST /api/cancel-order/
 # Body: order_id, reason
@@ -2546,13 +2694,13 @@ def cancel_order_api(request):
  
     # Tìm đơn hàng qua cả 2 trường hợp
     if customer:
-        order = DonHang.objects.filter(
+        order = DonHang.objects.select_related("id_GiaoHang").filter(
             Q(id_KhachHang=customer) | Q(id_GiaoHang__id_TaiKhoan_id=account_id),
             id_DonHang=order_id,
             TrangThai="Chờ xác nhận"
         ).first()
     else:
-        order = DonHang.objects.filter(
+        order = DonHang.objects.select_related("id_GiaoHang").filter(
             id_DonHang=order_id,
             id_GiaoHang__id_TaiKhoan_id=account_id,
             TrangThai="Chờ xác nhận"
@@ -2564,18 +2712,23 @@ def cancel_order_api(request):
             "message": "Không thể hủy đơn này. Đơn hàng đã được xác nhận hoặc đang giao."
         })
  
-    order.TrangThai = "Đã hủy"
+    order.TrangThai = "Chờ hủy"
     order.save(update_fields=["TrangThai"])
- 
-    account = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first()
-    if account and int(order.DiemDaDung or 0) > 0:
-        add_points(account, int(order.DiemDaDung), "refund_points",
-                   f"Hoàn điểm do hủy đơn {order.MaDonHang}", order)
- 
+
+    # Lưu lý do vào GhiChu GiaoHang
+    reason = (request.POST.get("reason") or "Không có lý do").strip()
+    gh = order.id_GiaoHang
+    if gh:
+        old = (gh.GhiChu or "").strip()
+        gh.GhiChu = f"{old}\n[YÊU CẦU HỦY]: {reason}".strip()
+        gh.save(update_fields=["GhiChu"])
+
+    _notify_admin_cancel_request(order, reason)
+
     return JsonResponse({
-        "ok":         True,
-        "message":    "Đơn hàng đã được hủy thành công.",
-        "new_status": "Đã hủy",
+        "ok": True,
+        "message": "Yêu cầu hủy đơn đã được gửi. Admin sẽ xác nhận và thông báo qua email.",
+        "new_status": "Chờ hủy",
     })
  
  
@@ -2670,6 +2823,7 @@ def admin_orders_view(request):
 
     STATUS_TABS = [
         {"label": "Chờ xác nhận",       "key": "Chờ xác nhận"},
+        {"label": "Chờ hủy",            "key": "Chờ hủy"},
         {"label": "Đã xác nhận",         "key": "Đã xác nhận"},
         {"label": "Đang giao",           "key": "Đang giao"},
         {"label": "Khách đã nhận hàng",  "key": "Khách đã nhận hàng"},
@@ -2708,7 +2862,7 @@ def admin_update_order_status(request):
 
     VALID = [
         "Chờ xác nhận", "Đã xác nhận", "Đang giao",
-        "Khách đã nhận hàng", "Hoàn tất", "Đã hủy"
+        "Khách đã nhận hàng", "Hoàn tất", "Đã hủy", "Chờ hủy"
     ]
     if new_status not in VALID:
         return JsonResponse({"ok": False, "message": "Trạng thái không hợp lệ."})
@@ -2722,15 +2876,16 @@ def admin_update_order_status(request):
 
     # ── Luồng hợp lệ (dùng TrangThai thô trong DB) ──
     FLOW = {
-        "Chờ xác nhận":       ["Đã xác nhận",        "Đã hủy"],
-        "Đã thanh toán":      ["Đã xác nhận",        "Đã hủy"],
-        "Đã xác nhận":        ["Đang giao",           "Đã hủy"],
-        "Đang giao":          ["Khách đã nhận hàng"],
-        "Khách đã nhận hàng": ["Hoàn tất"],
-        "Hoàn tất":           [],
-        "Đã hủy":             [],
-        "Thanh toán thất bại":[],
-    }
+    "Chờ xác nhận":       ["Đã xác nhận", "Đã hủy", "Chờ hủy"],
+    "Đã thanh toán":      ["Đã xác nhận", "Đã hủy"],
+    "Chờ hủy":            ["Đã hủy", "Chờ xác nhận"],   
+    "Đã xác nhận":        ["Đang giao", "Đã hủy"],
+    "Đang giao":          ["Khách đã nhận hàng"],
+    "Khách đã nhận hàng": ["Hoàn tất"],
+    "Hoàn tất":           [],
+    "Đã hủy":             [],
+    "Thanh toán thất bại":[],
+}
     current = (order.TrangThai or "Chờ xác nhận").strip()
     if new_status not in FLOW.get(current, []):
         return JsonResponse({
@@ -2745,6 +2900,16 @@ def admin_update_order_status(request):
     email_sent = False
     if new_status in ("Đã xác nhận", "Hoàn tất"):
         email_sent = _send_order_status_email(order, new_status)
+
+    # ── Khi admin xác nhận hủy: hoàn tồn kho + gửi mail khách ──
+    if new_status == "Đã hủy":
+        _restore_inventory_on_cancel(order)
+        email_sent = _send_cancel_confirmation_email(order)
+        # Hoàn điểm nếu khách đã dùng
+        acc = _order_account(order)
+        if acc and int(order.DiemDaDung or 0) > 0:
+            add_points(acc, int(order.DiemDaDung), "refund_points",
+                    f"Hoàn điểm do hủy đơn {order.MaDonHang}", order)
 
     # ── Khi Hoàn tất: cộng điểm, cập nhật TongChiTieu, hạng ──
     if new_status == "Hoàn tất":
@@ -2837,11 +3002,12 @@ def admin_order_detail_api(request):
         "Đã xác nhận":        ("Đang giao",           "🚚 Bắt đầu giao hàng"),
         "Đang giao":          ("Khách đã nhận hàng",  "📦 Đánh dấu đã giao"),
         "Khách đã nhận hàng": ("Hoàn tất",            "🎉 Hoàn tất đơn hàng"),
+        "Chờ hủy":            ("Đã hủy",              "✕ Xác nhận hủy đơn"),
     }
     next_action = FLOW_NEXT.get(raw_status) or FLOW_NEXT.get(display_status)
 
     can_cancel = raw_status in ("Chờ xác nhận", "Đã xác nhận", "Đã thanh toán")
-
+    # can_restore = raw_status == "Chờ hủy"
     return JsonResponse({
         "ok": True,
         "order": {
@@ -2866,6 +3032,7 @@ def admin_order_detail_api(request):
             "next_status":    next_action[0] if next_action else None,
             "next_label":     next_action[1] if next_action else None,
             "can_cancel":     can_cancel,
+            # "can_restore": can_restore,
         }
     })
 
@@ -3103,10 +3270,22 @@ def admin_api_luu_phieu(request):
                 if not sp_name:
                     continue
                 # Tạo SanPham
-                new_sp = SanPham.objects.create(
-                    TenSanPham=sp_name,
-                    TrangThai_SanPham='active',
-                )
+                sp_id_existing = np.get('_spId') or np.get('sp_id')
+                if sp_id_existing:
+                    # Dùng sản phẩm đã tồn tại
+                    try:
+                        new_sp = SanPham.objects.get(pk=int(sp_id_existing))
+                    except SanPham.DoesNotExist:
+                        new_sp = SanPham.objects.create(
+                            TenSanPham=sp_name,
+                            TrangThai_SanPham='active',
+                        )
+                else:
+                    # Tạo sản phẩm mới
+                    new_sp = SanPham.objects.create(
+                        TenSanPham=sp_name,
+                        TrangThai_SanPham='active',
+                    )
                 # Tạo biến thể cho sản phẩm mới
                 for bt_data in np.get('bien_the', []):
                     new_bt = BT.objects.create(
@@ -3219,112 +3398,7 @@ def admin_api_them_sp_moi(request):
                              'ten': exists.TenSanPham, 'bien_the': bien_the})
     return JsonResponse({'ok': True, 'exists': False})
 
-
-# ════════════════════════════════════════════════════
-# CHATBOT AI — RAG + GPT-4o
-# ════════════════════════════════════════════════════
-@csrf_exempt
-@require_POST
-def chatbot_api(request):
-    """
-    POST /api/chatbot/
-    Body: { "message": "...", "history": [...] }
-    """
-    import json as _json
- 
-    try:
-        data     = _json.loads(request.body)
-        user_msg = (data.get("message") or "").strip()
-        history  = data.get("history") or []
- 
-        if not user_msg:
-            return JsonResponse({"ok": False, "error": "Tin nhắn không được trống."})
- 
-        if len(history) > 20:
-            history = history[-20:]
- 
-        from app.ai.chatbot import chat
-        result = chat(user_msg, history)
- 
-        # ── Bổ sung ảnh + giá vào suggestions ──────────────────
-        suggestions = result.get("suggestions") or []
-        if suggestions:
-            product_ids = [s["id"] for s in suggestions if s.get("type") == "product"]
-            if product_ids:
-                img_map     = _product_image_map(product_ids)
-                variant_map = _first_variant_map(product_ids)
- 
-                for s in suggestions:
-                    if s.get("type") != "product":
-                        continue
-                    pid    = s["id"]
-                    imgs   = img_map.get(pid, [])
-                    s["image"] = imgs[0] if imgs else ""
- 
-                    variant = variant_map.get(pid)
-                    if variant and variant.GiaBan:
-                        s["price"] = _format_currency(variant.GiaBan)
-                    else:
-                        s["price"] = ""
- 
-        return JsonResponse({
-            "ok":          True,
-            "reply":       result["reply"],
-            "history":     result["history"],
-            "suggestions": suggestions,
-        }, json_dumps_params={"ensure_ascii": False})
- 
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({
-            "ok":    False,
-            "error": "Lỗi hệ thống. Vui lòng thử lại sau."
-        }, status=500)
     
-
-# ════════════════════════════════════════════════════════════
-# PERSONALIZED RECOMMENDATIONS — Giai đoạn 3
-# ════════════════════════════════════════════════════════════
-def personalized_recommend_api(request):
-    """
-    GET /api/recommend/personal/
-    Trả về gợi ý cá nhân hóa cho user đang đăng nhập.
-    Nếu chưa đăng nhập → trả về sản phẩm phổ biến.
-    """
-    from app.ai.personalize import (
-        get_personalized_recommendations,
-        _get_popular_products
-    )
-
-    account_id = request.session.get("account_id")
-
-    if account_id:
-        product_ids = get_personalized_recommendations(account_id, top_n=8)
-    else:
-        product_ids = _get_popular_products(top_n=8)
-
-    if not product_ids:
-        return JsonResponse({"ok": True, "products": [], "type": "empty"})
-
-    products = list(
-        SanPham.objects
-        .select_related("id_ThuongHieu", "id_LoaiSanPham")
-        .filter(id_SanPham__in=product_ids)
-    )
-
-    # Giữ đúng thứ tự theo điểm
-    product_map = {p.id_SanPham: p for p in products}
-    ordered = [product_map[pid] for pid in product_ids if pid in product_map]
-
-    cards = _build_product_cards(ordered)
-
-    return JsonResponse({
-        "ok":      True,
-        "products": cards,
-        "type":    "personalized" if account_id else "popular",
-    }, json_dumps_params={"ensure_ascii": False})
-
 
 def admin_phieunhap_list(request):
     """Trang lich su phieu nhap kho."""
@@ -3710,98 +3784,834 @@ def ai_chatbot_feedback(request):
     except Exception:
         return JsonResponse({"ok": False})
     
+"""
+THAY THẾ hàm ai_dashboard_api trong views.py
+=============================================
+"""
+
 def ai_dashboard_api(request):
     """
     GET /api/admin/ai-dashboard/
-    Trả về thống kê hiệu quả AI cho admin dashboard.
+    Dashboard AI analytics hoàn chỉnh.
     """
-    from django.db.models import Count, Avg
+    from django.db.models import Count, Avg, Sum, Q
     from datetime import timedelta
+    from app.models import (
+        LichSuXemSanPham, AIUserProfile, ChatbotHistory,
+        NhomHuong, SanPhamNhomHuong, ThuongHieu
+    )
 
-    # Cách 1: Đăng nhập qua Django Admin (/admin/)
+    # ── Auth check ────────────────────────────────────────────
     is_django_admin = bool(
         getattr(request, "user", None)
         and request.user.is_authenticated
         and request.user.is_staff
     )
-
-    # Cách 2: Đăng nhập qua session tự định nghĩa
     account_id = request.session.get("account_id")
-    account    = TaiKhoan.objects.filter(
-        id_TaiKhoan=account_id
-    ).first() if account_id else None
-    is_custom_admin = bool(
-        account and account.LoaiTaiKhoan in ('admin', 'staff')
-    )
-
+    account    = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first() if account_id else None
+    is_custom_admin = bool(account and account.LoaiTaiKhoan in ('admin', 'staff'))
     if not is_django_admin and not is_custom_admin:
         return JsonResponse({"ok": False}, status=403)
 
-    # Khoảng thời gian 30 ngày gần nhất
-    since = timezone.now() - timedelta(days=30)
+    now   = timezone.now()
+    since_30 = now - timedelta(days=30)
+    since_7  = now - timedelta(days=7)
+    since_yesterday = now - timedelta(days=1)
 
-    # ── 1. Click-through rate theo nguồn ──────────────────────
+    # ════════════════════════════════════════════════════════
+    # 1. KPI TỔNG QUAN
+    # ════════════════════════════════════════════════════════
+    total_orders    = DonHang.objects.count()
+    total_revenue   = DonHang.objects.filter(
+        TrangThai__in=['Hoàn tất','Khách đã nhận hàng']
+    ).aggregate(s=Sum('TongTien'))['s'] or 0
+
+    total_customers = TaiKhoan.objects.filter(LoaiTaiKhoan='customer').count()
+    total_products  = SanPham.objects.count()
+
+    # AI KPIs
+    total_ai_clicks     = AIRecommendClick.objects.count()
+    total_chatbot_fb    = ChatbotFeedback.objects.count()
+    total_viewed        = LichSuXemSanPham.objects.count()
+    total_ai_profiles   = AIUserProfile.objects.count()
+    total_chat_history  = ChatbotHistory.objects.count()
+
+    # Chatbot satisfaction
+    chatbot_avg = ChatbotFeedback.objects.aggregate(avg=Avg('Rating'))['avg'] or 0
+
+    # ════════════════════════════════════════════════════════
+    # 2. DOANH THU THEO NGÀY (30 ngày)
+    # ════════════════════════════════════════════════════════
+    revenue_by_day = []
+    for i in range(29, -1, -1):
+        day = now.date() - timedelta(days=i)
+        rev = DonHang.objects.filter(
+            ThoiGian__date=day,
+            TrangThai__in=['Hoàn tất','Khách đã nhận hàng']
+        ).aggregate(s=Sum('TongTien'))['s'] or 0
+        orders_count = DonHang.objects.filter(ThoiGian__date=day).count()
+        revenue_by_day.append({
+            "date":   day.strftime("%d/%m"),
+            "revenue": int(rev),
+            "orders":  orders_count,
+        })
+
+    # ════════════════════════════════════════════════════════
+    # 3. AI RECOMMENDATION ANALYTICS
+    # ════════════════════════════════════════════════════════
+    # Click theo nguồn (30 ngày)
     clicks_by_source = list(
         AIRecommendClick.objects
-        .filter(NgayClick__gte=since)
+        .filter(NgayClick__gte=since_30)
         .values('source')
         .annotate(total=Count('id_Click'))
         .order_by('-total')
     )
 
-    # ── 2. Click theo ngày (7 ngày gần nhất) ──────────────────
+    # Click theo ngày (30 ngày)
     clicks_by_day = []
-    for i in range(6, -1, -1):
-        day = timezone.now().date() - timedelta(days=i)
-        count = AIRecommendClick.objects.filter(
-            NgayClick__date=day
-        ).count()
-        clicks_by_day.append({
-            "date":  day.strftime("%d/%m"),
-            "count": count,
-        })
+    for i in range(29, -1, -1):
+        day = now.date() - timedelta(days=i)
+        c = AIRecommendClick.objects.filter(NgayClick__date=day).count()
+        clicks_by_day.append({"date": day.strftime("%d/%m"), "count": c})
 
-    # ── 3. Chatbot satisfaction ───────────────────────────────
-    feedback_avg = ChatbotFeedback.objects.filter(
-        NgayTao__gte=since
-    ).aggregate(avg=Avg('Rating'))['avg'] or 0
+    # Top sản phẩm được click từ AI (30 ngày)
+    top_ai_products = list(
+        AIRecommendClick.objects
+        .filter(NgayClick__gte=since_30)
+        .values('id_SanPham__TenSanPham', 'id_SanPham__id_SanPham',
+                'id_SanPham__id_ThuongHieu__TenThuongHieu')
+        .annotate(total=Count('id_Click'))
+        .order_by('-total')[:8]
+    )
 
+    # ════════════════════════════════════════════════════════
+    # 4. CHATBOT ANALYTICS
+    # ════════════════════════════════════════════════════════
+    # Feedback distribution
     feedback_dist = list(
         ChatbotFeedback.objects
-        .filter(NgayTao__gte=since)
+        .filter(NgayTao__gte=since_30)
         .values('Rating')
         .annotate(total=Count('id_Feedback'))
         .order_by('Rating')
     )
 
-    total_feedback = ChatbotFeedback.objects.filter(
-        NgayTao__gte=since
-    ).count()
+    # Chatbot feedback theo ngày
+    chatbot_by_day = []
+    for i in range(29, -1, -1):
+        day = now.date() - timedelta(days=i)
+        c = ChatbotFeedback.objects.filter(NgayTao__date=day).count()
+        avg_r = ChatbotFeedback.objects.filter(
+            NgayTao__date=day
+        ).aggregate(avg=Avg('Rating'))['avg'] or 0
+        chatbot_by_day.append({
+            "date":  day.strftime("%d/%m"),
+            "count": c,
+            "avg":   round(float(avg_r), 1),
+        })
 
-    # ── 4. Top sản phẩm được gợi ý nhiều nhất ─────────────────
-    top_products = list(
-        AIRecommendClick.objects
-        .filter(NgayClick__gte=since)
-        .values('id_SanPham__TenSanPham', 'id_SanPham__id_SanPham')
-        .annotate(total=Count('id_Click'))
-        .order_by('-total')[:5]
+    # Intent analysis từ ChatbotHistory
+    intent_stats = {}
+    try:
+        intents = ChatbotHistory.objects.filter(
+            ExtractedIntent__isnull=False,
+            NgayTao__gte=since_30
+        ).values_list('ExtractedIntent', flat=True)
+
+        for intent_str in intents:
+            if not intent_str:
+                continue
+            for part in intent_str.split('_'):
+                part = part.strip()
+                if part and len(part) > 1:
+                    intent_stats[part] = intent_stats.get(part, 0) + 1
+
+        intent_stats = dict(
+            sorted(intent_stats.items(), key=lambda x: x[1], reverse=True)[:10]
+        )
+    except Exception:
+        pass
+
+    # Registered vs Guest chatbot
+    registered_chats = ChatbotHistory.objects.values(
+        'id_TaiKhoan'
+    ).distinct().count()
+
+    # ════════════════════════════════════════════════════════
+    # 5. CUSTOMER BEHAVIOR — Recently Viewed
+    # ════════════════════════════════════════════════════════
+    # Top viewed products (30 ngày)
+    top_viewed = list(
+        LichSuXemSanPham.objects
+        .filter(NgayXem__gte=since_30)
+        .values('id_SanPham__TenSanPham', 'id_SanPham__id_SanPham',
+                'id_SanPham__id_ThuongHieu__TenThuongHieu')
+        .annotate(views=Count('id_LichSu'), total_time=Sum('ThoiGianXem'))
+        .order_by('-views')[:8]
     )
 
+    # View theo ngày (30 ngày)
+    views_by_day = []
+    for i in range(29, -1, -1):
+        day = now.date() - timedelta(days=i)
+        c = LichSuXemSanPham.objects.filter(NgayXem__date=day).count()
+        views_by_day.append({"date": day.strftime("%d/%m"), "count": c})
+
+    # ════════════════════════════════════════════════════════
+    # 6. SCENT GROUP ANALYTICS
+    # ════════════════════════════════════════════════════════
+    # Nhóm mùi được AI profile học nhiều nhất
+    scent_from_profiles = {}
+    try:
+        import json as _j
+        for profile in AIUserProfile.objects.all():
+            scents = _j.loads(profile.NhomMuaYeuThich or '[]')
+            for s in scents:
+                scent_from_profiles[s] = scent_from_profiles.get(s, 0) + 1
+        scent_from_profiles = dict(
+            sorted(scent_from_profiles.items(), key=lambda x: x[1], reverse=True)[:8]
+        )
+    except Exception:
+        pass
+
+    # Brand yêu thích từ AI profile
+    brand_from_profiles = {}
+    try:
+        for profile in AIUserProfile.objects.all():
+            brands = _j.loads(profile.ThuongHieuYeuThich or '[]')
+            for b in brands:
+                brand_from_profiles[b] = brand_from_profiles.get(b, 0) + 1
+        brand_from_profiles = dict(
+            sorted(brand_from_profiles.items(), key=lambda x: x[1], reverse=True)[:8]
+        )
+    except Exception:
+        pass
+
+    # ════════════════════════════════════════════════════════
+    # 7. AI USER PROFILE STATS
+    # ════════════════════════════════════════════════════════
+    profile_confidence_dist = {
+        "low":    AIUserProfile.objects.filter(ConfidenceScore__lt=0.3).count(),
+        "medium": AIUserProfile.objects.filter(
+            ConfidenceScore__gte=0.3, ConfidenceScore__lt=0.7
+        ).count(),
+        "high":   AIUserProfile.objects.filter(ConfidenceScore__gte=0.7).count(),
+    }
+
+    avg_confidence = AIUserProfile.objects.aggregate(
+        avg=Avg('ConfidenceScore')
+    )['avg'] or 0
+
+    # ════════════════════════════════════════════════════════
+    # 8. TOP PURCHASED PRODUCTS (từ đơn hàng hoàn tất)
+    # ════════════════════════════════════════════════════════
+    top_purchased = list(
+        ChiTietDonHang.objects
+        .filter(
+            id_DonHang__TrangThai__in=['Hoàn tất','Khách đã nhận hàng'],
+            id_DonHang__ThoiGian__gte=since_30
+        )
+        .values(
+            'id_BienThe__id_SanPham__TenSanPham',
+            'id_BienThe__id_SanPham__id_SanPham',
+            'id_BienThe__id_SanPham__id_ThuongHieu__TenThuongHieu'
+        )
+        .annotate(total=Sum('SoLuong'))
+        .order_by('-total')[:8]
+    )
+
+    # ════════════════════════════════════════════════════════
+    # 9. ORDER STATUS DISTRIBUTION
+    # ════════════════════════════════════════════════════════
+    order_status = list(
+        DonHang.objects
+        .filter(ThoiGian__gte=since_30)
+        .values('TrangThai')
+        .annotate(total=Count('id_DonHang'))
+        .order_by('-total')
+    )
+
+    # ════════════════════════════════════════════════════════
+    # 10. RECENT ACTIVITY (7 ngày)
+    # ════════════════════════════════════════════════════════
+    new_customers_7d  = TaiKhoan.objects.filter(
+        LoaiTaiKhoan='customer', NgayTao__gte=since_7
+    ).count()
+    new_orders_7d     = DonHang.objects.filter(ThoiGian__gte=since_7).count()
+    new_ai_clicks_7d  = AIRecommendClick.objects.filter(NgayClick__gte=since_7).count()
+    new_chatbot_7d    = ChatbotFeedback.objects.filter(NgayTao__gte=since_7).count()
+
     return JsonResponse({
-        "ok":             True,
+        "ok": True,
+
+        # KPI
+        "kpi": {
+            "total_orders":    total_orders,
+            "total_revenue":   int(total_revenue),
+            "total_customers": total_customers,
+            "total_products":  total_products,
+            "total_ai_clicks": total_ai_clicks,
+            "total_chatbot_feedback": total_chatbot_fb,
+            "total_viewed":    total_viewed,
+            "total_ai_profiles": total_ai_profiles,
+            "chatbot_avg_rating": round(float(chatbot_avg), 1),
+            "new_7d": {
+                "customers": new_customers_7d,
+                "orders":    new_orders_7d,
+                "ai_clicks": new_ai_clicks_7d,
+                "chatbot":   new_chatbot_7d,
+            }
+        },
+
+        # Charts
+        "revenue_by_day":   revenue_by_day,
         "clicks_by_source": clicks_by_source,
         "clicks_by_day":    clicks_by_day,
-        "feedback_avg":     round(float(feedback_avg), 1),
+        "chatbot_by_day":   chatbot_by_day,
+        "views_by_day":     views_by_day,
         "feedback_dist":    feedback_dist,
-        "total_feedback":   total_feedback,
-        "top_products":     top_products,
+
+        # Top lists
+        "top_ai_products": top_ai_products,
+        "top_viewed":      top_viewed,
+        "top_purchased":   top_purchased,
+
+        # AI Analytics
+        "intent_stats":           intent_stats,
+        "scent_from_profiles":    scent_from_profiles,
+        "brand_from_profiles":    brand_from_profiles,
+        "profile_confidence_dist": profile_confidence_dist,
+        "avg_confidence":         round(float(avg_confidence), 2),
+        "registered_chats":       registered_chats,
+        "order_status":           order_status,
+
     }, json_dumps_params={"ensure_ascii": False})
 
 def ai_dashboard_page(request):
+    # Cho phép Django admin user
+    is_django_admin = bool(
+        getattr(request, "user", None)
+        and request.user.is_authenticated
+        and request.user.is_staff
+    )
+    # Cho phép custom session admin
     account_id = request.session.get("account_id")
-    account    = TaiKhoan.objects.filter(
-        id_TaiKhoan=account_id
-    ).first() if account_id else None
-    if not account or account.LoaiTaiKhoan not in ('admin', 'staff'):
-        return redirect('/')
-    return render(request, "app/ai_dashboard.html")
+    account = None
+    if account_id:
+        from app.models import TaiKhoan
+        account = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first()
+    is_custom_admin = bool(account and account.LoaiTaiKhoan in ('admin', 'staff'))
+
+    if not is_django_admin and not is_custom_admin:
+        return redirect('/admin/login/?next=/quan-tri/ai-dashboard/')
+
+    return render(request, "admin/ai_dashboard.html")
+
+
+# dang nhap
+def google_login(request):
+    import urllib.parse
+    params = {
+        'client_id': settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY,
+        'redirect_uri': 'http://localhost:8000/auth/google/callback/',
+        'response_type': 'code',
+        'scope': 'email profile',
+    }
+    url = 'https://accounts.google.com/o/oauth2/v2/auth?' + urllib.parse.urlencode(params)
+    return redirect(url)
+
+
+def google_callback(request):
+    code = request.GET.get('code')
+    if not code:
+        return redirect('auth-page')
+    
+    token_res = http_requests.post('https://oauth2.googleapis.com/token', data={
+        'code': code,
+        'client_id': settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY,
+        'client_secret': settings.SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET,
+        'redirect_uri': 'http://localhost:8000/auth/google/callback/',
+        'grant_type': 'authorization_code',
+    })
+    access_token = token_res.json().get('access_token')
+    if not access_token:
+        return redirect('auth-page')
+    
+    user_data = http_requests.get(
+        'https://www.googleapis.com/oauth2/v2/userinfo',
+        headers={'Authorization': f'Bearer {access_token}'}
+    ).json()
+    
+    email     = user_data.get('email', '')
+    full_name = user_data.get('name', '')
+    
+    account = TaiKhoan.objects.filter(Email__iexact=email).first()
+    if not account:
+        username = email.split('@')[0]
+        if TaiKhoan.objects.filter(Username__iexact=username).exists():
+            username = username + str(timezone.now().microsecond)
+        account = TaiKhoan.objects.create(
+            Username=username, MatKhau=None,
+            TenDangNhap=full_name, Email=email, SDT='',
+            LoaiTaiKhoan='customer', TrangThai_TaiKhoan='active',
+            NgayTao=timezone.now(),
+        )
+        KhachHang.objects.create(
+            id_TaiKhoan=account, TenKhachHang=full_name, DiaChi='', GioiTinh='',
+        )
+    
+    request.session['account_id']   = account.id_TaiKhoan
+    request.session['account_name'] = account.TenDangNhap
+    return redirect('/')
+
+
+def facebook_login(request):
+    import urllib.parse
+    params = {
+        'client_id': settings.SOCIAL_AUTH_FACEBOOK_KEY,
+        'redirect_uri': 'http://localhost:8000/auth/facebook/callback/',
+        'scope': 'public_profile',  # bỏ email, chỉ dùng public_profile
+        'response_type': 'code',
+    }
+    url = 'https://www.facebook.com/v18.0/dialog/oauth?' + urllib.parse.urlencode(params)
+    return redirect(url)
+
+
+def facebook_callback(request):
+    code = request.GET.get('code')
+    if not code:
+        return redirect('auth-page')
+    
+    token_res = http_requests.get('https://graph.facebook.com/v18.0/oauth/access_token', params={
+        'client_id': settings.SOCIAL_AUTH_FACEBOOK_KEY,
+        'client_secret': settings.SOCIAL_AUTH_FACEBOOK_SECRET,
+        'redirect_uri': 'http://localhost:8000/auth/facebook/callback/',
+        'code': code,
+    })
+    access_token = token_res.json().get('access_token')
+    if not access_token:
+        return redirect('auth-page')
+    
+    user_data = http_requests.get('https://graph.facebook.com/me', params={
+        'fields': 'id,name',  # bỏ email
+        'access_token': access_token,
+    }).json()
+    
+    email = user_data.get('email', '')
+    full_name = user_data.get('name', '')
+    fb_id = user_data.get('id', '')
+
+    # Nếu không có email → dùng fb_id làm định danh
+    if not email:
+        email = f'fb_{fb_id}@facebook.local'
+    
+    account = TaiKhoan.objects.filter(Email__iexact=email).first()
+    if not account:
+        username = email.split('@')[0]
+        if TaiKhoan.objects.filter(Username__iexact=username).exists():
+            username = username + str(timezone.now().microsecond)
+        account = TaiKhoan.objects.create(
+            Username=username, MatKhau=None,
+            TenDangNhap=full_name, Email=email, SDT='',
+            LoaiTaiKhoan='customer', TrangThai_TaiKhoan='active',
+            NgayTao=timezone.now(),
+        )
+        KhachHang.objects.create(
+            id_TaiKhoan=account, TenKhachHang=full_name, DiaChi='', GioiTinh='',
+        )
+    
+    request.session['account_id']   = account.id_TaiKhoan
+    request.session['account_name'] = account.TenDangNhap
+    return redirect('/')
+
+# ════════════════════════════════════════════════════════════════
+# TRACK VIEW — Gọi khi user vào trang chi tiết sản phẩm
+# ════════════════════════════════════════════════════════════════
+@csrf_exempt
+@require_POST
+def ai_track_product_view(request):
+    """
+    POST /api/ai/track-view/
+    Body: { "product_id": 9, "time_spent": 45 }
+ 
+    Ghi nhận lượt xem sản phẩm.
+    Guest  → session
+    Registered → DB
+    """
+    import json as _json
+    try:
+        data       = _json.loads(request.body)
+        product_id = int(data.get("product_id") or 0)
+        time_spent = int(data.get("time_spent") or 0) or None
+ 
+        if not product_id:
+            return JsonResponse({"ok": False})
+ 
+        # Kiểm tra sản phẩm tồn tại
+        if not SanPham.objects.filter(id_SanPham=product_id).exists():
+            return JsonResponse({"ok": False})
+ 
+        from app.ai.recently_viewed import track_view
+        track_view(request, product_id, time_spent)
+ 
+        return JsonResponse({"ok": True})
+    except Exception:
+        return JsonResponse({"ok": False})
+ 
+ 
+# ════════════════════════════════════════════════════════════════
+# RECENTLY VIEWED API — Section "Sản phẩm đã xem gần đây"
+# ════════════════════════════════════════════════════════════════
+def ai_recently_viewed_api(request):
+    """
+    GET /api/ai/recently-viewed/?exclude=<product_id>
+    Trả về danh sách sản phẩm đã xem gần đây.
+    """
+    try:
+        exclude_id = request.GET.get("exclude")
+        exclude_id = int(exclude_id) if exclude_id else None
+ 
+        from app.ai.recently_viewed import get_viewed_products
+        product_ids = get_viewed_products(request, limit=8, exclude_id=exclude_id)
+ 
+        if not product_ids:
+            return JsonResponse({"ok": True, "products": [], "count": 0})
+ 
+        products = list(
+            SanPham.objects
+            .select_related("id_ThuongHieu", "id_LoaiSanPham")
+            .filter(id_SanPham__in=product_ids)
+        )
+        product_map = {p.id_SanPham: p for p in products}
+        ordered = [product_map[pid] for pid in product_ids if pid in product_map]
+        cards   = _build_product_cards(ordered)
+ 
+        account_id = request.session.get("account_id")
+        return JsonResponse({
+            "ok":       True,
+            "products": cards,
+            "count":    len(cards),
+            "type":     "persistent" if account_id else "session",
+        }, json_dumps_params={"ensure_ascii": False})
+ 
+    except Exception:
+        return JsonResponse({"ok": True, "products": [], "count": 0})
+ 
+ 
+# ════════════════════════════════════════════════════════════════
+# GUEST RECOMMENDATION API — "Dành cho bạn" cho Guest
+# ════════════════════════════════════════════════════════════════
+def ai_guest_recommend_api(request):
+    """
+    GET /api/ai/guest-recommend/?current=<product_id>
+    Gợi ý cho Guest dựa trên session behavior.
+    """
+    try:
+        current_id = request.GET.get("current")
+        current_id = int(current_id) if current_id else None
+ 
+        from app.ai.personalize import get_guest_recommendations
+        product_ids = get_guest_recommendations(
+            request, current_product_id=current_id, top_n=8
+        )
+ 
+        if not product_ids:
+            return JsonResponse({"ok": True, "products": [], "type": "empty"})
+ 
+        products = list(
+            SanPham.objects
+            .select_related("id_ThuongHieu", "id_LoaiSanPham")
+            .filter(id_SanPham__in=product_ids)
+        )
+        product_map = {p.id_SanPham: p for p in products}
+        ordered = [product_map[pid] for pid in product_ids if pid in product_map]
+        cards   = _build_product_cards(ordered)
+ 
+        return JsonResponse({
+            "ok":       True,
+            "products": cards,
+            "type":     "session_based",
+        }, json_dumps_params={"ensure_ascii": False})
+ 
+    except Exception:
+        import traceback; traceback.print_exc()
+        return JsonResponse({"ok": True, "products": [], "type": "error"})
+ 
+ 
+# ════════════════════════════════════════════════════════════════
+# PERSONALIZED RECOMMEND — "Dành cho bạn" cho Registered User
+# (THAY THẾ hàm cũ personalized_recommend_api)
+# ════════════════════════════════════════════════════════════════
+def personalized_recommend_api(request):
+    account_id = request.session.get("account_id")
+    top_n = 8
+
+    if account_id:
+        from app.ai.personalize import get_personalized_recommendations
+        product_ids = get_personalized_recommendations(account_id, top_n=top_n, request=request)
+        rec_type = "personalized"
+    else:
+        from app.ai.personalize import get_guest_recommendations
+        product_ids = get_guest_recommendations(request, top_n=top_n)
+        rec_type = "session_trending"
+
+    # ── Fallback cuối: random sản phẩm nếu vẫn rỗng ──
+    if not product_ids:
+        product_ids = list(
+            SanPham.objects.order_by('?').values_list('id_SanPham', flat=True)[:top_n]
+        )
+        rec_type = "discovery"
+
+    if not product_ids:
+        return JsonResponse({"ok": True, "products": [], "type": "empty"})
+
+    products = list(
+        SanPham.objects
+        .select_related("id_ThuongHieu", "id_LoaiSanPham")
+        .filter(id_SanPham__in=product_ids)
+    )
+    product_map = {p.id_SanPham: p for p in products}
+    ordered = [product_map[pid] for pid in product_ids if pid in product_map]
+    cards   = _build_product_cards(ordered)
+
+    return JsonResponse({
+        "ok":       True,
+        "products": cards,
+        "type":     rec_type,
+    }, json_dumps_params={"ensure_ascii": False})
+ 
+ 
+# ════════════════════════════════════════════════════════════════
+# CHATBOT API — NÂNG CẤP (thay thế hàm cũ)
+# ════════════════════════════════════════════════════════════════
+@csrf_exempt
+@require_POST
+def chatbot_api(request):
+    """
+    POST /api/chatbot/
+    Body: { "message": "...", "history": [...], "session_id": "..." }
+    Streaming SSE + song song AI classify + RAG.
+    """
+    import json as _json
+    import os, random, uuid, concurrent.futures
+    from django.http import StreamingHttpResponse
+
+    try:
+        data            = _json.loads(request.body)
+        user_msg        = (data.get("message") or "").strip()
+        history         = data.get("history") or []
+        chat_session_id = data.get("session_id") or None
+
+        if not user_msg:
+            return JsonResponse({"ok": False, "error": "Tin nhắn không được trống."})
+
+        if len(history) > 20:
+            history = history[-20:]
+
+        account_id = request.session.get("account_id")
+
+        from app.ai.chatbot import (
+            _is_off_topic_keyword, _classify_intent_ai,
+            _INTENT_REPLIES, _extract_intent,
+            _build_user_context_prompt, _build_guest_context_prompt,
+            _update_guest_temp_profile, _load_recent_chatbot_history,
+            _save_chatbot_history, _update_profile_from_chatbot,
+            BASE_SYSTEM_PROMPT,
+        )
+        from app.ai.knowledge_base import retrieve
+        from groq import Groq
+
+        client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
+        if not chat_session_id:
+            chat_session_id = str(uuid.uuid4())[:16]
+
+        messages = list(history)
+
+        # ── Hàm trả JSON nhanh (off-topic, error) ─────────────
+        def quick_json(reply, intent_type, sugg=[]):
+            new_hist = messages + [
+                {"role": "user",      "content": user_msg},
+                {"role": "assistant", "content": reply},
+            ]
+            return JsonResponse({
+                "ok":          True,
+                "reply":       reply,
+                "history":     new_hist,
+                "suggestions": sugg,
+                "session_id":  chat_session_id,
+                "intent":      {"type": intent_type},
+            }, json_dumps_params={"ensure_ascii": False})
+
+        # ── Lớp 1: Keyword check (0ms) ─────────────────────────
+        if _is_off_topic_keyword(user_msg):
+            return quick_json(
+                random.choice(_INTENT_REPLIES["off_topic"]),
+                "off_topic"
+            )
+
+        # ── Lớp 2 + RAG song song ──────────────────────────────
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+            f_topic  = ex.submit(_classify_intent_ai, user_msg, client)
+            f_chunks = ex.submit(retrieve, user_msg, 5)
+            topic  = f_topic.result()
+            chunks = f_chunks.result()
+
+        # Off-topic từ AI classify
+        if topic in _INTENT_REPLIES:
+            reply = random.choice(_INTENT_REPLIES[topic])
+            if account_id:
+                _save_chatbot_history(account_id, chat_session_id,
+                                      user_msg, reply, {})
+            return quick_json(reply, topic)
+        
+        # ── Xử lý memory recall ──────────────────────────────
+        if topic == 'memory_recall':
+            if account_id:
+                db_history = _load_recent_chatbot_history(account_id, limit=6)
+                if db_history:
+                    messages = db_history  # inject history → fall through xuống RAG
+                else:
+                    reply = "Đây có vẻ là lần đầu chúng ta trò chuyện! 😊 Bạn đang tìm kiếm hương thơm cho dịp nào?"
+                    return quick_json(reply, "memory_recall")
+            else:
+                reply = "Mình chưa lưu lịch sử trò chuyện cho khách chưa đăng nhập bạn ơi! 😊 Đăng nhập để mình nhớ bạn tốt hơn nhé. Bạn đang tìm nước hoa gì?"
+                return quick_json(reply, "memory_recall")
+            # Có history → tiếp tục xuống RAG + Generate bình thường
+
+        # ── Lớp 3: Build context ────────────────────────────────
+        intent = _extract_intent(user_msg)
+
+        context_lines = []
+        for i, c in enumerate(chunks, 1):
+            prefix = "[SẢN PHẨM]" if c["type"] == "product" else "[BÀI VIẾT]"
+            context_lines.append(f"{i}. {prefix} {c['name']}: {c['text']}")
+        rag_context = "\n\n".join(context_lines)
+
+        if account_id:
+            personal_context = _build_user_context_prompt(account_id)
+        elif request:
+            _update_guest_temp_profile(request, intent)
+            personal_context = _build_guest_context_prompt(request)
+        else:
+            personal_context = ""
+
+        full_system = (
+            BASE_SYSTEM_PROMPT + personal_context
+            + "\n\n" + "="*50
+            + "\nDỮ LIỆU SẢN PHẨM CỬA HÀNG AMI PERFUMERY:\n"
+            + "="*50 + "\n" + rag_context + "\n" + "="*50
+        )
+
+        if account_id and not messages:
+            db_hist = _load_recent_chatbot_history(account_id, limit=6)
+            if db_hist:
+                messages = db_hist
+
+        messages.append({"role": "user", "content": user_msg})
+
+        # Suggestions với ảnh + giá (giữ nguyên logic cũ)
+        suggested = [c for c in chunks if c["type"] == "product"][:3]
+        if suggested:
+            pid_list = [s["id"] for s in suggested if s.get("type") == "product"]
+            if pid_list:
+                img_map  = _product_image_map(pid_list)
+                var_map  = _first_variant_map(pid_list)
+                for s in suggested:
+                    pid = s.get("id")
+                    imgs = img_map.get(pid, [])
+                    s["image"] = imgs[0] if imgs else ""
+                    v = var_map.get(pid)
+                    s["price"] = _format_currency(v.GiaBan) if (
+                        v and v.GiaBan
+                    ) else ""
+
+        # ── Streaming ───────────────────────────────────────────
+        def stream_gen():
+            import json as j
+
+            # 1. Gửi meta TRƯỚC (suggestions + session_id)
+            yield f"data: {j.dumps({'t':'meta','suggestions_data':suggested,'session_id':chat_session_id,'intent':intent}, ensure_ascii=False)}\n\n"
+
+            # 2. Stream từng token
+            stream = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                max_tokens=1024,
+                temperature=0.7,
+                stream=True,
+                messages=[{"role":"system","content":full_system}] + messages,
+            )
+
+            full_reply = ""
+            for chunk in stream:
+                token = chunk.choices[0].delta.content or ""
+                if token:
+                    full_reply += token
+                    yield f"data: {j.dumps({'t':'token','text':token}, ensure_ascii=False)}\n\n"
+
+            # 3. Lưu DB
+            if account_id:
+                _save_chatbot_history(account_id, chat_session_id,
+                                    user_msg, full_reply, intent)
+                _update_profile_from_chatbot(account_id, intent)
+
+            # 4. Kiểm tra show_products SAU KHI có full_reply
+            _SHOW_PRODUCT_TRIGGERS = [
+                'gợi ý', 'đề xuất', 'giới thiệu', 'recommend',
+                'sản phẩm', 'chai', 'mùi hương này', 'bạn có thể xem',
+                'tham khảo', 'phù hợp với bạn', 'dưới đây',
+            ]
+            show_products = any(kw in full_reply.lower() for kw in _SHOW_PRODUCT_TRIGGERS)
+
+            # 5. Gửi done với show_products
+            new_hist = messages + [{"role":"assistant","content":full_reply}]
+            yield f"data: {j.dumps({'t':'done','history':new_hist,'show_products':show_products}, ensure_ascii=False)}\n\n"
+
+        resp = StreamingHttpResponse(stream_gen(), content_type="text/event-stream")
+        resp["Cache-Control"]      = "no-cache"
+        resp["X-Accel-Buffering"]  = "no"
+        return resp
+
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return JsonResponse({"ok": False, "error": "Lỗi hệ thống."})
+ 
+ 
+# ════════════════════════════════════════════════════════════════
+# AI USER PROFILE API — Cho trang profile / cá nhân hóa
+# ════════════════════════════════════════════════════════════════
+def ai_user_profile_api(request):
+    """
+    GET /api/ai/my-profile/
+    Trả về AI preference profile của user đang đăng nhập.
+    """
+    account_id = request.session.get("account_id")
+    if not account_id:
+        return JsonResponse({"ok": False, "error": "Chưa đăng nhập"}, status=401)
+ 
+    try:
+        from app.models import AIUserProfile
+        profile = AIUserProfile.objects.filter(
+            id_TaiKhoan_id=account_id
+        ).first()
+ 
+        if not profile:
+            return JsonResponse({"ok": True, "profile": None})
+ 
+        return JsonResponse({
+            "ok": True,
+            "profile": {
+                "nhom_mua":       profile.get_nhom_mua(),
+                "thuong_hieu":    profile.get_thuong_hieu(),
+                "gia_min":        float(profile.GiaMin or 0),
+                "gia_max":        float(profile.GiaMax or 0),
+                "gioi_tinh":      profile.GioiTinhUuTien,
+                "dip_dung":       profile.DipDungUuTien,
+                "confidence":     round(profile.ConfidenceScore, 2),
+                "ngay_cap_nhat":  profile.NgayCapNhat.strftime("%d/%m/%Y") if profile.NgayCapNhat else None,
+            }
+        }, json_dumps_params={"ensure_ascii": False})
+ 
+    except Exception:
+        return JsonResponse({"ok": False, "error": "Lỗi server"})
+ 

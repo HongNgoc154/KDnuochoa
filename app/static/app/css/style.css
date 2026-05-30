@@ -2101,15 +2101,19 @@ body.filter-open .filter-sidebar { transform: translateX(0); }
   position: fixed;
   bottom: 28px;
   right: 28px;
+  left: auto !important;
+  top: auto !important; 
   z-index: 9000;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 12px;
+  pointer-events: none;
 }
 
 /* ─── TRIGGER BUTTON ─── */
 .ami-chat__trigger {
+  pointer-events: auto;
   position: relative;
   width: 56px;
   height: 56px;
@@ -2174,6 +2178,7 @@ body.filter-open .filter-sidebar { transform: translateX(0); }
 
 /* ─── PANEL ─── */
 .ami-chat__panel {
+  pointer-events: none;
   width: 360px;
   max-height: 560px;
   background: var(--chat-surface);
@@ -2509,3 +2514,69 @@ body.filter-open .filter-sidebar { transform: translateX(0); }
   .ami-chat__panel { width: calc(100vw - 32px); max-height: 70vh; }
 }
 
+/* ═══════════════════════════════════
+   DARK MODE — toàn bộ website
+   ═══════════════════════════════════ */
+[data-theme="dark"] {
+  --bg:           #141810;
+  --surface:      #1c2010;
+  --surface2:     #222818;
+  --border:       rgba(154,173,98,.15);
+  --text:         #e8e2d4;
+  --text-light:   #a8a490;
+  --text-muted:   #6a6a58;
+  --shadow-sm:    0 2px 12px rgba(0,0,0,.3);
+  --shadow-md:    0 8px 32px rgba(0,0,0,.35);
+  color-scheme: dark;
+}
+
+/* Header */
+[data-theme="dark"] #site-header {
+  background: #1c2010;
+  border-bottom-color: rgba(154,173,98,.12);
+}
+[data-theme="dark"] .logo { color: #EBF6C4; }
+
+/* Navbar */
+[data-theme="dark"] #navbar {
+  background: #141810;
+  border-bottom-color: rgba(154,173,98,.1);
+}
+[data-theme="dark"] #navbar a { color: #a8a490; }
+[data-theme="dark"] #navbar a:hover { color: #EBF6C4; }
+
+/* Footer */
+[data-theme="dark"] footer {
+  background: #0e1209;
+  color: #a8a490;
+  border-top-color: rgba(154,173,98,.1);
+}
+
+/* Cards sản phẩm */
+[data-theme="dark"] .product-card {
+  background: #1c2010;
+  border-color: rgba(154,173,98,.12);
+}
+[data-theme="dark"] .product-card h3,
+[data-theme="dark"] .product-card .product-name { color: #e8e2d4; }
+
+/* Input, form */
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+  background: #222818;
+  border-color: rgba(154,173,98,.2);
+  color: #e8e2d4;
+}
+
+/* Mega menu */
+[data-theme="dark"] .mega-dropdown {
+  background: #1c2010;
+  border-color: rgba(154,173,98,.15);
+}
+
+/* Body background */
+[data-theme="dark"] body {
+  background: #141810;
+  color: #e8e2d4;
+}

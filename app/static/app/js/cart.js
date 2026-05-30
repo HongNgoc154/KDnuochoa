@@ -105,6 +105,7 @@ function showCartToast(name, qty) {
     if (!btn) return;
     if (document.querySelector('[data-cart-app]') && btn.closest('[data-cart-items]')) return;
     e.stopPropagation();
+    e.stopImmediatePropagation();
     const productId = btn.dataset.productId || '0';
     const name      = btn.dataset.productName || btn.closest('article')?.querySelector('h3,h4')?.textContent?.trim() || 'Sản phẩm';
     const price     = parseInt(btn.dataset.productPrice || '0') || 0;
@@ -435,3 +436,26 @@ function showCartToast(name, qty) {
 /* Badge */
 document.addEventListener('DOMContentLoaded', updateCartBadge);
 if (document.readyState !== 'loading') updateCartBadge();
+
+// Khi xóa 1 sản phẩm khỏi giỏ
+function removeCartItem(key) {
+  let cart = JSON.parse(localStorage.getItem('ami_cart') || '[]');
+  cart = cart.filter(i => i.key !== key);
+  localStorage.setItem('ami_cart', JSON.stringify(cart));
+  syncCartBadge();
+}
+
+// Khi xóa hết giỏ hàng
+function clearCart() {
+  localStorage.removeItem('ami_cart');
+  syncCartBadge();
+}
+
+function syncCartBadge() {
+  const cart = JSON.parse(localStorage.getItem('ami_cart') || '[]');
+  const total = cart.reduce((sum, i) => sum + Number(i.qty || 0), 0);
+  document.querySelectorAll('[data-cart-badge]').forEach(b => {
+    b.textContent = String(total);
+    b.style.display = total > 0 ? '' : 'none';
+  });
+}

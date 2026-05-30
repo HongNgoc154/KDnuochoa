@@ -65,15 +65,15 @@ class SanPham(models.Model):
     def __str__(self):
         return self.TenSanPham
     
-@receiver(post_save, sender=SanPham)
-@receiver(post_delete, sender=SanPham)
-def invalidate_ai_cache(sender, **kwargs):
-    """Tự động xóa cache AI khi sản phẩm thay đổi."""
-    try:
-        from app.ai.recommender import invalidate_cache
-        invalidate_cache()
-    except Exception:
-        pass
+# @receiver(post_save, sender=SanPham)
+# @receiver(post_delete, sender=SanPham)
+# def invalidate_ai_cache(sender, **kwargs):
+#     """Tự động xóa cache AI khi sản phẩm thay đổi."""
+#     try:
+#         from app.ai.recommender import invalidate_cache
+#         invalidate_cache()
+#     except Exception:
+#         pass
 
 
 class SanPhamNhomHuong(models.Model):
@@ -718,3 +718,117 @@ class ChatbotFeedback(models.Model):
     class Meta:
         managed  = False
         db_table = 'ChatbotFeedback'
+
+# ================================================================
+# THÊM VÀO CUỐI FILE app/models.py
+# AI MODELS — Recently Viewed, User Profile, Chatbot History
+# ================================================================
+
+import json as _json_module
+
+
+# ===================== LỊCH SỬ XEM SẢN PHẨM =====================
+class LichSuXemSanPham(models.Model):
+    """
+    Lưu lịch sử sản phẩm đã xem của Registered User.
+    Dùng cho section 'Sản phẩm đã xem gần đây' và Behavioral AI.
+    """
+    id_LichSu   = models.AutoField(primary_key=True)
+    id_TaiKhoan = models.ForeignKey(
+        'TaiKhoan', on_delete=models.CASCADE,
+        db_column='id_TaiKhoan'
+    )
+    id_SanPham  = models.ForeignKey(
+        'SanPham', on_delete=models.CASCADE,
+        db_column='id_SanPham'
+    )
+    NgayXem     = models.DateTimeField(auto_now_add=True)
+    ThoiGianXem = models.IntegerField(null=True, blank=True)  # giây
+    SoLanXem    = models.IntegerField(default=1)
+
+    class Meta:
+        managed  = False
+        db_table = 'LichSuXemSanPham'
+        ordering = ['-NgayXem']
+
+    def __str__(self):
+        return f"User {self.id_TaiKhoan_id} xem SP {self.id_SanPham_id}"
+
+
+# ===================== AI USER PROFILE =====================
+class AIUserProfile(models.Model):
+    """
+    Profile hành vi AI được học dài hạn cho Registered User.
+    Tự động cập nhật khi user tương tác.
+    """
+    id_Profile           = models.AutoField(primary_key=True)
+    id_TaiKhoan          = models.OneToOneField(
+        'TaiKhoan', on_delete=models.CASCADE,
+        db_column='id_TaiKhoan', related_name='ai_profile'
+    )
+    NhomMuaYeuThich      = models.CharField(max_length=500, null=True, blank=True)
+    ThuongHieuYeuThich   = models.CharField(max_length=500, null=True, blank=True)
+    GiaMin               = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    GiaMax               = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    GioiTinhUuTien       = models.CharField(max_length=20, null=True, blank=True)
+    DipDungUuTien        = models.CharField(max_length=100, null=True, blank=True)
+    NongDoUuTien         = models.CharField(max_length=50, null=True, blank=True)
+    MuaUuTien            = models.CharField(max_length=50, null=True, blank=True)
+    ConfidenceScore      = models.FloatField(default=0.0)
+    SoLanCapNhat         = models.IntegerField(default=0)
+    NgayTao              = models.DateTimeField(auto_now_add=True)
+    NgayCapNhat          = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        managed  = False
+        db_table = 'AIUserProfile'
+
+    # ── Helpers để đọc/ghi JSON fields ──
+    def get_nhom_mua(self) -> list:
+        try:
+            return _json_module.loads(self.NhomMuaYeuThich or '[]')
+        except Exception:
+            return []
+
+    def set_nhom_mua(self, lst: list):
+        self.NhomMuaYeuThich = _json_module.dumps(lst, ensure_ascii=False)
+
+    def get_thuong_hieu(self) -> list:
+        try:
+            return _json_module.loads(self.ThuongHieuYeuThich or '[]')
+        except Exception:
+            return []
+
+    def set_thuong_hieu(self, lst: list):
+        self.ThuongHieuYeuThich = _json_module.dumps(lst, ensure_ascii=False)
+
+    def __str__(self):
+        return f"AIProfile[User {self.id_TaiKhoan_id}] confidence={self.ConfidenceScore:.2f}"
+
+
+# ===================== CHATBOT HISTORY =====================
+class ChatbotHistory(models.Model):
+    """
+    Lưu lịch sử hội thoại chatbot của Registered User.
+    Cho phép AI học hành vi dài hạn và cá nhân hóa sâu hơn.
+    """
+    id_History      = models.AutoField(primary_key=True)
+    id_TaiKhoan     = models.ForeignKey(
+        'TaiKhoan', on_delete=models.CASCADE,
+        db_column='id_TaiKhoan'
+    )
+    SessionId       = models.CharField(max_length=100)
+    Role            = models.CharField(max_length=20)   # 'user' | 'assistant'
+    NoiDung         = models.TextField()
+    NgayTao         = models.DateTimeField(auto_now_add=True)
+    ExtractedIntent = models.CharField(max_length=200, null=True, blank=True)
+
+    class Meta:
+        managed  = False
+        db_table = 'ChatbotHistory'
+        ordering = ['NgayTao']
+
+    def __str__(self):
+        return f"[{self.Role}] User {self.id_TaiKhoan_id} @ {self.SessionId[:8]}"
+    
+    

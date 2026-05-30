@@ -239,6 +239,138 @@
     hide('pn_bt_bang_section');
   };
 
+  /* Hien form them bien the moi cho SP hien co */
+window.pnShowAddNewBT = function () {
+  var form = document.getElementById('pn_add_bt_form');
+
+  // Nếu chưa tồn tại thì tạo mới và gắn vào pn_bt_bang_section
+  if (!form) {
+    form = document.createElement('div');
+    form.id = 'pn_add_bt_form';
+    form.style.cssText =
+      'margin-top:12px;background:#f5fced;border:1.5px solid #c8e6a0;' +
+      'border-radius:10px;padding:14px;';
+    form.innerHTML =
+      '<div style="font-size:11px;font-weight:700;text-transform:uppercase;' +
+      'letter-spacing:1px;color:#4B672D;margin-bottom:10px;">➕ Biến thể mới cho sản phẩm này</div>' +
+      '<div class="pn-row" style="margin-bottom:8px;">' +
+        '<div class="pn-f"><label>Thuộc tính</label>' +
+          '<input type="text" id="addbt_attr_ten" placeholder="VD: Dung tích"></div>' +
+        '<div class="pn-f"><label>Giá trị</label>' +
+          '<input type="text" id="addbt_attr_val" placeholder="VD: 75ml"></div>' +
+      '</div>' +
+      '<div class="pn-row pn-row-3" style="margin-bottom:10px;">' +
+        '<div class="pn-f"><label>SKU</label>' +
+          '<input type="text" id="addbt_sku" placeholder="SKU-NEW"></div>' +
+        '<div class="pn-f"><label>Giá nhập (₫)</label>' +
+          '<input type="number" id="addbt_gia_nhap" min="0" value="0"></div>' +
+        '<div class="pn-f"><label>Giá bán (₫)</label>' +
+          '<input type="number" id="addbt_gia_ban" min="0" value="0"></div>' +
+        '<div class="pn-f"><label>Số lượng nhập</label>' +
+          '<input type="number" id="addbt_so_luong" min="1" value="1"></div>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
+        '<button class="pn-btn pn-btn-s pn-btn-sm" onclick="pnConfirmAddNewBT()">✓ Xác nhận</button>' +
+        '<button class="pn-btn pn-btn-sm" style="background:#eee;color:#666;" ' +
+          'onclick="document.getElementById(\'pn_add_bt_form\').style.display=\'none\'">Hủy</button>' +
+      '</div>';
+
+    var section = document.getElementById('pn_bt_bang_section');
+    if (section) {
+      section.appendChild(form);
+    } else {
+      document.body.appendChild(form);
+    }
+  }
+
+  // Reset fields
+  document.getElementById('addbt_attr_ten').value  = '';
+  document.getElementById('addbt_attr_val').value  = '';
+  document.getElementById('addbt_sku').value        = '';
+  document.getElementById('addbt_gia_nhap').value   = '0';
+  document.getElementById('addbt_gia_ban').value    = '0';
+  document.getElementById('addbt_so_luong').value   = '1';
+
+  form.style.display = '';
+  document.getElementById('addbt_attr_ten').focus();
+};
+
+window.pnConfirmAddNewBT = function () {
+  if (!selSpId || !selSpName) {
+    alert('Chưa chọn sản phẩm!');
+    return;
+  }
+  var atTen  = document.getElementById('addbt_attr_ten').value.trim();
+  var atVal  = document.getElementById('addbt_attr_val').value.trim();
+  var sku    = document.getElementById('addbt_sku').value.trim();
+  var gn     = parseFloat(document.getElementById('addbt_gia_nhap').value) || 0;
+  var gb     = parseFloat(document.getElementById('addbt_gia_ban').value)  || 0;
+  var sl     = parseInt(document.getElementById('addbt_so_luong').value)   || 1;
+
+  if (!atVal) { alert('Vui lòng nhập giá trị thuộc tính (VD: 75ml)!'); return; }
+  if (sl <= 0) { alert('Số lượng phải lớn hơn 0!'); return; }
+
+  // Thêm vào newProducts — gắn với SP đang chọn qua selSpId
+  // Tìm xem SP này đã có trong newProducts chưa
+  var npKey = '__existing__' + selSpId;
+  var npIdx = newProducts.findIndex(function(p){ return p._spId === selSpId; });
+
+  var btEntry = {
+    sku:    sku || (selSpName + '-' + atVal),
+    attrs:  atTen && atVal ? [{ ten_thuoc_tinh: atTen, gia_tri: atVal }] : [],
+    gia_nhap: gn,
+    gia_ban:  gb,
+    so_luong: sl,
+  };
+
+  if (npIdx >= 0) {
+    // Đã có entry cho SP này → append biến thể
+    newProducts[npIdx].bien_the.push(btEntry);
+  } else {
+    // Tạo mới entry — dùng ten_san_pham + _spId để backend tìm đúng SP
+    newProducts.push({
+      ten_san_pham: selSpName,
+      _spId:        selSpId,    // dùng nội bộ để track
+      bien_the:     [btEntry],
+    });
+  }
+
+  // Thêm vào rows để hiển thị trên phiếu
+  rows.push({
+    bien_the_id: null,
+    san_pham:    selSpName,
+    thuong_hieu: '',
+    sku:         sku || atVal || 'NEW',
+    gia_nhap:    gn,
+    so_luong:    sl,
+    is_new:      true,
+  });
+
+  renderTable();
+  updateSummary();
+
+  // Thêm row preview vào bảng biến thể (để thấy ngay)
+  var tbody = document.getElementById('pn_bt_bang_tbody');
+  if (tbody) {
+    var tr = document.createElement('tr');
+    tr.style.background = '#f0fce8';
+    tr.innerHTML =
+      '<td>' +
+        '<code style="background:#d4f0b0;padding:2px 7px;border-radius:4px;font-size:11px;">'
+        + (sku || atVal || 'NEW') + '</code>' +
+        '<div style="font-size:10px;color:#4B672D;margin-top:2px;">✨ Biến thể mới · ' + (atTen ? atTen + ': ' : '') + atVal + '</div>' +
+      '</td>' +
+      '<td style="text-align:right;color:#4B672D;font-size:12px;">' + fmtP(gb) + '</td>' +
+      '<td style="text-align:right;">—</td>' +
+      '<td style="text-align:right;"><input type="number" class="bt-gia-nhap bt-input" value="' + gn + '" disabled></td>' +
+      '<td style="text-align:right;"><input type="number" class="bt-so-luong bt-input" value="' + sl + '" disabled></td>' +
+      '<td style="text-align:right;font-weight:600;color:#4B672D;">' + fmtP(gn * sl) + '</td>';
+    tbody.appendChild(tr);
+  }
+
+  document.getElementById('pn_add_bt_form').style.display = 'none';
+  alert('Đã thêm biến thể mới vào phiếu! Nhấn "Xong → Đưa vào phiếu" khi hoàn tất.');
+};
   /* ══════════════════════════════════════
      SYNC PHIEU TRAI
   ══════════════════════════════════════ */

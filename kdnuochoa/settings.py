@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'nested_admin',
     'ckeditor',
     'ckeditor_uploader',
+    'social_django',
 ]
 
 MIDDLEWARE = [
@@ -73,6 +74,8 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'app.context_processors.global_data',
+                'social_django.context_processors.backends',
+                'social_django.context_processors.login_redirect',
             ],
         },
     },
@@ -97,7 +100,7 @@ DATABASES = {
         },
     }
 }
-
+ADMIN_NOTIFY_EMAIL = "lhngocc1304@gmail.com"
 # ═══════════════════════════════════════════════════════
 # STATIC & MEDIA
 # ═══════════════════════════════════════════════════════
@@ -138,6 +141,52 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
+
+
+# facebook/google
+# AUTHENTICATION_BACKENDS = (
+#     'social_core.backends.facebook.FacebookOAuth2',
+#     'social_core.backends.google.GoogleOAuth2',
+#     'django.contrib.auth.backends.ModelBackend',
+# )
+SOCIAL_AUTH_BACKEND_CLASSES = [
+    'social_core.backends.google.GoogleOAuth2',
+    'social_core.backends.facebook.FacebookOAuth2',
+]
+SOCIAL_AUTH_ENABLED_BACKENDS = (
+    'social_core.backends.facebook.FacebookOAuth2',
+    'social_core.backends.google.GoogleOAuth2',
+)
+
+# Google OAuth credentials
+SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE  = ['email', 'profile']
+
+# Facebook OAuth credentials
+SOCIAL_AUTH_FACEBOOK_SCOPE  = ['email', 'public_profile']
+SOCIAL_AUTH_FACEBOOK_PROFILE_EXTRA_PARAMS = {'fields': 'id,name,email,picture'}
+
+# Pipeline
+# SOCIAL_AUTH_PIPELINE = (
+#     'social_core.pipeline.social_auth.social_details',
+#     'social_core.pipeline.social_auth.social_uid',
+#     'social_core.pipeline.social_auth.auth_allowed',
+#     'social_core.pipeline.social_auth.social_user',
+#     'social_core.pipeline.user.get_username',
+#     'social_core.pipeline.user.create_user',
+#     'social_core.pipeline.social_auth.associate_user',
+#     'social_core.pipeline.social_auth.load_extra_data',
+#     'social_core.pipeline.user.user_details',
+#     'app.pipeline.save_ami_session',         # pipeline tùy chỉnh
+# )
+
+LOGIN_REDIRECT_URL  = '/'
+LOGOUT_REDIRECT_URL = '/'
+LOGIN_URL           = '/auth/'
+# SOCIAL_AUTH_URL_NAMESPACE = 'social'
+# Sau khi social login xong → redirect về đây
+# SOCIAL_AUTH_LOGIN_REDIRECT_URL = '/'
+SOCIAL_AUTH_NEW_USER_REDIRECT_URL = '/'
+
 
 # ═══════════════════════════════════════════════════════
 # INTERNATIONALISATION

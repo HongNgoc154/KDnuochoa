@@ -315,6 +315,13 @@
 ul.object-tools{list-style:none;padding:0;margin:0 0 16px;display:flex;gap:8px;justify-content:flex-end;}
 ul.object-tools a{display:inline-flex;align-items:center;gap:6px;padding:9px 22px;border-radius:40px;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;text-decoration:none;border:1.5px solid rgba(75,103,45,.3);color:var(--olive);background:var(--white);transition:.2s;}
 ul.object-tools a:hover{background:var(--olive);color:var(--sage);}
+
+.money-text{
+  margin-top:4px;
+  font-size:11px;
+  color:#4B672D;
+  font-style:italic;
+}
 </style>
 {% endblock %}
 
@@ -579,96 +586,87 @@ ul.object-tools a:hover{background:var(--olive);color:var(--sage);}
   </div>
 
   <!-- ══ 4. BIẾN THỂ SẢN PHẨM ══ -->
-  <div class="sp-section">
-    <div class="sp-section-head">
-      <span class="sp-section-icon">📐</span>
-      <span class="sp-section-title">Biến Thể Sản Phẩm</span>
-      <span id="bt-count" style="margin-left:auto;background:var(--olive);color:var(--sage);border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700;">0 biến thể</span>
-    </div>
-    <div class="sp-section-body">
-      <div class="bt-wrap">
-
-        <!-- TRÁI: Danh sách biến thể đã thêm -->
-        <div class="bt-panel">
-          <div class="bt-panel-head">
-            <span>📋</span> Danh sách biến thể
-          </div>
-          <div class="bt-table-wrap">
-            <table class="bt-table" id="bt-table">
-              <thead>
-                <tr>
-                  <th>Thuộc tính</th>
-                  <th>Giá trị</th>
-                  <th>SKU</th>
-                  <th>Giá nhập</th>
-                  <th>Giá bán</th>
-                  <th>Tồn kho</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody id="bt-tbody">
-                <tr id="bt-empty-row">
-                  <td colspan="7" class="bt-empty">Chưa có biến thể nào. Thêm từ bên phải →</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- PHẢI: Form thêm biến thể -->
-        <div class="bt-panel">
-          <div class="bt-panel-head">
-            <span>➕</span> Thêm biến thể mới
-          </div>
-          <div class="bt-picker">
-
-            <div class="bt-picker-row">
-              <div class="sp-field">
-                <label class="sp-label" style="margin-bottom:4px;">Thuộc Tính <span class="req">*</span></label>
-                <select id="bt_ThuocTinh" class="sp-select" style="padding:9px 12px;">
-                  <option value="">⏳ Đang tải danh sách...</option>
-                </select>
-              </div>
-              <div class="sp-field">
-                <label class="sp-label" style="margin-bottom:4px;">Giá Trị <span class="req">*</span></label>
-                <select id="bt_GiaTriThuocTinh" class="sp-select" style="padding:9px 12px;">
-                  <option value="">-- Chọn giá trị --</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="bt-picker-row">
-              <div class="sp-field">
-                <label class="sp-label" style="margin-bottom:4px;">SKU</label>
-                <input type="text" id="bt_Sku" class="sp-input" style="padding:9px 12px;" placeholder="VD: CHANEL-NO5-50ML">
-              </div>
-              <div class="sp-field">
-                <label class="sp-label" style="margin-bottom:4px;">Tồn Kho <span class="req">*</span></label>
-                <input type="number" id="bt_SoLuong" class="sp-input" style="padding:9px 12px;" placeholder="0" min="0" value="0">
-              </div>
-            </div>
-
-            <div class="bt-picker-row">
-              <div class="sp-field">
-                <label class="sp-label" style="margin-bottom:4px;">Giá Nhập (₫) <span class="req">*</span></label>
-                <input type="number" id="bt_GiaNhap" class="sp-input" style="padding:9px 12px;" placeholder="VD: 500000" min="0">
-              </div>
-              <div class="sp-field">
-                <label class="sp-label" style="margin-bottom:4px;">Giá Bán (₫) <span class="req">*</span></label>
-                <input type="number" id="bt_GiaBan" class="sp-input" style="padding:9px 12px;" placeholder="VD: 900000" min="0">
-              </div>
-            </div>
-
-            <button type="button" class="bt-add-btn" onclick="addBienThe()">
-              ＋ Thêm biến thể vào danh sách
-            </button>
-          </div>
-        </div>
-      </div><!-- /bt-wrap -->
-
-      <div id="bt-hidden-inputs"></div>
-    </div>
+<div class="sp-section">
+  <div class="sp-section-head">
+    <span class="sp-section-icon">📐</span>
+    <span class="sp-section-title">Biến Thể Sản Phẩm</span>
+    <span id="bt-count" style="margin-left:auto;background:var(--olive);color:var(--sage);
+          border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700;">
+      {{ existing_bienthe|length }} biến thể
+    </span>
   </div>
+  <div class="sp-section-body">
+
+    {% if existing_bienthe %}
+    <p style="font-size:12px;color:var(--text3);margin-bottom:14px;">
+      Biến thể được tạo qua <strong>Phiếu nhập kho</strong>.
+      Tại đây bạn chỉ cần cập nhật <strong>Giá bán</strong> cho từng biến thể.
+    </p>
+    <div class="bt-table-wrap">
+      <table class="bt-table" id="bt-table">
+        <thead>
+          <tr>
+            <th>Thuộc tính</th>
+            <th>Giá trị</th>
+            <th>SKU</th>
+            <th>Giá nhập</th>
+            <th>Tồn kho</th>
+            <th>Giá bán (₫) <span style="color:#c62828;">*</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for bt in existing_bienthe %}
+          <tr>
+            <td>
+              <span class="bt-badge-attr">{{ bt.thuoc_tinh_name|default:"—" }}</span>
+            </td>
+            <td>
+              <span class="bt-badge">{{ bt.gia_tri_name|default:"—" }}</span>
+            </td>
+            <td style="font-family:monospace;font-size:11px;color:var(--text3);">
+              {{ bt.Sku|default:"—" }}
+            </td>
+            <td style="color:var(--text3);">
+              {{ bt.GiaNhap|floatformat:0 }}₫
+            </td>
+            <td>
+              <span style="font-weight:600;color:{% if bt.SoLuong < 10 %}#c62828{% else %}#2e7d32{% endif %};">
+                {{ bt.SoLuong }}
+              </span>
+            </td>
+            <td>
+              <input type="text"
+                    name="bienthe_gia_ban_{{ bt.pk }}"
+                    value="{{ bt.GiaBan|floatformat:0 }}"
+                    class="sp-input money-input"
+                    style="padding:7px 10px;font-size:13px;"
+                    placeholder="Nhập giá bán..."
+                    oninput="formatMoneyInput(this)">
+              <div class="money-text"></div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:32px 20px;color:var(--text4);
+                border:2px dashed var(--stone);border-radius:var(--rsm);">
+      <div style="font-size:32px;margin-bottom:8px;">📦</div>
+      <div style="font-size:14px;font-weight:600;color:var(--text3);margin-bottom:6px;">
+        Chưa có biến thể nào
+      </div>
+      <div style="font-size:12px;">
+        Biến thể được tạo tự động khi lập
+        <a href="{% url 'myadmin:app_phieunhap_add' %}"
+           style="color:var(--olive);font-weight:600;">Phiếu nhập kho</a>
+      </div>
+    </div>
+    {% endif %}
+
+    <div id="bt-hidden-inputs"></div>
+  </div>
+</div>
 
   <!-- ══ 5. HÌNH ẢNH SẢN PHẨM ══ -->
   <div class="sp-section">
@@ -1066,7 +1064,7 @@ var EXISTING_BIENTHE = [
 ];
 
 /* Load thuộc tính list qua API */
-function initThuocTinhSelect() {
+{% comment %} function initThuocTinhSelect() {
   var sel = document.getElementById('bt_ThuocTinh');
 
   /* Gán onchange ngay từ đầu — trước khi fetch */
@@ -1099,9 +1097,9 @@ function initThuocTinhSelect() {
       console.error('[BienThe] fetch thuoc-tinh error:', e);
       sel.innerHTML = '<option value="">Lỗi kết nối</option>';
     });
-}
+} {% endcomment %}
 
-function loadGiaTriThuocTinh() {
+{% comment %} function loadGiaTriThuocTinh() {
   var ttId = document.getElementById('bt_ThuocTinh').value;
   var sel  = document.getElementById('bt_GiaTriThuocTinh');
   sel.innerHTML = '<option value="">⏳ Đang tải…</option>';
@@ -1142,7 +1140,7 @@ function loadGiaTriThuocTinh() {
       console.error('[BienThe] fetch error:', e);
       sel.innerHTML = '<option value="">Lỗi kết nối — xem Console</option>';
     });
-}
+} {% endcomment %}
 
 function fillGiaTriSelect(sel, items) {
   sel.innerHTML = '<option value="">-- Chọn giá trị --</option>';
@@ -1163,7 +1161,7 @@ function fmtMoney(val) {
   return n.toLocaleString('vi-VN') + '₫';
 }
 
-function addBienThe() {
+{% comment %} function addBienThe() {
   var ttSel  = document.getElementById('bt_ThuocTinh');
   var gtSel  = document.getElementById('bt_GiaTriThuocTinh');
   var sku    = document.getElementById('bt_Sku').value.trim();
@@ -1200,14 +1198,14 @@ function addBienThe() {
   document.getElementById('bt_GiaNhap').value = '';
   document.getElementById('bt_GiaBan').value = '';
   document.getElementById('bt_SoLuong').value = '0';
-}
+} {% endcomment %}
 
-function removeBienThe(idx) {
+{% comment %} function removeBienThe(idx) {
   bienTheList.splice(idx, 1);
   renderBienThe();
-}
+} {% endcomment %}
 
-function renderBienThe() {
+{% comment %} function renderBienThe() {
   var tbody = document.getElementById('bt-tbody');
   var hidden = document.getElementById('bt-hidden-inputs');
   var countEl = document.getElementById('bt-count');
@@ -1263,9 +1261,9 @@ function renderBienThe() {
   hidden.appendChild(tot);
 
   console.log('[renderBienThe] TOTAL_FORMS =', bienTheList.length);
-}
+} {% endcomment %}
 
-function initBienThe() {
+{% comment %} function initBienThe() {
   /* Normalize tất cả id về String, số về dạng chuẩn để tránh lỗi */
   EXISTING_BIENTHE.forEach(function(bt) {
     /* Chuẩn hóa số: '200000,00' → '200000.00' → parseFloat → '200000' */
@@ -1286,7 +1284,7 @@ function initBienThe() {
   });
   renderBienThe();
   console.log('[BienThe] initBienThe loaded', bienTheList.length, 'biến thể từ DB');
-}
+} {% endcomment %}
 
 /* ══ HÌNH ẢNH ══ */
 var newImages = []; // {file, previewUrl, name}
@@ -1463,7 +1461,81 @@ try {
   } else {
     setup();
   }
+
+
+  function onlyDigits(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function formatVND(value) {
+  var digits = onlyDigits(value);
+  if (!digits) return '';
+  return Number(digits).toLocaleString('vi-VN');
+}
+
+function numberToVietnamese(n) {
+  n = parseInt(n || 0, 10);
+  if (!n) return '';
+
+  var units = ['', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+
+  function readTriple(num) {
+    var tram = Math.floor(num / 100);
+    var chuc = Math.floor((num % 100) / 10);
+    var donvi = num % 10;
+    var text = '';
+
+    if (tram > 0) text += units[tram] + ' trăm';
+
+    if (chuc > 1) {
+      text += (text ? ' ' : '') + units[chuc] + ' mươi';
+      if (donvi === 1) text += ' mốt';
+      else if (donvi === 5) text += ' lăm';
+      else if (donvi > 0) text += ' ' + units[donvi];
+    } else if (chuc === 1) {
+      text += (text ? ' ' : '') + 'mười';
+      if (donvi === 5) text += ' lăm';
+      else if (donvi > 0) text += ' ' + units[donvi];
+    } else if (donvi > 0) {
+      if (tram > 0) text += ' lẻ ' + units[donvi];
+      else text += units[donvi];
+    }
+
+    return text;
+  }
+
+  var parts = [];
+  var scales = ['', 'nghìn', 'triệu', 'tỷ'];
+  var i = 0;
+
+  while (n > 0) {
+    var triple = n % 1000;
+    if (triple > 0) {
+      parts.unshift(readTriple(triple) + (scales[i] ? ' ' + scales[i] : ''));
+    }
+    n = Math.floor(n / 1000);
+    i++;
+  }
+
+  return parts.join(' ').trim() + ' đồng';
+}
+
+function formatMoneyInput(input) {
+  var digits = onlyDigits(input.value);
+  input.value = formatVND(digits);
+
+  var textEl = input.parentElement.querySelector('.money-text');
+  if (textEl) {
+    textEl.textContent = digits ? numberToVietnamese(digits) : '';
+  }
+}
+
+document.querySelectorAll('.money-input').forEach(function(input) {
+  formatMoneyInput(input);
+});
 })();
+
+
 </script>
 
 {% endblock %}

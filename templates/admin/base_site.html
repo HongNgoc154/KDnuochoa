@@ -46,6 +46,12 @@
   --fd: 'Cormorant Garamond', Georgia, serif;
   --fb: 'DM Sans', system-ui, sans-serif;
   --fm: 'DM Mono', monospace;
+  /* Dark theme vars */
+--dark-bg:    #0d1208;
+--dark-bg2:   #131a0d;
+--dark-border: rgba(75,103,45,0.22);
+--dark-mint:  #EBF6C4;
+--dark-textmt: rgba(232,240,216,0.3);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -64,7 +70,7 @@ body {
 #ami-sidebar {
   width: var(--sw);
   height: 100vh;          /* fixed height = viewport height → enables scroll */
-  background: var(--olive-dark);
+  background: var(--dark-bg2);
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -117,17 +123,57 @@ body {
 #ami-main { margin-left: var(--sw); flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 100vh; }
 
 #ami-topbar {
-  height: var(--th); background: var(--white); border-bottom: 1px solid var(--stone);
+  height: var(--th);
+  background: var(--dark-bg2);
+  border-bottom: 1px solid var(--dark-border);
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: none;
   display: flex; align-items: center; padding: 0 32px; gap: 16px;
   position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 0 rgba(26,28,20,.04);
 }
-.topbar-breadcrumbs { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text3); }
-.topbar-breadcrumbs a { color: var(--olive); text-decoration: none; font-weight: 500; }
-.topbar-breadcrumbs a:hover { text-decoration: underline; }
-.topbar-sep { opacity: .4; }
+/* Topbar text/button colors */
+/* Chỉ giữ lại những dòng này */
+.topbar-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(232,240,216,0.45);
+}
+.topbar-breadcrumbs a {
+  color: rgba(235,246,196,0.55);
+  text-decoration: none;
+  font-weight: 400;
+}
+.topbar-breadcrumbs a:hover {
+  color: var(--dark-mint);
+  text-decoration: none;
+}
+.topbar-sep { opacity: 0.3; }
+
 .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 12px; }
-.topbar-btn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--stone); background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 15px; color: var(--text3); transition: .2s; text-decoration: none; }
-.topbar-btn:hover { background: var(--parchment); color: var(--olive); }
+
+.topbar-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--dark-border);
+  background: transparent;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 15px;
+  color: rgba(232,240,216,0.5);
+  transition: .2s;
+  text-decoration: none;
+}
+.topbar-btn:hover {
+  background: rgba(75,103,45,0.2);
+  color: var(--dark-mint);
+}
 
 #ami-content { flex: 1; padding: 32px 36px; }
 
@@ -407,13 +453,8 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
   <nav class="ami-nav">
     <div class="ami-nav-group">
       <span class="ami-nav-label">Tổng quan</span>
-      <a href="/quan-tri/ai-dashboard/"
-        style="display:flex;align-items:center;gap:8px;
-                padding:10px 16px;border-radius:8px;
-                background:rgba(75,103,45,0.08);
-                color:#4B672D;text-decoration:none;
-                font-size:13px;margin-top:8px;">
-        📊 AI Dashboard
+      <a href="{% url 'myadmin:index' %}" class="ami-nav-item{% if request.resolver_match.url_name == 'index' %} active{% endif %}">
+        <span class="ami-nav-icon">📊</span> AI Dashboard
       </a>
       <a href="/admin-orders/" class="ami-nav-item{% if 'admin-orders' in request.path %} active{% endif %}">
         <span class="ami-nav-icon">📦</span> Quản lý đơn hàng

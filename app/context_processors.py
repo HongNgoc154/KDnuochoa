@@ -16,18 +16,18 @@ def _normalize_vietnamese_text(value):
 def global_data(request):
     account_id = request.session.get("account_id")
     account = None
+    wishlist_count = 0
 
     if account_id:
         account = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first()
         if account and account.TenDangNhap:
             account.TenDangNhap = _normalize_vietnamese_text(account.TenDangNhap)
-    wishlist_count = 0
-    if account:
-        customer = KhachHang.objects.filter(id_TaiKhoan=account).first()
-        if customer:
-            wishlist_count = YeuThich.objects.filter(
-                id_TaiKhoan=account
-            ).count()
+        
+        # Đếm wishlist đúng — YeuThich dùng id_TaiKhoan (không phải id_KhachHang)
+        wishlist_count = YeuThich.objects.filter(
+            id_TaiKhoan_id=account_id
+        ).count()
+
     return {
         "nav_categories": LoaiSanPham.objects.all(),
         "nav_brands": ThuongHieu.objects.all()[:6],

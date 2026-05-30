@@ -379,3 +379,14 @@ if (isCategoryPage) {
   applyFilters();
   updateFavoriteCount();
 }
+
+// Sync cart badge từ localStorage — chạy ngay khi load trang
+(function syncCartBadge() {
+  const CART_KEY = 'ami_cart_v2';  // ← khớp với cart.js
+  const cart  = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+  const count = cart.length;  // đếm số loại sản phẩm, không phải tổng qty
+  document.querySelectorAll('[data-cart-badge]').forEach(b => {
+    b.textContent   = String(count);
+    b.style.display = count > 0 ? '' : 'none';
+  });
+})();

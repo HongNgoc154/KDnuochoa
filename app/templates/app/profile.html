@@ -91,7 +91,7 @@
       <button class="nav-item" data-tab="orders">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
         <span>Đơn hàng</span>
-        <span class="nav-badge">4</span>
+        <span class="nav-badge" id="ordersBadge">0</span>
         <span class="nav-arrow">›</span>
       </button>
       <button class="nav-item" data-tab="wishlist">
@@ -249,31 +249,30 @@
 
       {% if wishlist_data %}
       <div class="wishlist-grid" id="wishlistGrid">
-        {% for item in wishlist_data %}
-        <div class="wish-card" data-id="{{ item.id }}" data-product-id="{{ item.product_id }}">
-          <div class="wish-media">
-            <img src="{{ item.image }}" alt="{{ item.product_name }}" loading="lazy">
-            <div class="wish-actions">
-              <a href="{% url 'product-detail-by-id' item.product_id %}" class="wish-action-btn" title="Xem chi tiết">🔍</a>
-            </div>
-            <button class="wish-remove" title="Bỏ yêu thích" data-product-id="{{ item.product_id }}">♥</button>
+      {% for item in wishlist_data %}
+      <div class="wish-card" data-id="{{ item.id }}" data-product-id="{{ item.product_id }}">
+        <div class="wish-media">
+          <img src="{{ item.image }}" alt="{{ item.product_name }}" loading="lazy">
+          <div class="wish-overlay">
+            <a href="{% url 'product-detail-by-id' item.product_id %}" class="wish-overlay-btn" title="Xem chi tiết" aria-label="Xem chi tiết">
+              <i class="bi bi-eye"></i>
+            </a>
           </div>
-          <div class="wish-body">
-            <p class="wish-brand">{{ item.brand }}</p>
-            <h3 class="wish-name">{{ item.product_name }}</h3>
-            <p class="wish-price">{{ item.price }}</p>
-            {% if item.added_at %}
-            <p style="font-size:11px;color:var(--text-muted);margin-top:4px;">Thêm {{ item.added_at }}</p>
-            {% endif %}
-            <div class="wish-cta-row">
-              <a href="{% url 'product-detail-by-id' item.product_id %}" class="wish-cta">Xem chi tiết</a>
-              <button class="wish-cta js-wish-remove" data-product-id="{{ item.product_id }}">Bỏ yêu thích</button>
-              <button class="wish-cta js-wish-add-cart" data-product-id="{{ item.product_id }}">Thêm vào giỏ</button>
-              <a href="{% url 'product-detail-by-id' item.product_id %}" class="wish-cta wish-cta-primary">Mua ngay</a>
-            </div>
+          <button class="wish-remove" title="Bỏ yêu thích" data-product-id="{{ item.product_id }}" aria-label="Bỏ yêu thích">
+            <i class="bi bi-heart-fill"></i>
+          </button>
+        </div>
+        <div class="wish-body">
+          <p class="wish-brand">{{ item.brand }}</p>
+          <h3 class="wish-name">{{ item.product_name }}</h3>
+          <p class="wish-price">{{ item.price }}</p>
+          <div class="wish-cta-row">
+            <button class="wish-cta js-wish-add-cart" data-product-id="{{ item.product_id }}">Thêm vào giỏ</button>
+            <a href="{% url 'product-detail-by-id' item.product_id %}" class="wish-cta wish-cta-primary">Mua ngay</a>
           </div>
         </div>
-        {% endfor %}
+      </div>
+      {% endfor %}
       </div>
 
       {% else %}
@@ -359,6 +358,82 @@
     </div>
     {% endfor %}
   </div>
+</section>
+
+    <!-- ════ TAB: LỊCH SỬ ĐIỂM ════ -->
+<section class="tab-panel" id="tab-points" hidden>
+  <div class="panel-header">
+    <h1 class="panel-title">Lịch sử <em>điểm thưởng</em></h1>
+    <p class="panel-sub">Theo dõi điểm tích lũy và lịch sử sử dụng của bạn.</p>
+  </div>
+
+  <!-- Thống kê tóm tắt -->
+  <div class="pts-summary">
+    <div class="pts-stat pts-stat--highlight">
+      <div class="pts-stat-label">Điểm hiện có</div>
+      <div class="pts-stat-value">{{ profile.points|default:0 }}</div>
+      <div class="pts-stat-sub">≈ {{ profile.points|default:0 }}00đ có thể dùng</div>
+    </div>
+    <div class="pts-stat">
+      <div class="pts-stat-label">Tổng tích lũy</div>
+      <div class="pts-stat-value" id="ptsTotalEarned">—</div>
+      <div class="pts-stat-sub">Từ trước đến nay</div>
+    </div>
+    <div class="pts-stat">
+      <div class="pts-stat-label">Đã sử dụng</div>
+      <div class="pts-stat-value" id="ptsTotalUsed">—</div>
+      <div class="pts-stat-sub">Quy đổi thanh toán</div>
+    </div>
+  </div>
+
+  {% if point_logs %}
+  <div class="pts-timeline" id="ptsTimeline">
+    {% for log in point_logs %}
+    <div class="pts-item" data-points="{{ log.SoDiem }}">
+
+      {% if log.Loai == "first_order_bonus" %}
+        <div class="pts-dot bonus">🎁</div>
+      {% elif log.Loai == "review_bonus" %}
+        <div class="pts-dot bonus">⭐</div>
+      {% elif log.SoDiem < 0 %}
+        <div class="pts-dot redeem">🔻</div>
+      {% else %}
+        <div class="pts-dot earn">💎</div>
+      {% endif %}
+
+      <div class="pts-body">
+        <div class="pts-desc">{{ log.MoTa|default:"Cập nhật điểm" }}</div>
+        <div class="pts-meta">
+          {% if log.id_DonHang %}{{ log.id_DonHang.MaDonHang }} · {% endif %}
+          {{ log.NgayTao|date:"d/m/Y H:i" }}
+        </div>
+
+        {% if log.Loai == "first_order_bonus" %}
+          <span class="pts-badge bonus">First order</span>
+        {% elif log.Loai == "review_bonus" %}
+          <span class="pts-badge bonus">Review bonus</span>
+        {% elif log.SoDiem < 0 %}
+          <span class="pts-badge redeem">Đổi điểm</span>
+        {% else %}
+          <span class="pts-badge earn">Tích điểm</span>
+        {% endif %}
+      </div>
+
+      <div class="pts-amount {% if log.SoDiem > 0 %}plus{% else %}minus{% endif %}">
+        {% if log.SoDiem > 0 %}+{% endif %}{{ log.SoDiem }} điểm
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="pts-empty">
+    <div style="font-size:48px;margin-bottom:16px;">💎</div>
+    <p style="font-family:'Cormorant Garamond',serif;font-size:22px;color:#6b6b5e;margin-bottom:8px;">Chưa có lịch sử điểm</p>
+    <p style="font-size:13px;">Mua hàng, đánh giá sản phẩm để tích lũy điểm thưởng.</p>
+  </div>
+  {% endif %}
 </section>
 
     <!-- ════ TAB: CÀI ĐẶT ════ -->

@@ -36,6 +36,8 @@ class MyAdminSite(admin.AdminSite):
     index_title  = "Tổng quan hệ thống"
     index_template = "admin/index.html"
 
+    
+
     def index(self, request, extra_context=None):
         from .models import DonHang
         extra_context = extra_context or {}
@@ -206,8 +208,33 @@ class SanPhamAdmin(nested_admin.NestedModelAdmin):
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
         self._save_nhom_huong(request, obj)
-        self._save_bienthe(request, obj)
+        self._save_gia_ban_bienthe(request, obj)
         self._save_images(request, obj)
+    
+    def _save_gia_ban_bienthe(self, request, obj):
+        """
+        Chỉ cập nhật giá bán cho biến thể đã được tạo từ phiếu nhập.
+        Không tạo biến thể mới tại form sản phẩm.
+        """
+        def safe_float(val):
+            try:
+                return float(str(val or 0).replace(',', '.').strip())
+            except (ValueError, TypeError):
+                return 0
+
+        for key, value in request.POST.items():
+            if key.startswith('bienthe_gia_ban_'):
+                bt_id = key.replace('bienthe_gia_ban_', '')
+
+                try:
+                    BienThe.objects.filter(
+                        pk=int(bt_id),
+                        id_SanPham=obj
+                    ).update(
+                        GiaBan=safe_float(value)
+                    )
+                except Exception:
+                    pass
  
     def _save_nhom_huong(self, request, obj):
         try:
@@ -238,11 +265,10 @@ class SanPhamAdmin(nested_admin.NestedModelAdmin):
             return
  
         def safe_float(val):
-            """Chuyển '200000,00' hoặc '200000.00' → float an toàn."""
             try:
-                return float(str(val).replace(',', '.').strip())
+                return float(str(val or 0).replace('.', '').replace(',', '.').strip())
             except (ValueError, TypeError):
-                return 0.0
+                return 0
  
         def safe_int(val):
             try:

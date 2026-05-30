@@ -2,6 +2,12 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+  <script>
+    (function() {
+      const t = localStorage.getItem('ami_theme');
+      if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    })();
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Ami Perfumery – Nước Hoa Chính Hãng{% endblock %}</title>
@@ -60,7 +66,7 @@
 ════════════════════════════════════════ -->
 <nav id="navbar">
   <ul class="nav-list">
-    <li><a href="{% url 'home' %}">Trang chủ</a></li>
+    <li><a href="{% url 'home' %}" data-i18n="nav_home">Trang chủ</a></li>
 
     <li class="has-dropdown mega-menu">
       <a href="{% url 'category-all' %}">
@@ -276,6 +282,7 @@
 </div>
 <!-- END CHAT WIDGET -->
 
+<script src="{% static 'app/js/i18n.js' %}"></script>
 <script src="{% static 'app/js/main.js' %}"></script>
 <script src="{% static 'app/js/cart.js' %}"></script>
 {% block extra_js %}{% endblock %}

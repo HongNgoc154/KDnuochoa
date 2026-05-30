@@ -479,17 +479,17 @@ function updateZoomPaneBg(src) {
   On click:
   - Add .bounce to button → CSS keyframe: scale 1→.95→1.04→1
 */
-(function initCartBtn() {
-  const btn = document.getElementById('pdAddCart');
-  if (!btn) return;
+// (function initCartBtn() {
+//   const btn = document.getElementById('pdAddCart');
+//   if (!btn) return;
 
-  btn.addEventListener('click', () => {
-    btn.classList.remove('bounce');
-    void btn.offsetWidth;
-    btn.classList.add('bounce');
-    setTimeout(() => btn.classList.remove('bounce'), 450);
-  });
-})();
+//   btn.addEventListener('click', () => {
+//     btn.classList.remove('bounce');
+//     void btn.offsetWidth;
+//     btn.classList.add('bounce');
+//     setTimeout(() => btn.classList.remove('bounce'), 450);
+//   });
+// })();
 
 /* ─── 9. TABS — Animated ink bar ───────────────────────────── */
 /*
@@ -919,71 +919,61 @@ function showQaToast(msg, type = "success") {
 
 /* ─── 13. PDP DATA ACTIONS ────────────────────────────────── */
 (function initPdpActions() {
-  const addBtn = document.getElementById('pdAddCart');
-  const buyBtn = document.querySelector('.pd-btn-buy');
-  const wishBtn = document.getElementById('pdWishBtn');
-  const qtyEl = document.getElementById('pdQtyVal');
+  const addBtn  = document.getElementById('pdAddCart');
+  const buyBtn  = document.getElementById('pdBuyNow');
+  const qtyEl   = document.getElementById('pdQtyVal');
   const priceEl = document.getElementById('pdVariantPrice');
-  const metaEl = document.getElementById('pdVariantMeta');
+  const metaEl  = document.getElementById('pdVariantMeta');
   const container = document.querySelector('.pd-layout');
   if (!container) return;
 
-  const getSelectedVariant = () => {
-    const raw = (metaEl?.textContent || '').split('·')[0].trim();
-    return raw || 'SKU';
-  };
+  const CART_KEY = 'ami_cart_v2';  // ← phải khớp với cart.js
 
-  const toast = (msg) => {
-    const node = document.createElement('div');
-    node.className = 'pd-toast';
-    node.textContent = msg;
-    document.body.appendChild(node);
-    setTimeout(() => node.classList.add('show'), 20);
-    setTimeout(() => {
-      node.classList.remove('show');
-      setTimeout(() => node.remove(), 260);
-    }, 1700);
-  };
-
-  const updateCartBadge = (cart) => {
-    const total = cart.reduce((sum, i) => sum + Number(i.qty || 0), 0);
-    const icon = document.querySelector('.header-icons .icon-btn');
-    if (!icon) return;
-    let badge = icon.querySelector('.cart-badge');
-    if (!badge && total > 0) {
-      badge = document.createElement('span');
-      badge.className = 'cart-badge';
-      icon.appendChild(badge);
-    }
-    if (badge) badge.textContent = String(total);
+  const updateCartBadge = () => {
+    const cart = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+    const count = cart.length;  // cart.js đếm số item, không phải tổng qty
+    document.querySelectorAll('[data-cart-badge]').forEach(b => {
+      b.textContent = String(count);
+      b.style.display = count > 0 ? '' : 'none';
+    });
   };
 
   const addToCart = () => {
-    const qty = Number(qtyEl?.textContent || 1);
-    const productId = container.dataset.productId || '0';
-    const key = `${productId}-${getSelectedVariant()}`;
-    const cart = JSON.parse(localStorage.getItem('ami_cart') || '[]');
-    const found = cart.find(i => i.key === key);
-    if (found) found.qty += qty;
-    else cart.push({ key, productId, qty, price: priceEl?.textContent || '' });
-    localStorage.setItem('ami_cart', JSON.stringify(cart));
-    updateCartBadge(cart);
-    toast('Đã thêm vào giỏ hàng');
+    const productId   = container.dataset.productId || '0';
+    const name        = document.querySelector('.pd-name')?.textContent?.trim() || 'Sản phẩm';
+    const priceText   = priceEl?.textContent || '0';
+    const price       = parseInt(priceText.replace(/\D/g, '')) || 0;
+    const image       = document.getElementById('pdMainImg')?.src || '';
+    const qty         = parseInt(qtyEl?.textContent || '1') || 1;
+    const activePills = [...document.querySelectorAll('.pd-size-pill.active')];
+    const variantParts = activePills.map(p => p.dataset.attrValue).filter(Boolean);
+    const variantId   = variantParts.join('-') || 'default';
+    const sku         = variantParts.join(' / ');
+    const itemName    = sku ? `${name} — ${sku}` : name;
+    const key         = `${productId}-${variantId}`;
+
+    const cart = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+    const idx  = cart.findIndex(i => i.key === key);
+    if (idx >= 0) cart[idx].qty += qty;
+    else cart.push({ key, variantId, productId, name: itemName, price, image, sku, qty, checked: true });
+
+    localStorage.setItem(CART_KEY, JSON.stringify(cart));
+    updateCartBadge();
+
+    // Animation bounce
+    addBtn?.classList.remove('bounce');
+    void addBtn?.offsetWidth;
+    addBtn?.classList.add('bounce');
+    setTimeout(() => addBtn?.classList.remove('bounce'), 450);
+
+    
   };
 
   addBtn?.addEventListener('click', addToCart);
   buyBtn?.addEventListener('click', () => {
     addToCart();
-    window.location.href = '/cart/';
+    window.location.href = '/gio-hang/';
   });
-
-  // wishBtn?.addEventListener('click', () => {
-  //   const productId = container.dataset.productId || '0';
-  //   const wl = new Set(JSON.parse(localStorage.getItem('ami_wishlist') || '[]'));
-  //   wl.add(productId);
-  //   localStorage.setItem('ami_wishlist', JSON.stringify([...wl]));
-  //   toast('Đã thêm vào danh sách yêu thích');
-  // });
 })();
 
 
@@ -1041,71 +1031,3 @@ function showQaToast(msg, type = "success") {
 })();
 
 
-// ════════════════════════════════════════════════
-// PERSONALIZED RECOMMENDATIONS — Giai đoạn 3
-// ════════════════════════════════════════════════
-(function () {
-  fetch('/api/recommend/personal/')
-    .then(r => r.json())
-    .then(data => {
-      if (!data.ok || !data.products || data.products.length === 0) return;
-
-      const track   = document.getElementById('personalTrack');
-      const section = document.getElementById('personalSection');
-      const label   = document.getElementById('personalLabel');
-      if (!track || !section) return;
-
-      // Đổi tiêu đề nếu là gợi ý phổ biến (chưa đăng nhập)
-      if (data.type === 'popular') {
-        label.textContent = '🔥 Sản phẩm được yêu thích nhất';
-        document.querySelector('#personalSection p[style]').textContent =
-          'Những sản phẩm được khách hàng lựa chọn nhiều nhất';
-      }
-
-      // Lấy product_id hiện tại để không hiện trùng
-      const currentId = parseInt(
-        document.querySelector('[data-product-id]')?.dataset.productId || '0'
-      );
-
-      data.products
-        .filter(item => item.id !== currentId)
-        .forEach(item => {
-          const card = document.createElement('a');
-          card.href      = '/product/' + item.id + '/';
-          card.className = 'pd-rel-card';
-          card.innerHTML = `
-            <div class="pd-rel-media">
-              <img src="${item.primary_image}" alt="${item.name}" loading="lazy">
-            </div>
-            <div class="pd-rel-body">
-              <p class="pd-rel-brand">${item.brand}</p>
-              <h3 class="pd-rel-name">${item.name}</h3>
-              <p class="pd-rel-price">${item.price}</p>
-            </div>`;
-            // ── Tracking click AI (Giai đoạn 4) ──
-          card.addEventListener('click', function (e) {
-            fetch('/api/ai/track-click/', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                product_id: item.id,
-                source: 'personalized'
-              })
-            });
-            // Không e.preventDefault() — vẫn cho chuyển trang bình thường
-          });
-
-          track.appendChild(card);
-        });
-
-      if (track.children.length > 0) {
-        section.style.display = 'block';
-        const outer = track.parentElement;
-        document.getElementById('personalLeft')?.addEventListener('click',
-          () => outer.scrollBy({ left: -320, behavior: 'smooth' }));
-        document.getElementById('personalRight')?.addEventListener('click',
-          () => outer.scrollBy({ left:  320, behavior: 'smooth' }));
-      }
-    })
-    .catch(err => console.warn('[Personal Recommend]', err));
-})();

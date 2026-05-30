@@ -291,7 +291,7 @@ document.getElementById('confirmCancel')?.addEventListener('click', () => {
     try {
       const fd = new FormData();
       fd.append('product_id', productId);
-      const res  = await fetch('/toggle-wishlist/', { method: 'POST', body: fd });
+      const res  = await fetch('/toggle-favorite/', { method: 'POST', body: fd });
       const data = await res.json();
 
       if (data.need_login) {
@@ -709,10 +709,27 @@ document.getElementById('langOptions')?.addEventListener('click', e => {
   const opt = e.target.closest('.lang-opt');
   if (!opt) return;
   const lang = opt.dataset.lang;
+
+  if (!['vi', 'en'].includes(lang)) {
+    showToast('Ngôn ngữ này chưa được hỗ trợ.');
+    return;
+  }
+
   document.querySelectorAll('.lang-opt').forEach(o => o.classList.toggle('active', o === opt));
-  applyI18n(lang);
-  localStorage.setItem('ami_lang', lang);
-  showToast(`Ngôn ngữ đã được thay đổi ✓`);
+
+  if (typeof applyLanguage === 'function') {
+    applyLanguage(lang);
+  }
+
+  showToast(lang === 'vi' ? 'Đã chuyển sang Tiếng Việt 🇻🇳' : 'Switched to English 🇬🇧');
+});
+
+// Sync trạng thái active khi vào trang settings
+const savedLang = localStorage.getItem('ami_lang') || 'vi';
+document.querySelectorAll('.lang-opt').forEach(opt => {
+  opt.classList.toggle('active', opt.dataset.lang === savedLang);
+  const radio = opt.querySelector('input[type="radio"]');
+  if (radio) radio.checked = (opt.dataset.lang === savedLang);
 });
 
 function applyI18n(lang) {
@@ -727,19 +744,35 @@ function applyI18n(lang) {
 document.querySelectorAll('[data-theme-opt]').forEach(opt => {
   opt.addEventListener('click', () => {
     const theme = opt.dataset.themeOpt;
-    document.documentElement.setAttribute('data-theme', theme);
+
+    // Áp dụng lên <html> để toàn trang đổi ngay
+    if (theme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+
     localStorage.setItem('ami_theme', theme);
     showToast(`Đã chuyển sang giao diện ${theme === 'dark' ? 'tối 🌙' : 'sáng ☀️'}`);
+
+    // Cập nhật radio button
+    document.querySelectorAll('[data-theme-opt]').forEach(o => {
+      const radio = o.querySelector('input[type="radio"]');
+      if (radio) radio.checked = (o.dataset.themeOpt === theme);
+    });
   });
 });
 
-/* Load saved theme */
-const savedTheme = localStorage.getItem('ami_theme');
-if (savedTheme) {
-  document.documentElement.setAttribute('data-theme', savedTheme);
-  const radio = document.querySelector(`[data-theme-opt="${savedTheme}"] input`);
-  if (radio) radio.checked = true;
+// Load theme đã lưu khi vào trang profile
+const savedTheme = localStorage.getItem('ami_theme') || 'light';
+if (savedTheme === 'dark') {
+  document.documentElement.setAttribute('data-theme', 'dark');
+} else {
+  document.documentElement.removeAttribute('data-theme');
 }
+const activeRadio = document.querySelector(`[data-theme-opt="${savedTheme}"] input`);
+if (activeRadio) activeRadio.checked = true;
+
 
 /* ─── TOAST ─── */
 let toastTimer = null;
@@ -896,6 +929,7 @@ const STATUS_STEP_MAP = {
   "Đã hủy":             -1,
   "Đã giao":             3,
   "Đã thanh toán":       1,
+  "Chờ hủy":             0,
 };
 const STATUS_CSS = {
   "Chờ xác nhận": "status-processing",
@@ -905,6 +939,7 @@ const STATUS_CSS = {
   "Hoàn tất":     "status-delivered",
   "Đã hủy":       "status-cancelled",
   "Đã giao":      "status-delivered",
+  "Chờ hủy":       "status-cancelled",
 };
 const STATUS_LABEL_MAP = {
   "Chờ xác nhận": "Chờ xác nhận",
@@ -914,6 +949,7 @@ const STATUS_LABEL_MAP = {
   "Hoàn tất":     "Hoàn tất",
   "Đã hủy":       "Đã hủy",
   "Đã giao":      "Đã giao",
+  "Chờ hủy":       "⏳ Đang chờ xác nhận hủy",
 };
 const ORDER_STEPS = ["Đặt hàng", "Xác nhận", "Đang giao", "Đã nhận", "Hoàn tất"];
  
@@ -1166,8 +1202,8 @@ if (confirmCancelBtn) {
  
       modal.hidden = true;
       if (data.ok) {
-        updateOrderCardUI(orderId, 'Đã hủy');
-        if (typeof showToast === 'function') showToast('Đơn hàng đã được hủy thành công.');
+      updateOrderCardUI(orderId, data.new_status || 'Chờ hủy');  // ✅
+      showToast(data.message || 'Yêu cầu hủy đã được gửi.');
       } else {
         if (typeof showToast === 'function') showToast(data.message || 'Không thể hủy đơn hàng này.');
       }
@@ -1386,5 +1422,26 @@ function openOrderReviewModal(orderId) {
       btn.disabled = false;
       btn.classList.remove('loading');
     }
+  });
+})();
+
+(function initPointsTab() {
+  document.querySelector('.nav-item[data-tab="points"]')?.addEventListener('click', () => {
+    const items = document.querySelectorAll('.pts-item');
+    let earned = 0, used = 0;
+    items.forEach(item => {
+      const amountEl = item.querySelector('.pts-amount');
+      if (!amountEl) return;
+      const txt = amountEl.textContent.replace(/\s/g,'');
+      const match = txt.match(/([+-]?\d+)/);
+      if (!match) return;
+      const val = parseInt(match[1]);
+      if (val > 0) earned += val;
+      else used += Math.abs(val);
+    });
+    const totalEl = document.getElementById('ptsTotalEarned');
+    const usedEl  = document.getElementById('ptsTotalUsed');
+    if (totalEl) totalEl.textContent = earned;
+    if (usedEl)  usedEl.textContent  = used;
   });
 })();

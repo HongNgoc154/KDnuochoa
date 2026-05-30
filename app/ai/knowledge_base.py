@@ -41,13 +41,15 @@ def _build_chunks():
 
     chunks = []
 
-    # ── Sản phẩm ──────────────────────────────────────────────
+    # ── Sản phẩm ──
     products = SanPham.objects.select_related(
         "id_ThuongHieu", "id_LoaiSanPham"
     ).prefetch_related("nhom_huongs").all()
 
+    sp_count = products.count()
+    print(f"[KB] Đọc được {sp_count} sản phẩm từ DB")  # ← thêm dòng này
+
     for p in products:
-        # Ghép nhóm hương kèm vai trò (Top/Heart/Base Notes)
         huong_parts = []
         for snh in SanPhamNhomHuong.objects.select_related(
             "id_NhomHuong"
@@ -77,9 +79,12 @@ def _build_chunks():
             "text":  text,
         })
 
-    # ── Bài viết ──────────────────────────────────────────────
-    for b in BaiViet.objects.all():
-        # Xóa HTML tags trong nội dung bài viết
+    # ── Bài viết ──
+    bv_list = BaiViet.objects.all()
+    bv_count = bv_list.count()
+    print(f"[KB] Đọc được {bv_count} bài viết từ DB")  # ← thêm dòng này
+
+    for b in bv_list:
         noi_dung = re.sub(r'<[^>]+>', ' ', b.NoiDung or '')
         noi_dung = ' '.join(noi_dung.split())[:500]
         chunks.append({
@@ -90,6 +95,7 @@ def _build_chunks():
             "text":  f"Bài viết: {b.TieuDe}. Nội dung: {noi_dung}",
         })
 
+    print(f"[KB] Tổng chunks: {len(chunks)} ({sp_count} SP + {bv_count} BV)")
     return chunks
 
 

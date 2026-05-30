@@ -53,11 +53,16 @@
 
   /* ── Cập nhật badge ── */
   function setBadge(count) {
-    const n = Math.max(0, count);
-    const sb = document.querySelector('.nav-item[data-tab="wishlist"] .nav-badge');
-    if (sb) sb.textContent = String(n);
-    document.querySelectorAll('[data-wishlist-badge]').forEach(b => b.textContent = String(n));
-  }
+  const n = Math.max(0, count);
+  // Badge trong header (data-wishlist-badge)
+  document.querySelectorAll('[data-wishlist-badge]').forEach(b => {
+    b.textContent = String(n);
+    b.style.display = n > 0 ? '' : 'none';
+  });
+  // Badge trong sidebar profile (nếu có)
+  const sb = document.querySelector('.nav-item[data-tab="wishlist"] .nav-badge');
+  if (sb) sb.textContent = String(n);
+}
 
   /* ── Gọi API ── */
   async function callToggle(productId) {
@@ -148,6 +153,8 @@
 
     // Click delegate
     grid.addEventListener('click', async (e) => {
+      if (e.target.closest('.add-cart-btn')) return;
+  
       const btn = e.target.closest('.favorite-btn[data-product-id]');
       if (!btn) return;
       e.stopPropagation();
