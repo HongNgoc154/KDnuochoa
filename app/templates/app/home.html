@@ -134,7 +134,7 @@
 
         <!-- GHI CHÚ (For Him / For Her / For All) -->
         <p class="cat-row-tag">
-          {{ cate.GhiChu|default:"For All" }}
+          {{ cate.GhiChu|default:"For All"|safe|striptags }}
         </p>
 
         <!-- TÊN -->
@@ -144,7 +144,7 @@
 
         <!-- MÔ TẢ -->
         <p class="cat-row-desc">
-          {{ cate.MoTa }}
+          {{ cate.MoTa|safe|striptags|truncatewords:20 }}
         </p>
 
         <!-- BUTTON -->
@@ -181,7 +181,7 @@
         <div class="article-body">
           <p class="article-cat">Blog</p>
           <h3 class="article-title">{{ article.TieuDe }}</h3>
-          <p class="article-desc">{{ article.NoiDung|default:''|truncatechars:140 }}</p>
+          <p class="article-desc">{{ article.NoiDung|default:''|safe|striptags|truncatewords:20 }}</p>
           <div class="article-meta"><span>📅 {{ article.NgayTao|date:'d/m/Y' }}</span><span>⏱ 5 phút đọc</span></div>
         </div>
       </a>
@@ -214,5 +214,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'app/js/main.js' %}"></script>
+{% comment %} <script src="{% static 'app/js/main.js' %}"></script> {% endcomment %}
 {% endblock %}

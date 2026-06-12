@@ -193,7 +193,10 @@ if (isCategoryPage) {
 
   const formatVnd = value => `${Number(value).toLocaleString('vi-VN')}₫`;
   if (priceRange && priceValue) {
-    const updatePrice = () => { priceValue.textContent = formatVnd(priceRange.value); };
+    const updatePrice = () => {
+      const val = Number(priceRange.value);
+      priceValue.textContent = val.toLocaleString('vi-VN') + '₫';
+    };
     updatePrice();
     priceRange.addEventListener('input', updatePrice);
   }
@@ -388,5 +391,18 @@ if (isCategoryPage) {
   document.querySelectorAll('[data-cart-badge]').forEach(b => {
     b.textContent   = String(count);
     b.style.display = count > 0 ? '' : 'none';
+  });
+})();
+
+/* ── Auto clear cart on logout ── */
+(function initLogoutClear() {
+  const logoutLinks = document.querySelectorAll('a[href*="logout"]');
+  logoutLinks.forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      localStorage.removeItem('ami_cart_v2');
+      localStorage.removeItem('ami_cart_discount');
+      window.location.href = link.href;
+    });
   });
 })();

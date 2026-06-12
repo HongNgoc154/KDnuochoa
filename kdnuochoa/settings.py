@@ -5,8 +5,12 @@ Django settings for kdnuochoa project.
 from pathlib import Path
 import os
 import django.template.loaders.filesystem as fs
+from dotenv import load_dotenv 
+
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')  
 
 
 print("TEMPLATE DIRS:", BASE_DIR / 'templates')
@@ -159,9 +163,13 @@ SOCIAL_AUTH_ENABLED_BACKENDS = (
 )
 
 # Google OAuth credentials
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY    = os.environ.get('SOCIAL_AUTH_GOOGLE_OAUTH2_KEY', '')
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.environ.get('SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET', '')
 SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE  = ['email', 'profile']
 
 # Facebook OAuth credentials
+SOCIAL_AUTH_FACEBOOK_KEY    = os.environ.get('SOCIAL_AUTH_FACEBOOK_KEY', '')
+SOCIAL_AUTH_FACEBOOK_SECRET = os.environ.get('SOCIAL_AUTH_FACEBOOK_SECRET', '')
 SOCIAL_AUTH_FACEBOOK_SCOPE  = ['email', 'public_profile']
 SOCIAL_AUTH_FACEBOOK_PROFILE_EXTRA_PARAMS = {'fields': 'id,name,email,picture'}
 

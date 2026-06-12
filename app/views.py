@@ -1,7 +1,7 @@
 from django.contrib.auth import logout
-from django.db import DatabaseError
+from django.db import DatabaseError, transaction
 from django.db import models
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.shortcuts import render, redirect
 from django.utils.text import slugify
 from .models import LoaiSanPham, NhomHuong
@@ -54,7 +54,10 @@ from .models import (
     AIRecommendClick,
     ChatbotFeedback, 
 )
-from app.models import LichSuXemSanPham, AIUserProfile, ChatbotHistory
+from app.models import (
+    LichSuXemSanPham, AIUserProfile, ChatbotHistory,
+    AIRecommendImpression, SurveyResponse,
+)
 from collections import defaultdict
 
 
@@ -228,6 +231,57 @@ def _deduct_inventory_on_order(order):
             ).update(
                 SoLuong=db_models.F("SoLuong") - d.SoLuong
             )
+
+def _stock_shortage_message():
+    return "Số lượng tồn kho không đủ, vui lòng giảm bớt số lượng sản phẩm sau đó mới thêm vào giỏ hàng."
+
+
+def _safe_positive_int(value, default=1):
+    try:
+        value = int(value or default)
+    except (TypeError, ValueError):
+        return default
+    return max(default, value)
+
+
+def _resolve_checkout_items(items):
+    """Khóa biến thể trong transaction và kiểm tra tổng số lượng đặt không vượt tồn kho."""
+    resolved_items = []
+    requested_by_variant = defaultdict(int)
+
+    for item in items:
+        product_id = item.get("productId")
+        variant_id = item.get("variantId")
+        qty = _safe_positive_int(item.get("qty"), 1)
+
+        bien_the_qs = BienThe.objects.select_for_update()
+        bien_the = None
+        if variant_id and str(variant_id).isdigit():
+            bien_the = bien_the_qs.filter(id_BienThe=int(variant_id)).first()
+        if not bien_the and product_id:
+            bien_the = bien_the_qs.filter(id_SanPham_id=product_id).order_by("id_BienThe").first()
+
+        if not bien_the:
+            product_name = item.get("name") or "Sản phẩm"
+            return None, f"Không tìm thấy biến thể tồn kho cho {product_name}."
+
+        requested_by_variant[bien_the.id_BienThe] += qty
+        resolved_items.append({
+            "item": item,
+            "variant": bien_the,
+            "qty": qty,
+            "price": float(item.get("price") or bien_the.GiaBan or 0),
+        })
+
+    for resolved in resolved_items:
+        variant = resolved["variant"]
+        requested_qty = requested_by_variant[variant.id_BienThe]
+        available_qty = int(variant.SoLuong or 0)
+        if requested_qty > available_qty:
+            return None, _stock_shortage_message()
+
+    return resolved_items, None
+
 
 def _extract_voucher_code(order):
     note = ""
@@ -723,7 +777,17 @@ def category(request, segment='tat-ca'):
 
     context["product_count"] = len(context["products"])
 
-    return render(request, "app/category.html", context)
+    from .models import BienThe
+    from django.db.models import Max
+    import math
+
+    max_price_raw = BienThe.objects.aggregate(max_price=Max('GiaBan'))['max_price'] or 8000000
+    # Làm tròn lên đến hàng triệu gần nhất
+    max_price = math.ceil(float(max_price_raw) / 1000000) * 1000000
+
+    context['max_price'] = int(max_price)
+    context['max_price_display'] = f"{int(max_price):,}".replace(',', '.') + '₫'
+    return render(request, 'app/category.html', context)
 
 def get_sillage_label(value):
     if value >= 8:
@@ -741,6 +805,9 @@ def get_longevity_label(value):
         return "5-7 giờ"
     return "Dưới 5 giờ"
 
+from django.views.decorators.csrf import ensure_csrf_cookie
+
+@ensure_csrf_cookie
 def product_detail(request, product_id=None):
     
     product_queryset = SanPham.objects.select_related("id_ThuongHieu", "id_LoaiSanPham")\
@@ -1067,7 +1134,14 @@ def brand_detail(request, slug):
 
 def blog_list(request):
 
+    import re
+    def _strip_html(text):
+        return re.sub(r'<[^>]+>', '', text or '')
+
     featured_articles = BaiViet.objects.order_by("-NgayTao")[:3]
+
+    for a in featured_articles:
+        a.plain_text = _strip_html(a.NoiDung)[:120] + '...' if a.NoiDung else ''
 
     bento_articles = BaiViet.objects.order_by("-NgayTao")[3:]
 
@@ -1188,6 +1262,7 @@ Ami Perfumery
         return JsonResponse({'ok': False, 'message': 'Không thể gửi email. Vui lòng thử lại sau.'})
 
 
+@ensure_csrf_cookie 
 def cart_page(request):
     account_id = request.session.get("account_id")
  
@@ -1559,11 +1634,14 @@ def login_api(request):
     request.session["account_id"] = account.id_TaiKhoan
     request.session["account_name"] = account.TenDangNhap
     # ── Kích hoạt AI Personalization ──
-    try:
-        from app.ai.personalize import get_personalized_recommendations
-        get_personalized_recommendations(account.id_TaiKhoan, top_n=8)
-    except Exception as e:
-        print(f'[AI] Login personalization failed: {e}')
+    import threading
+    def _bg_personalize(acc_id):
+        try:
+            from app.ai.personalize import get_personalized_recommendations
+            get_personalized_recommendations(account.id_TaiKhoan, top_n=8)
+        except Exception as e:
+            print(f'[AI] Login personalization failed: {e}')
+    threading.Thread(target=_bg_personalize, args=(account.id_TaiKhoan,), daemon=True).start()
     return JsonResponse({
         "ok":      True,
         "message": "Đăng nhập thành công.",
@@ -1796,9 +1874,65 @@ def checkout_page(request):
 
 @csrf_exempt
 @require_POST
+def check_stock_api(request):
+    try:
+        body = json.loads(request.body)
+    except Exception:
+        return JsonResponse({"ok": False, "message": "Dữ liệu không hợp lệ.", "stock": 0}, status=400)
+
+    variant_id = body.get("variant_id") or body.get("variantId")
+    product_id = body.get("product_id") or body.get("productId")
+    qty = _safe_positive_int(body.get("qty"), 1)
+
+    variant = None
+
+    # Chỉ tìm theo variant_id nếu là số nguyên hợp lệ
+    if variant_id and str(variant_id).strip().isdigit():
+        variant = BienThe.objects.filter(id_BienThe=int(variant_id)).first()
+
+    # Fallback: tìm theo product_id
+    if not variant and product_id:
+        try:
+            variant = BienThe.objects.filter(
+                id_SanPham_id=int(product_id)
+            ).order_by("id_BienThe").first()
+        except (ValueError, TypeError):
+            pass
+
+    if not variant:
+        return JsonResponse({
+            "ok":      False,
+            "message": "Không tìm thấy biến thể tồn kho.",
+            "stock":   0,
+        }, status=404)   # ← đổi 404 để client phân biệt với 400
+
+    stock = int(variant.SoLuong or 0)
+
+    if stock <= 0:
+        return JsonResponse({
+            "ok":      False,
+            "message": "Sản phẩm này hiện đã hết hàng.",
+            "stock":   0,
+        }, status=400)
+
+    if qty > stock:
+        return JsonResponse({
+            "ok":      False,
+            "message": _stock_shortage_message(),
+            "stock":   stock,   # ← luôn trả về stock thực
+        }, status=400)
+
+    return JsonResponse({
+        "ok":        True,
+        "stock":     stock,
+        "variant_id": variant.id_BienThe,
+    })
+
+@csrf_exempt
+@require_POST
 def place_order_api(request):
     """
-    Nhận thông tin từ checkout.js → lưu GiaoHang + DonHang + ChiTietDonHang
+    Nhận thông tin từ checkout.js → kiểm tra tồn kho, lưu đơn hàng và trừ tồn kho.
     """
     account_id = request.session.get("account_id")
  
@@ -1826,119 +1960,111 @@ def place_order_api(request):
     ma_don = "AMI-" + "".join(random.choices(string.digits, k=8))
  
     try:
-        account  = None
-        customer = None
- 
-        if account_id:
-            account = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first()
-            if account:
-                customer = KhachHang.objects.filter(id_TaiKhoan_id=account_id).first()
- 
-                # ── FIX: Tự tạo KhachHang nếu chưa có ──────────
-                if not customer:
-                    customer = KhachHang.objects.create(
-                        id_TaiKhoan=account,
-                        TenKhachHang=account.TenDangNhap or name,
-                        DiaChi=address,
-                        GioiTinh='',
-                    )
-                    print(f"[place_order] Đã tạo KhachHang mới id={customer.id_KhachHang} cho account={account_id}")
- 
-        # ── 1. Lưu GiaoHang ─────────────────────────────────────
-        delivery_note = note
-        if voucher_cd:
-            delivery_note = f"{note}\n[AMI_VOUCHER:{voucher_cd}]".strip()
-        giao_hang = GiaoHang.objects.create(
-            id_TaiKhoan_id = account_id if account_id else None,
-            TenNguoiNhan   = name,
-            SDT            = phone,
-            DiaChi         = address,
-            GhiChu         = delivery_note,
-        )
- 
-        # ── 2. Lưu DonHang ──────────────────────────────────────
-        don_hang = DonHang.objects.create(
-            MaDonHang           = ma_don,
-            id_KhachHang        = customer,      # Giờ luôn có giá trị nếu đăng nhập
-            id_GiaoHang         = giao_hang,
-            ThoiGian            = timezone.now(),
-            HinhThucThanhToan   = payment,
-            TrangThai           = "Chờ xác nhận",
-            TongTien            = total,
-            DiemDaDung          = pts_used,
-            TienGiamTuDiem      = pts_disc,
-            DiemNhanDuoc        = 0,
-        )
-        print(f"[place_order] Đã tạo DonHang {ma_don} | customer={customer} | total={total}")
- 
-        # ── 3. Lưu ChiTietDonHang ───────────────────────────────
-        for item in items:
-            product_id = item.get("productId")
-            variant_id = item.get("variantId")
-            qty        = int(item.get("qty") or 1)
-            price      = float(item.get("price") or 0)
- 
-            bien_the = None
-            if variant_id and variant_id != "default":
-                if str(variant_id).isdigit():
-                    bien_the = BienThe.objects.filter(id_BienThe=int(variant_id)).first()
-            if not bien_the and product_id:
-                bien_the = BienThe.objects.filter(id_SanPham_id=product_id).order_by("id_BienThe").first()
- 
-            if bien_the:
+        with transaction.atomic():
+            resolved_items, stock_error = _resolve_checkout_items(items)
+            if stock_error:
+                return JsonResponse({"ok": False, "message": stock_error}, status=400)
+
+            account  = None
+            customer = None
+
+            if account_id:
+                account = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first()
+                if account:
+                    customer = KhachHang.objects.filter(id_TaiKhoan_id=account_id).first()
+
+                    # ── FIX: Tự tạo KhachHang nếu chưa có ──────────
+                    if not customer:
+                        customer = KhachHang.objects.create(
+                            id_TaiKhoan=account,
+                            TenKhachHang=account.TenDangNhap or name,
+                            DiaChi=address,
+                            GioiTinh='',
+                        )
+                        print(f"[place_order] Đã tạo KhachHang mới id={customer.id_KhachHang} cho account={account_id}")
+
+            # ── 1. Lưu GiaoHang ─────────────────────────────────────
+            delivery_note = note
+            if voucher_cd:
+                delivery_note = f"{note}\n[AMI_VOUCHER:{voucher_cd}]".strip()
+            giao_hang = GiaoHang.objects.create(
+                id_TaiKhoan_id = account_id if account_id else None,
+                TenNguoiNhan   = name,
+                SDT            = phone,
+                DiaChi         = address,
+                GhiChu         = delivery_note,
+            )
+
+            # ── 2. Lưu DonHang ──────────────────────────────────────
+            don_hang = DonHang.objects.create(
+                MaDonHang           = ma_don,
+                id_KhachHang        = customer,      # Giờ luôn có giá trị nếu đăng nhập
+                id_GiaoHang         = giao_hang,
+                ThoiGian            = timezone.now(),
+                HinhThucThanhToan   = payment,
+                TrangThai           = "Chờ xác nhận",
+                TongTien            = total,
+                DiemDaDung          = pts_used,
+                TienGiamTuDiem      = pts_disc,
+                DiemNhanDuoc        = 0,
+            )
+            print(f"[place_order] Đã tạo DonHang {ma_don} | customer={customer} | total={total}")
+
+            # ── 3. Lưu ChiTietDonHang và trừ tồn kho đã khóa ─────────
+            for resolved in resolved_items or []:
+                bien_the = resolved["variant"]
+                qty = resolved["qty"]
                 ChiTietDonHang.objects.create(
                     id_DonHang  = don_hang,
                     id_BienThe  = bien_the,
                     SoLuong     = qty,
-                    GiaBan      = price,
+                    GiaBan      = resolved["price"],
                     GiaGiam     = 0,
                 )
-            else:
-                print(f"[place_order] WARNING: Không tìm thấy BienThe cho productId={product_id}, variantId={variant_id}")
+            BienThe.objects.filter(pk=bien_the.pk).update(
+                    SoLuong=models.F("SoLuong") - qty
+                )
 
-        # ── Trừ tồn kho ngay khi đặt hàng ──────────────────────
-        _deduct_inventory_on_order(don_hang)
- 
         # ── 4. Đánh dấu voucher đã dùng ─────────────────────────
-        if voucher_cd and account_id:
-            rel = KhuyenMaiTaiKhoan.objects.filter(
-                id_TaiKhoan_id=account_id,
-                id_KhuyenMai__MaKhuyenMai__iexact=voucher_cd,
-                DaSuDung=False,
-            ).first()
-            if rel:
-                rel.DaSuDung = True
-                rel.save(update_fields=["DaSuDung"])
-                v = rel.id_KhuyenMai
-                if v:
-                    v.DaSuDung = int(v.DaSuDung or 0) + 1
-                    v.save(update_fields=["DaSuDung"])
- 
-        # ── 5. Trừ điểm nếu dùng ────────────────────────────────
-        if pts_used > 0 and account:
-            redeem_points(account, pts_used, order=don_hang)
- 
-        # ── 6. Cộng điểm đơn đầu tiên ───────────────────────────
-        if account and customer:
-            order_count = DonHang.objects.filter(id_KhachHang=customer).count()
-            if order_count == 1:
-                add_points(account, 200, "first_order_bonus",
-                           "Thưởng đơn hàng đầu tiên", don_hang)
- 
-        # ── 7. Cộng điểm thường ─────────────────────────────────
-        if account:
-            earned = int(total / 10000)
-            if earned > 0:
-                add_points(account, earned, "earn_order",
-                           f"Tích điểm đơn hàng {ma_don}", don_hang)
- 
-        # ── 8. Cập nhật TongChiTieu & hạng ──────────────────────
-        if account:
-            account.TongChiTieu = float(account.TongChiTieu or 0) + total
-            account.save(update_fields=["TongChiTieu"])
-            update_member_level(account)
- 
-        # ── Return ───────────────────────────────────────────────
+            if voucher_cd and account_id:
+                rel = KhuyenMaiTaiKhoan.objects.filter(
+                    id_TaiKhoan_id=account_id,
+                    id_KhuyenMai__MaKhuyenMai__iexact=voucher_cd,
+                    DaSuDung=False,
+                ).first()
+                if rel:
+                    rel.DaSuDung = True
+                    rel.save(update_fields=["DaSuDung"])
+                    v = rel.id_KhuyenMai
+                    if v:
+                        v.DaSuDung = int(v.DaSuDung or 0) + 1
+                        v.save(update_fields=["DaSuDung"])
+
+            # ── 5. Trừ điểm nếu dùng ────────────────────────────────
+            if pts_used > 0 and account:
+                redeem_points(account, pts_used, order=don_hang)
+
+            # ── 6. Cộng điểm đơn đầu tiên ───────────────────────────
+            if account and customer:
+                order_count = DonHang.objects.filter(id_KhachHang=customer).count()
+                if order_count == 1:
+                    add_points(account, 200, "first_order_bonus",
+                               "Thưởng đơn hàng đầu tiên", don_hang)
+
+            # ── 7. Cộng điểm thường ─────────────────────────────────
+            if account:
+                earned = int(total / 10000)
+                if earned > 0:
+                    add_points(account, earned, "earn_order",
+                               f"Tích điểm đơn hàng {ma_don}", don_hang)
+
+            # ── 8. Cập nhật TongChiTieu & hạng ──────────────────────
+            if account:
+                account.TongChiTieu = float(account.TongChiTieu or 0) + total
+                account.save(update_fields=["TongChiTieu"])
+                update_member_level(account)
+
+        # ── Return sau khi transaction đã commit ───────────────────
         if payment == "vnpay":
             return JsonResponse({
                 "ok":       True,
@@ -4375,13 +4501,91 @@ def personalized_recommend_api(request):
     ordered = [product_map[pid] for pid in product_ids if pid in product_map]
     cards   = _build_product_cards(ordered)
 
+    # Ghi nhận impression (Trục 1: tính CTR = click / impression)
+    try:
+        AIRecommendImpression.objects.create(
+            id_TaiKhoan_id=account_id if account_id else None,
+            source=rec_type,
+            product_count=len(cards),
+        )
+    except Exception:
+        pass
+
     return JsonResponse({
         "ok":       True,
         "products": cards,
         "type":     rec_type,
     }, json_dumps_params={"ensure_ascii": False})
  
- 
+
+# ════════════════════════════════════════════════════════════════
+# CHATBOT ACTION EXECUTORS — Add to Wishlist / Cart / Order
+# Dùng cho luồng Propose → Confirm → Execute trong chatbot_api
+# ════════════════════════════════════════════════════════════════
+
+def _execute_add_to_wishlist(account_id: int, product_id: int) -> dict:
+    """
+    Thêm sản phẩm vào yêu thích — idempotent (không lỗi nếu đã có).
+    Trả về: {"ok": bool, "already_exists": bool, "message": str}
+    """
+    try:
+        account = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first()
+        product = SanPham.objects.filter(id_SanPham=product_id).first()
+        if not account or not product:
+            return {"ok": False, "already_exists": False,
+                    "message": "Không tìm thấy sản phẩm hoặc tài khoản."}
+
+        existing = YeuThich.objects.filter(
+            id_TaiKhoan=account, id_SanPham=product
+        ).first()
+
+        if existing:
+            return {"ok": True, "already_exists": True,
+                    "message": f"{product.TenSanPham} đã có trong danh sách yêu thích của bạn rồi."}
+
+        YeuThich.objects.create(
+            id_TaiKhoan=account,
+            id_SanPham=product,
+            # NgayTao=timezone.now(),
+        )
+        return {"ok": True, "already_exists": False,
+                "message": f"Đã thêm {product.TenSanPham} vào danh sách yêu thích."}
+
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return {"ok": False, "already_exists": False,
+                "message": "Có lỗi xảy ra, vui lòng thử lại."}
+
+
+_PENDING_ACTION_LABELS = {
+    "add_to_wishlist": "thêm vào yêu thích",
+    "add_to_cart":     "thêm vào giỏ hàng",
+    "place_order":     "đặt hàng",
+}
+
+
+def _execute_pending_action(pending: dict, account_id, request) -> str:
+    """
+    Thực thi pending_action đã được khách xác nhận.
+    Trả về: câu trả lời (str) cho khách.
+    """
+    action_type = pending.get("type")
+    payload     = pending.get("payload", {})
+
+    if action_type == "add_to_wishlist":
+        if not account_id:
+            return ("Bạn cần đăng nhập để lưu sản phẩm vào danh sách yêu thích nhé. "
+                    "Sau khi đăng nhập, mình sẽ giúp bạn lưu lại! 😊")
+
+        result = _execute_add_to_wishlist(account_id, payload.get("product_id"))
+        if result["ok"] and not result["already_exists"]:
+            return f"✅ {result['message']} Bạn có thể xem trong trang Tài khoản > Yêu thích nhé! ❤️"
+        return result["message"]
+
+    # add_to_cart, place_order -> sẽ bổ sung ở Phần 3, 4
+    return "Tính năng này đang được hoàn thiện, mong bạn thông cảm! 🙏"
+
+
 # ════════════════════════════════════════════════════════════════
 # CHATBOT API — NÂNG CẤP (thay thế hàm cũ)
 # ════════════════════════════════════════════════════════════════
@@ -4418,6 +4622,9 @@ def chatbot_api(request):
             _update_guest_temp_profile, _load_recent_chatbot_history,
             _save_chatbot_history, _update_profile_from_chatbot,
             BASE_SYSTEM_PROMPT,
+            _is_greeting, _GREETING_REPLIES,
+            _detect_action_intent, _detect_confirmation,
+            _resolve_product_for_action,
         )
         from app.ai.knowledge_base import retrieve
         from groq import Groq
@@ -4442,6 +4649,56 @@ def chatbot_api(request):
                 "session_id":  chat_session_id,
                 "intent":      {"type": intent_type},
             }, json_dumps_params={"ensure_ascii": False})
+        
+        # ── Lớp 1.5: Confirmation/Cancel Detection ──────────────
+        pending = request.session.get('pending_action')
+        if pending:
+            confirmation = _detect_confirmation(user_msg)
+
+            if confirmation == 'confirm':
+                reply = _execute_pending_action(
+                    pending, account_id, request
+                )
+                request.session.pop('pending_action', None)
+                request.session.modified = True
+                if account_id:
+                    _save_chatbot_history(account_id, chat_session_id,
+                                          user_msg, reply, {})
+                return quick_json(reply, "action_executed")
+
+            elif confirmation == 'cancel':
+                action_name = _PENDING_ACTION_LABELS.get(pending['type'], "yêu cầu")
+                reply = f"Đã hủy {action_name}. Mình có thể giúp gì khác cho bạn không? 😊"
+                request.session.pop('pending_action', None)
+                request.session.modified = True
+                return quick_json(reply, "action_cancelled")
+
+            else:
+                # unclear: hết hạn pending_action sau 2 lượt không rõ ràng
+                pending['turn_count'] = pending.get('turn_count', 0) + 1
+                if pending['turn_count'] >= 2:
+                    request.session.pop('pending_action', None)
+                    request.session.modified = True
+                    # Không return -> tiếp tục xử lý user_msg như bình thường
+                else:
+                    request.session['pending_action'] = pending
+                    request.session.modified = True
+                    payload = pending['payload']
+                    reply = (
+                        f"Bạn có muốn {_PENDING_ACTION_LABELS.get(pending['type'], 'thực hiện')} "
+                        f"\"{payload.get('product_name', '')}\" không? "
+                        f"Trả lời 'có' để xác nhận hoặc 'không' để hủy nhé."
+                    )
+                    return quick_json(reply, "action_pending_reminder")
+
+        
+        
+        # ── Lớp 0: Greeting check (0ms) ─────────────────────────
+        if _is_greeting(user_msg):
+            return quick_json(
+                random.choice(_GREETING_REPLIES),
+                "greeting"
+            )
 
         # ── Lớp 1: Keyword check (0ms) ─────────────────────────
         if _is_off_topic_keyword(user_msg):
@@ -4449,11 +4706,55 @@ def chatbot_api(request):
                 random.choice(_INTENT_REPLIES["off_topic"]),
                 "off_topic"
             )
+        
+        # ── Lớp 2.5: Action Intent Detection ────────────────────
+        action_type = _detect_action_intent(user_msg)
+        if action_type:
+            from app.ai.knowledge_base import retrieve as _retrieve_for_action
+            action_chunks = _retrieve_for_action(user_msg, 3)
+            last_suggestions = request.session.get('last_suggestions', [])
+
+            resolved = _resolve_product_for_action(
+                user_msg, action_chunks, last_suggestions
+            )
+
+            if action_type == "add_to_wishlist":
+                if not resolved:
+                    reply = ("Bạn muốn thêm sản phẩm nào vào yêu thích vậy? "
+                             "Hãy cho mình biết tên sản phẩm cụ thể nhé! 😊")
+                    return quick_json(reply, "action_need_clarification")
+
+                request.session['pending_action'] = {
+                    "type": "add_to_wishlist",
+                    "payload": {
+                        "product_id": resolved["id"],
+                        "product_name": resolved["name"],
+                    },
+                    "turn_count": 0,
+                }
+                request.session.modified = True
+
+                reply = (
+                    f"Bạn muốn thêm \"{resolved['name']}\" vào danh sách yêu thích "
+                    f"đúng không? Trả lời 'có' để xác nhận nhé! ❤️"
+                )
+                return quick_json(reply, "action_proposed")
+
+            # add_to_cart, place_order -> sẽ bổ sung ở Phần 3, 4
+            # Tạm thời: nếu phát hiện nhưng chưa hỗ trợ, để rơi xuống 
+            # RAG bình thường (không return), AI sẽ tư vấn như câu hỏi thường.
 
         # ── Lớp 2 + RAG song song ──────────────────────────────
+        from app.ai.chatbot import _extract_gender_quick
+        # Chỉ filter theo gender nếu CÂU HIỆN TẠI có nhắc đến giới tính.
+        # KHÔNG fallback về profile/session — vì RAG retrieve phải phản
+        # ánh đúng nội dung câu hỏi hiện tại (vd: hỏi tên sản phẩm cụ thể
+        # không nên bị lọc mất bởi gender từ lịch sử trước đó).
+        quick_gender = _extract_gender_quick(user_msg)
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
             f_topic  = ex.submit(_classify_intent_ai, user_msg, client)
-            f_chunks = ex.submit(retrieve, user_msg, 5)
+            f_chunks = ex.submit(retrieve, user_msg, 5, quick_gender)
             topic  = f_topic.result()
             chunks = f_chunks.result()
 
@@ -4482,22 +4783,78 @@ def chatbot_api(request):
         # ── Lớp 3: Build context ────────────────────────────────
         intent = _extract_intent(user_msg)
 
+        # ── Cập nhật profile NGAY (để gợi ý cá nhân hóa của lượt 
+        #    này phản ánh sở thích mới vừa được trích xuất) ──
+        if account_id:
+            _update_profile_from_chatbot(account_id, intent)
+        elif request:
+            _update_guest_temp_profile(request, intent)
+
+        # Lấy giá thật cho sản phẩm trong RAG context (tránh AI bịa giá)
+        product_ids_in_chunks = [c["id"] for c in chunks if c["type"] == "product"]
+        rag_price_map = {}
+        if product_ids_in_chunks:
+            from django.db.models import Min
+            for row in BienThe.objects.filter(
+                id_SanPham_id__in=product_ids_in_chunks
+            ).values('id_SanPham_id').annotate(min_price=Min('GiaBan')):
+                rag_price_map[row['id_SanPham_id']] = row['min_price']
+
         context_lines = []
         for i, c in enumerate(chunks, 1):
             prefix = "[SẢN PHẨM]" if c["type"] == "product" else "[BÀI VIẾT]"
-            context_lines.append(f"{i}. {prefix} {c['name']}: {c['text']}")
+            price_suffix = ""
+            if c["type"] == "product":
+                price = rag_price_map.get(c["id"])
+                price_text = f"{int(price):,}đ".replace(",", ".") if price else "Liên hệ"
+                price_suffix = f" (Giá: {price_text})"
+            context_lines.append(f"{i}. {prefix} {c['name']}{price_suffix}: {c['text']}")
         rag_context = "\n\n".join(context_lines)
 
         if account_id:
             personal_context = _build_user_context_prompt(account_id)
         elif request:
-            _update_guest_temp_profile(request, intent)
             personal_context = _build_guest_context_prompt(request)
         else:
             personal_context = ""
 
+        # ── Personalized Recommendation Tool ────────────────────
+        from app.ai.chatbot import (
+            _build_personalized_recommendation_context,
+            _is_recommendation_request,
+        )
+        # Kiểm tra đã có sở thích tích lũy (guest hoặc registered) chưa
+        has_accumulated_profile = False
+        if account_id:
+            from app.ai.personalize import _load_ai_profile
+            _p = _load_ai_profile(account_id)
+            has_accumulated_profile = bool(_p and _p.ConfidenceScore > 0.1)
+        elif request:
+            has_accumulated_profile = bool(
+                request.session.get('guest_ai_profile', {}).get('confidence', 0) > 0
+            )
+
+        rec_context, rec_product_ids = "", []
+        should_recommend = (
+            _is_recommendation_request(user_msg)
+            or (not intent and has_accumulated_profile)
+        )
+        if should_recommend:
+            rec_context, rec_product_ids = _build_personalized_recommendation_context(
+                account_id=account_id, request=request, top_n=3
+            )
+
+        # ── DEBUG TẠM ──
+        print(f"[DEBUG] user_msg='{user_msg}'", flush=True)
+        print(f"[DEBUG] intent={intent}", flush=True)
+        print(f"[DEBUG] topic={topic}", flush=True)
+        print(f"[DEBUG] is_rec_request={_is_recommendation_request(user_msg)}", flush=True)
+        print(f"[DEBUG] guest_ai_profile={request.session.get('guest_ai_profile', {})}", flush=True)
+        print(f"[DEBUG] rec_product_ids={rec_product_ids}", flush=True)
+        print(f"[DEBUG] rec_context length={len(rec_context)}", flush=True)
+
         full_system = (
-            BASE_SYSTEM_PROMPT + personal_context
+            BASE_SYSTEM_PROMPT + personal_context + rec_context
             + "\n\n" + "="*50
             + "\nDỮ LIỆU SẢN PHẨM CỬA HÀNG AMI PERFUMERY:\n"
             + "="*50 + "\n" + rag_context + "\n" + "="*50
@@ -4512,6 +4869,20 @@ def chatbot_api(request):
 
         # Suggestions với ảnh + giá (giữ nguyên logic cũ)
         suggested = [c for c in chunks if c["type"] == "product"][:3]
+
+        # ── Bổ sung sản phẩm gợi ý cá nhân hóa (nếu chưa có) ──
+        if rec_product_ids:
+            from app.ai.knowledge_base import get_chunks_by_ids
+            existing_ids = {s["id"] for s in suggested if s.get("type") == "product"}
+            for pid in rec_product_ids:
+                if len(suggested) >= 3:
+                    break
+                if pid not in existing_ids:
+                    rec_chunks = get_chunks_by_ids([pid])
+                    if rec_chunks:
+                        suggested.append(rec_chunks[0])
+                        existing_ids.add(pid)
+
         if suggested:
             pid_list = [s["id"] for s in suggested if s.get("type") == "product"]
             if pid_list:
@@ -4525,6 +4896,25 @@ def chatbot_api(request):
                     s["price"] = _format_currency(v.GiaBan) if (
                         v and v.GiaBan
                     ) else ""
+        # ── Lưu last_suggestions vào session ──  ← THÊM ĐOẠN NÀY
+        product_suggestions = [
+            {"id": s["id"], "name": s["name"]}
+            for s in suggested if s.get("type") == "product"
+        ]
+        if product_suggestions:
+            request.session['last_suggestions'] = product_suggestions
+            request.session.modified = True
+
+        # Ghi nhận impression cho chatbot suggestions (Trục 1)
+        if product_suggestions:
+            try:
+                AIRecommendImpression.objects.create(
+                    id_TaiKhoan_id=account_id if account_id else None,
+                    source='chatbot',
+                    product_count=len(product_suggestions),
+                )
+            except Exception:
+                pass
 
         # ── Streaming ───────────────────────────────────────────
         def stream_gen():
@@ -4553,8 +4943,6 @@ def chatbot_api(request):
             if account_id:
                 _save_chatbot_history(account_id, chat_session_id,
                                     user_msg, full_reply, intent)
-                _update_profile_from_chatbot(account_id, intent)
-
             # 4. Kiểm tra show_products SAU KHI có full_reply
             _SHOW_PRODUCT_TRIGGERS = [
                 'gợi ý', 'đề xuất', 'giới thiệu', 'recommend',
@@ -4615,3 +5003,279 @@ def ai_user_profile_api(request):
     except Exception:
         return JsonResponse({"ok": False, "error": "Lỗi server"})
  
+
+# GET  /api/cart/        → lấy giỏ hàng từ DB
+# POST /api/cart/sync/   → đồng bộ toàn bộ giỏ từ localStorage lên DB
+# POST /api/cart/update/ → thêm/sửa/xóa 1 item
+
+def cart_get_api(request):
+    account_id = request.session.get('account_id')
+    if not account_id:
+        return JsonResponse({'ok': True, 'items': []})
+
+    account = TaiKhoan.objects.filter(pk=account_id).first()
+    if not account:
+        return JsonResponse({'ok': True, 'items': []})
+
+    from .models import GioHang
+    items = list(
+        GioHang.objects
+        .filter(id_TaiKhoan=account)   # ← dùng object
+        .select_related('id_BienThe__id_SanPham__id_ThuongHieu')
+    )
+
+    product_ids = [i.id_BienThe.id_SanPham_id for i in items if i.id_BienThe]
+    image_map   = _product_image_map(product_ids)
+
+    result = []
+    for item in items:
+        bt = item.id_BienThe
+        sp = bt.id_SanPham if bt else None
+        if not sp: continue
+
+        imgs = image_map.get(sp.id_SanPham, [])
+        result.append({
+            'key':       f'{sp.id_SanPham}-{bt.id_BienThe}',
+            'productId': str(sp.id_SanPham),
+            'variantId': str(bt.id_BienThe),
+            'name':      sp.TenSanPham + (f' — {bt.Sku}' if bt.Sku else ''),
+            'price':     int(bt.GiaBan or 0),
+            'image':     imgs[0] if imgs else '',
+            'sku':       bt.Sku or '',
+            'qty':       item.SoLuong,
+            'stock':     int(bt.SoLuong or 0),
+            'checked':   True,
+        })
+
+    return JsonResponse({'ok': True, 'items': result},
+                        json_dumps_params={'ensure_ascii': False})
+
+
+@csrf_exempt
+@require_POST
+def cart_sync_api(request):
+    account_id = request.session.get('account_id')
+    if not account_id:
+        return JsonResponse({'ok': False})
+
+    account = TaiKhoan.objects.filter(pk=account_id).first()
+    if not account:
+        return JsonResponse({'ok': False})
+
+    from .models import GioHang
+    try:
+        items = json.loads(request.body).get('items', [])
+        for item in items:
+            variant_id = item.get('variantId')
+            qty        = int(item.get('qty') or 1)
+            if not variant_id or not str(variant_id).isdigit(): continue
+            if qty <= 0: continue
+
+            bt = BienThe.objects.filter(pk=int(variant_id)).first()
+            if not bt: continue
+
+            gh, created = GioHang.objects.get_or_create(
+                id_TaiKhoan=account,   # ← dùng object
+                id_BienThe=bt,
+                defaults={'SoLuong': qty}
+            )
+            if not created:
+                gh.SoLuong = qty
+                gh.save(update_fields=['SoLuong'])
+
+        return JsonResponse({'ok': True})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'error': str(e)})
+
+
+@csrf_exempt
+@require_POST
+def cart_update_api(request):
+    account_id = request.session.get('account_id')
+    if not account_id:
+        return JsonResponse({'ok': False})
+
+    from .models import GioHang
+    try:
+        data       = json.loads(request.body)
+        variant_id = data.get('variantId')
+        qty        = int(data.get('qty') or 0)
+        action     = data.get('action', 'set')
+
+        if not variant_id or not str(variant_id).isdigit():
+            return JsonResponse({'ok': False, 'error': 'Invalid variantId'})
+
+        bt = BienThe.objects.filter(pk=int(variant_id)).first()
+        if not bt:
+            return JsonResponse({'ok': False, 'error': 'Không tìm thấy biến thể'})
+
+        # ← Lấy object TaiKhoan thay vì dùng id trực tiếp
+        account = TaiKhoan.objects.filter(pk=account_id).first()
+        if not account:
+            return JsonResponse({'ok': False, 'error': 'Không tìm thấy tài khoản'})
+
+        if action == 'remove' or qty <= 0:
+            GioHang.objects.filter(
+                id_TaiKhoan=account,   # ← dùng object
+                id_BienThe=bt
+            ).delete()
+        else:
+            gh, _ = GioHang.objects.get_or_create(
+                id_TaiKhoan=account,   # ← dùng object
+                id_BienThe=bt,
+                defaults={'SoLuong': qty}
+            )
+            gh.SoLuong = qty
+            gh.save(update_fields=['SoLuong'])
+
+        return JsonResponse({'ok': True})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'error': str(e)})
+    
+
+# ════════════════════════════════════════════════════════════════
+# SURVEY — Khảo sát mức độ hài lòng (Likert-5)
+# ════════════════════════════════════════════════════════════════
+
+@csrf_exempt
+@require_POST
+def submit_survey_api(request):
+    """
+    POST /api/survey/submit/
+    Body: JSON với 13 câu q1..q13 (giá trị 1-5), feedback_text,
+    do_tuoi, gioi_tinh, tan_suat_mua.
+    """
+    import json as _json
+    try:
+        data = _json.loads(request.body)
+        account_id = request.session.get("account_id")
+
+        likert_fields = [
+            'q1_phu_hop', 'q2_tim_nhanh', 'q3_da_dang', 'q4_tin_tuong',
+            'q5_hieu_dung', 'q6_phan_hoi_nhanh', 'q7_de_hieu', 'q8_nhu_nhan_vien',
+            'q9_nho_so_thich', 'q10_cai_thien',
+            'q11_hai_long', 'q12_quay_lai', 'q13_gioi_thieu',
+        ]
+
+        values = {}
+        for f in likert_fields:
+            v = data.get(f)
+            try:
+                v = int(v)
+            except (TypeError, ValueError):
+                return JsonResponse({
+                    "ok": False,
+                    "message": f"Câu trả lời '{f}' không hợp lệ."
+                }, status=400)
+            if v < 1 or v > 5:
+                return JsonResponse({
+                    "ok": False,
+                    "message": f"Câu trả lời '{f}' phải từ 1 đến 5."
+                }, status=400)
+            values[f] = v
+
+        SurveyResponse.objects.create(
+            id_TaiKhoan_id=account_id,
+            **values,
+            feedback_text=(data.get('feedback_text') or '').strip()[:1000],
+            do_tuoi=(data.get('do_tuoi') or '').strip()[:20],
+            gioi_tinh=(data.get('gioi_tinh') or '').strip()[:10],
+            tan_suat_mua=(data.get('tan_suat_mua') or '').strip()[:30],
+        )
+
+        return JsonResponse({
+            "ok": True,
+            "message": "Cảm ơn bạn đã hoàn thành khảo sát! 🌸"
+        })
+
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return JsonResponse({"ok": False, "message": "Có lỗi xảy ra, vui lòng thử lại."}, status=500)
+
+
+def survey_stats_api(request):
+    """
+    GET /api/survey/stats/
+    Trả về thống kê trung bình theo câu hỏi và theo nhóm.
+    """
+    from django.db.models import Avg, Count
+
+    is_django_admin = bool(
+        getattr(request, "user", None)
+        and request.user.is_authenticated and request.user.is_staff
+    )
+    account_id = request.session.get("account_id")
+    account = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first() if account_id else None
+    is_custom_admin = bool(account and account.LoaiTaiKhoan in ('admin', 'staff'))
+    if not is_django_admin and not is_custom_admin:
+        return JsonResponse({"ok": False}, status=403)
+
+    qs = SurveyResponse.objects.all()
+    n = qs.count()
+    if n == 0:
+        return JsonResponse({"ok": True, "n": 0, "message": "Chưa có dữ liệu khảo sát."})
+
+    fields = [
+        'q1_phu_hop', 'q2_tim_nhanh', 'q3_da_dang', 'q4_tin_tuong',
+        'q5_hieu_dung', 'q6_phan_hoi_nhanh', 'q7_de_hieu', 'q8_nhu_nhan_vien',
+        'q9_nho_so_thich', 'q10_cai_thien',
+        'q11_hai_long', 'q12_quay_lai', 'q13_gioi_thieu',
+    ]
+
+    averages = qs.aggregate(**{f: Avg(f) for f in fields})
+    averages = {k: round(float(v), 2) for k, v in averages.items()}
+
+    groups = {
+        "Chat_luong_goi_y": round(sum(averages[f] for f in fields[0:4]) / 4, 2),
+        "Trai_nghiem_Chatbot": round(sum(averages[f] for f in fields[4:8]) / 4, 2),
+        "Ca_nhan_hoa": round(sum(averages[f] for f in fields[8:10]) / 2, 2),
+        "Hai_long_tong_the": round(sum(averages[f] for f in fields[10:13]) / 3, 2),
+    }
+
+    demographics = {
+        "do_tuoi": list(qs.values('do_tuoi').annotate(count=Count('id_Survey'))),
+        "gioi_tinh": list(qs.values('gioi_tinh').annotate(count=Count('id_Survey'))),
+        "tan_suat_mua": list(qs.values('tan_suat_mua').annotate(count=Count('id_Survey'))),
+    }
+
+    feedback_texts = list(
+        qs.exclude(feedback_text='').exclude(feedback_text__isnull=True)
+        .values_list('feedback_text', flat=True)[:50]
+    )
+
+    return JsonResponse({
+        "ok": True, "n": n,
+        "per_question": averages,
+        "per_group": groups,
+        "overall_average": round(sum(groups.values()) / len(groups), 2),
+        "demographics": demographics,
+        "feedback_texts": feedback_texts,
+    }, json_dumps_params={"ensure_ascii": False})
+
+
+from django.views.decorators.csrf import ensure_csrf_cookie
+
+@ensure_csrf_cookie
+def survey_page(request):
+    """Trang khảo sát công khai — gửi qua Cloudflare Tunnel cho người tham gia."""
+    return render(request, 'app/survey.html')
+
+def ai_evaluation_report_api(request):
+    """
+    GET /api/admin/evaluation-report/?days=30
+    Báo cáo tổng hợp chỉ số hiệu quả gợi ý AI (Trục 1).
+    """
+    is_django_admin = bool(
+        getattr(request, "user", None)
+        and request.user.is_authenticated and request.user.is_staff
+    )
+    account_id = request.session.get("account_id")
+    account = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first() if account_id else None
+    is_custom_admin = bool(account and account.LoaiTaiKhoan in ('admin', 'staff'))
+    if not is_django_admin and not is_custom_admin:
+        return JsonResponse({"ok": False}, status=403)
+
+    from app.ai.evaluation import generate_full_report
+    days = int(request.GET.get('days', 30))
+    report = generate_full_report(since_days=days)
+    return JsonResponse({"ok": True, "report": report}, json_dumps_params={"ensure_ascii": False})

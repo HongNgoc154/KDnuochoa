@@ -12,9 +12,9 @@ body.cart-page {
 .cart-layout {
   display: grid;
   grid-template-columns: 1fr 360px;
-  gap: 32px;
+  gap: 40px;
   align-items: start;
-  padding-top: 40px;
+  padding-top: 0px;
   padding-bottom: 60px;
 }
 
@@ -288,13 +288,18 @@ body.cart-page {
 /* ── Summary Card ── */
 .summary-card {
   position: sticky;
-  top: 96px;
+  top: 90px;
+  align-self: start;
   background: #ffffff;
   border-radius: 22px;
   padding: 28px 24px;
   border: 1px solid rgba(91, 103, 75, 0.12);
   box-shadow: 0 4px 24px rgba(44, 51, 36, 0.07);
+  max-height: calc(100vh - 110px);   /* ← không vượt quá màn hình */
+  overflow-y: auto;                  /* ← scroll nội bộ nếu quá dài */
+  scrollbar-width: none;
 }
+.summary-card::-webkit-scrollbar { display: none; }
 .summary-card h3 {
   font-family: 'Cormorant Garamond', serif;
   font-size: 22px;

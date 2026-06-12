@@ -36,6 +36,8 @@ CÁCH TƯ VẤN:
 - Hỏi sở thích mùi hương (hoa, gỗ, tươi mát, ngọt...) nếu chưa rõ
 - Gợi ý cụ thể 1-3 sản phẩm phù hợp nhất từ dữ liệu cửa hàng
 - Giải thích tại sao sản phẩm đó phù hợp với nhu cầu khách
+- Nếu có mục "GỢI Ý CÁ NHÂN HÓA RIÊNG CHO KHÁCH", ưu tiên tham khảo và
+  giải thích lý do dựa trên lịch sử/sở thích đã ghi nhận của khách
 
 GIỚI HẠN:
 - Chỉ giới thiệu sản phẩm có trong dữ liệu cửa hàng bên dưới
@@ -48,6 +50,277 @@ XỬ LÝ CÂU HỎI NGOÀI CHỦ ĐỀ:
   người nổi tiếng, hoặc bất kỳ chủ đề nào không liên quan đến nước hoa:
   → Trả lời lịch sự, ngắn gọn rằng bạn chỉ tư vấn về nước hoa
   → Khéo léo hướng khách quay lại chủ đề nước hoa"""
+
+# ════════════════════════════════════════════════════════════════
+# A2. GREETING DETECTION — Lớp 0: chào hỏi, dẫn dắt vào tư vấn
+# ════════════════════════════════════════════════════════════════
+
+import re as _re_greeting  # (re đã import ở đầu file, không cần dòng này nếu đã có)
+
+_GREETING_PATTERNS = [
+    r'^(xin\s*)?ch[aà]o\s*(b[aạạn]n|shop|ami|c[ưữ]a\s*h[aà]ng|m[ìi]nh)?\s*[!.?…]*$',
+    r'^h+(i|ello|ey|elo|allo)+\s*[!.?…]*$',
+    r'^al[oôơ]+\s*[!.?…]*$',
+    r'^(good\s*)?(morning|afternoon|evening)\s*[!.?…]*$',
+    r'^(hế lô|hé lô|hello bạn|hi bạn)\s*[!.?…]*$',
+    r'^(test|thử|ơi|ê|alooo)\s*[!.?…]*$',
+]
+
+# Loại bỏ emoji & khoảng trắng dư để so khớp chính xác
+_EMOJI_PATTERN = _re_greeting.compile(
+    "[\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0001F000-\U0001F02F]+",
+    flags=_re_greeting.UNICODE
+)
+
+
+def _is_greeting(message: str) -> bool:
+    """
+    Nhận diện lời chào ĐƠN GIẢN (không kèm nội dung khác).
+    Ví dụ khớp: 'hello', 'chào shop', 'alo', 'Hi 👋', 'chào bạn ơi'
+    Ví dụ KHÔNG khớp: 'chào, mình muốn mua nước hoa cho nam'
+    """
+    msg = _EMOJI_PATTERN.sub('', message).strip().lower()
+    msg = _re_greeting.sub(r'\s+', ' ', msg)
+    result = False
+    if msg and len(msg.split()) <= 5:
+        result = any(_re_greeting.match(pat, msg) for pat in _GREETING_PATTERNS)
+    # print(f"[DEBUG] _is_greeting('{message}') -> msg='{msg}' -> {result}", flush=True)
+    return result
+    # if not msg:
+    #     return False
+    # # Tin nhắn quá dài (>5 từ) khả năng có nội dung khác kèm theo
+    # if len(msg.split()) > 5:
+    #     return False
+    # return any(_re_greeting.match(pat, msg) for pat in _GREETING_PATTERNS)
+
+
+_GREETING_REPLIES = [
+    "Xin chào! 🌸 Mình là trợ lý tư vấn nước hoa của **Ami Perfumery**.\n\n"
+    "Bạn đang tìm hương thơm cho dịp nào vậy — đi làm, dự tiệc, hẹn hò hay làm quà tặng? "
+    "Cho mình biết thêm để gợi ý chính xác hơn nhé!",
+
+    "Chào bạn! 😊 Rất vui được hỗ trợ bạn tìm mùi hương phù hợp tại Ami Perfumery.\n\n"
+    "Bạn thích nhóm hương nào — tươi mát, hoa cỏ, gỗ ấm hay ngọt ngào? "
+    "Hoặc bạn đang tìm cho nam, nữ hay unisex?",
+
+    "Xin chào! ✨ Ami Perfumery rất hân hạnh được tư vấn cho bạn.\n\n"
+    "Để chọn được chai nước hoa 'đo ni đóng giày', bạn cho mình biết: "
+    "bạn cần mua cho bản thân hay làm quà tặng, và ngân sách khoảng bao nhiêu không?",
+
+    "Chào bạn nhé! 🌿 Mình ở đây để giúp bạn tìm hương thơm yêu thích.\n\n"
+    "Bạn có thể mô tả sơ về phong cách của mình — năng động, nhẹ nhàng, sang trọng hay cá tính — "
+    "để mình gợi ý sản phẩm phù hợp nhất!",
+]
+
+# ════════════════════════════════════════════════════════════════
+# A3. RECOMMENDATION REQUEST DETECTION
+# ════════════════════════════════════════════════════════════════
+
+_REC_REQUEST_KEYWORDS = [
+    'gợi ý cho', 'gợi ý gì', 'đề xuất cho', 'dành cho mình', 'dành cho tôi',
+    'có gì hay', 'có gì phù hợp', 'có gì hợp với', 'gợi ý nước hoa cho',
+    'recommend', 'tư vấn cho mình xem', 'xem có gì hợp', 'có gì mới',
+]
+
+def _is_recommendation_request(message: str) -> bool:
+    """Nhận diện câu hỏi gợi ý CHUNG (không nêu tiêu chí cụ thể)."""
+    msg = message.lower()
+    return any(kw in msg for kw in _REC_REQUEST_KEYWORDS)
+
+def _build_personalized_recommendation_context(account_id=None, request=None, top_n=3):
+    """
+    Lấy gợi ý cá nhân hóa (từ personalize.py) + lý do gợi ý (profile),
+    trả về đoạn text để chèn vào system prompt cho AI giải thích.
+
+    Return: (context_text: str, product_ids: list[int])
+    """
+    from app.ai.knowledge_base import get_chunks_by_ids
+
+    reasons = []
+    product_ids = []
+
+    if account_id:
+        from app.ai.personalize import get_personalized_recommendations, _load_ai_profile
+        product_ids = get_personalized_recommendations(account_id, top_n=top_n)
+        profile = _load_ai_profile(account_id)
+        if profile:
+            if profile.get_nhom_mua():
+                reasons.append(f"khách thường thích nhóm hương: {', '.join(profile.get_nhom_mua()[:3])}")
+            if profile.get_thuong_hieu():
+                reasons.append(f"khách ưa chuộng thương hiệu: {', '.join(profile.get_thuong_hieu()[:3])}")
+            if profile.GiaMin and profile.GiaMax:
+                reasons.append(
+                    f"khoảng giá khách thường mua: "
+                    f"{int(profile.GiaMin):,}đ - {int(profile.GiaMax):,}đ"
+                )
+    elif request:
+        from app.ai.personalize import get_guest_recommendations
+        product_ids = get_guest_recommendations(request, top_n=top_n)
+        guest_profile = request.session.get('guest_ai_profile', {})
+        if guest_profile.get('scents'):
+            reasons.append(f"khách quan tâm nhóm hương: {', '.join(guest_profile['scents'])}")
+        if guest_profile.get('price_max'):
+            reasons.append(f"ngân sách tối đa: {guest_profile['price_max']:,}đ")
+
+    if not product_ids:
+        return "", []
+
+    chunks = get_chunks_by_ids(product_ids)
+    chunk_map = {c["id"]: c for c in chunks}
+    ordered_chunks = [chunk_map[pid] for pid in product_ids if pid in chunk_map]
+
+    if not ordered_chunks:
+        return "", []
+
+    # Lấy giá thật từ BienThe (giá biến thể đầu tiên) để AI không bịa giá
+    from app.models import BienThe
+    from django.db.models import Min
+    price_map = {}
+    pids = [c["id"] for c in ordered_chunks]
+    for row in BienThe.objects.filter(id_SanPham_id__in=pids).values('id_SanPham_id').annotate(min_price=Min('GiaBan')):
+        price_map[row['id_SanPham_id']] = row['min_price']
+
+    lines = []
+    for i, c in enumerate(ordered_chunks, 1):
+        price = price_map.get(c["id"])
+        price_text = f"{int(price):,}đ".replace(",", ".") if price else "Liên hệ"
+        lines.append(f"{i}. {c['name']} (Giá: {price_text}): {c['text']}")
+    reason_text = "; ".join(reasons) if reasons else "hành vi xem/mua hàng gần đây của khách"
+
+    context = (
+        "\n\n" + "=" * 50
+        + "\nGỢI Ý CÁ NHÂN HÓA RIÊNG CHO KHÁCH:\n"
+        + "=" * 50 + "\n"
+        + f"Thông tin đã ghi nhận về khách: {reason_text}.\n\n"
+        + "Các sản phẩm phù hợp:\n"
+        + "\n".join(lines)
+        + "\n\nYÊU CẦU BẮT BUỘC: Khi giới thiệu các sản phẩm trên, PHẢI mở đầu "
+          "bằng cách nhắc lại NGẮN GỌN thông tin khách đã chia sẻ (VD: "
+          "'Dựa trên sở thích [mùi/giới tính/ngân sách] bạn vừa cho biết...'), "
+          "sau đó mới gợi ý sản phẩm và giải thích vì sao phù hợp."
+    )
+
+    return context, [c["id"] for c in ordered_chunks]
+
+# ════════════════════════════════════════════════════════════════
+# A4. ACTION INTENT DETECTION — Lớp 2.5
+# ════════════════════════════════════════════════════════════════
+
+_WISHLIST_KEYWORDS = [
+    'yêu thích', 'wishlist', 'lưu lại', 'thêm vào yêu thích',
+    'lưu vào yêu thích', 'thêm vào danh sách yêu thích', 'lưu sản phẩm',
+]
+
+_CART_KEYWORDS = [
+    'thêm vào giỏ', 'cho vào giỏ', 'bỏ vào giỏ', 'thêm giỏ hàng',
+    'mua chai', 'mua sản phẩm', 'đặt mua',
+]
+
+_ORDER_KEYWORDS = [
+    'đặt hàng', 'mua ngay', 'thanh toán ngay', 'order ngay', 'chốt đơn',
+]
+
+def _detect_action_intent(message: str) -> str | None:
+    """
+    Phát hiện ý định hành động (Lớp 2.5).
+    Trả về: 'add_to_wishlist' | 'add_to_cart' | 'place_order' | None
+    Thứ tự kiểm tra: order > cart > wishlist (vì order/cart có thể
+    chứa từ tương tự wishlist trong câu dài).
+    """
+    msg = message.lower()
+    if any(kw in msg for kw in _ORDER_KEYWORDS):
+        return 'place_order'
+    if any(kw in msg for kw in _CART_KEYWORDS):
+        return 'add_to_cart'
+    if any(kw in msg for kw in _WISHLIST_KEYWORDS):
+        return 'add_to_wishlist'
+    return None
+
+
+# ════════════════════════════════════════════════════════════════
+# A5. CONFIRMATION DETECTION — Lớp 1.5
+# ════════════════════════════════════════════════════════════════
+
+_CONFIRM_KEYWORDS = [
+    'có', 'ok', 'okie', 'oke', 'đồng ý', 'đúng', 'xác nhận', 'được',
+    'yes', 'ừ', 'ừm', 'vâng', 'chốt', 'chốt đi', 'đúng rồi', 'phải',
+    'làm đi', 'tiến hành',
+]
+
+_CANCEL_KEYWORDS = [
+    'không', 'hủy', 'thôi', 'cancel', 'no', 'huỷ', 'để sau',
+    'chưa', 'khoan', 'dừng lại',
+]
+
+def _detect_confirmation(message: str) -> str:
+    """
+    Lớp 1.5: phát hiện confirm/cancel cho pending_action.
+    Trả về: 'confirm' | 'cancel' | 'unclear'
+    """
+    msg = message.lower().strip()
+    words = msg.split()
+    if len(words) > 6:
+        return 'unclear'
+    if any(kw == msg or msg.startswith(kw + ' ') or msg.endswith(' ' + kw)
+           for kw in _CANCEL_KEYWORDS):
+        return 'cancel'
+    if any(kw == msg or msg.startswith(kw + ' ') or msg.endswith(' ' + kw)
+           for kw in _CONFIRM_KEYWORDS):
+        return 'confirm'
+    return 'unclear'
+
+
+# ════════════════════════════════════════════════════════════════
+# A6. PRODUCT ENTITY RESOLUTION — cho wishlist/cart
+# ════════════════════════════════════════════════════════════════
+
+def _resolve_product_for_action(user_msg: str, chunks: list,
+                                  last_suggestions: list) -> dict | None:
+    """
+    Xác định sản phẩm khách muốn thao tác (wishlist/cart).
+    Trả về: {"id": int, "name": str} hoặc None nếu không xác định được.
+
+    Thứ tự ưu tiên:
+    1. Nếu user_msg đề cập rõ tên sản phẩm (RAG score cao) -> dùng chunks[0]
+    2. Nếu user_msg dùng đại từ ("cái này", "sản phẩm đó", "chai đó",
+       "cái đầu tiên"...) -> dùng last_suggestions
+    3. Nếu chỉ có 1 sản phẩm trong last_suggestions -> dùng luôn
+    """
+    msg = user_msg.lower()
+
+    _ANAPHORA = ['cái này', 'sản phẩm này', 'sản phẩm đó', 'cái đó',
+                  'chai này', 'chai đó', 'nó', 'sản phẩm vừa rồi',
+                  'cái vừa nói', 'chai vừa rồi']
+
+    product_chunks = [c for c in chunks if c["type"] == "product"]
+    if product_chunks:
+        top = product_chunks[0]
+        if top.get("score", 0) >= 0.55:
+            return {"id": top["id"], "name": top["name"]}
+
+    if any(a in msg for a in _ANAPHORA) and last_suggestions:
+        first = last_suggestions[0]
+        return {"id": first["id"], "name": first["name"]}
+
+    if len(last_suggestions) == 1:
+        first = last_suggestions[0]
+        return {"id": first["id"], "name": first["name"]}
+
+    return None
+
+
+# ════════════════════════════════════════════════════════════════
+# A7. QUICK GENDER EXTRACTION — cho retrieve() song song
+# ════════════════════════════════════════════════════════════════
+
+def _extract_gender_quick(text: str) -> str | None:
+    """Trích nhanh giới tính từ message — dùng để truyền vào retrieve()
+    TRƯỚC khi _extract_intent đầy đủ chạy."""
+    text_lower = text.lower()
+    for gender, kws in _GENDER_KEYWORDS.items():
+        if any(kw in text_lower for kw in kws):
+            return gender
+    return None
 
 
 # ════════════════════════════════════════════════════════════════
@@ -231,8 +504,35 @@ def _extract_intent(text: str) -> dict:
     elif re.search(r'dưới\s*(\d+)[kK]', text_lower):
         m = re.search(r'dưới\s*(\d+)[kK]', text_lower)
         result['price_max'] = int(m.group(1)) * 1000
+    else:
+        # "tầm/khoảng/around X triệu" hoặc "X triệu"
+        m = re.search(
+            r'(?:tầm|khoảng|around|cỡ)?\s*(\d+(?:[.,]\d+)?)\s*tri[ệe]u',
+            text_lower
+        )
+        if m:
+            value = float(m.group(1).replace(',', '.'))
+            result['price_max'] = int(value * 1_000_000)
+        else:
+            # "tầm/khoảng X" hoặc "dưới X" (X dạng nghìn, không có k/triệu)
+            m2 = re.search(
+                r'(?:tầm|khoảng|dưới|around|cỡ)\s*(\d{3,4})[kK]?\b',
+                text_lower
+            )
+            if m2:
+                result['price_max'] = int(m2.group(1)) * 1000
 
     return result
+
+def _extract_gender_quick(text: str) -> str | None:
+    """Trích nhanh giới tính từ message — dùng để truyền vào retrieve() 
+    TRƯỚC khi _extract_intent đầy đủ chạy (vì retrieve chạy song song 
+    với AI classify, sớm hơn _extract_intent)."""
+    text_lower = text.lower()
+    for gender, kws in _GENDER_KEYWORDS.items():
+        if any(kw in text_lower for kw in kws):
+            return gender
+    return None
 
 
 # ════════════════════════════════════════════════════════════════
@@ -464,6 +764,7 @@ def chat(user_message: str, history: list = None,
       2. AI classify    → celebrity_gossip / off_topic
       3. RAG + Generate → tư vấn đầy đủ
     """
+    # print(f"[DEBUG] chat() called with message='{user_message}'", flush=True)
     from groq import Groq
 
     client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
@@ -472,6 +773,19 @@ def chat(user_message: str, history: list = None,
         chat_session_id = str(uuid.uuid4())[:16]
 
     messages = list(history or [])
+
+    # ── Lớp 0: Greeting check (0ms) ────────────────────────────
+    if _is_greeting(user_message):
+        reply = random.choice(_GREETING_REPLIES)
+        messages.append({"role": "user",      "content": user_message})
+        messages.append({"role": "assistant", "content": reply})
+        return {
+            "reply":           reply,
+            "history":         messages,
+            "suggestions":     [],
+            "chat_session_id": chat_session_id,
+            "intent":          {"type": "greeting", "layer": "keyword"},
+        }
 
     # ── Lớp 1: Keyword check (0ms) ────────────────────────────
     if _is_off_topic_keyword(user_message):

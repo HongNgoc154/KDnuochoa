@@ -34,39 +34,44 @@ def get_guest_recommendations(request, current_product_id=None, top_n=8):
     viewed_ids = guest_get_viewed(request, exclude_id=current_product_id)
 
     if not viewed_ids and not current_product_id:
-        return _get_trending_products(top_n)
+        result = _get_trending_products(top_n)
+    else:
+        seed_ids = []
+        if current_product_id:
+            seed_ids.append(current_product_id)
+        seed_ids.extend(viewed_ids[:4])
 
-    seed_ids = []
-    if current_product_id:
-        seed_ids.append(current_product_id)
-    seed_ids.extend(viewed_ids[:4])
+        similar = _get_content_similar(seed_ids, top_n=top_n * 2)
 
-    similar = _get_content_similar(seed_ids, top_n=top_n * 2)
+        exclude = set(viewed_ids)
+        if current_product_id:
+            exclude.add(current_product_id)
 
-    exclude = set(viewed_ids)
-    if current_product_id:
-        exclude.add(current_product_id)
+        result = [pid for pid in sorted(similar, key=similar.get, reverse=True)
+                  if pid not in exclude][:top_n]
 
-    result = [pid for pid in sorted(similar, key=similar.get, reverse=True)
-              if pid not in exclude][:top_n]
+        # Bổ sung từ trending nếu thiếu
+        if len(result) < top_n:
+            trending = _get_trending_products(top_n)
+            for pid in trending:
+                if pid not in exclude and pid not in result:
+                    result.append(pid)
+                    if len(result) >= top_n:
+                        break
 
-    # Bổ sung từ trending nếu thiếu
-    if len(result) < top_n:
-        trending = _get_trending_products(top_n)
-        for pid in trending:
-            if pid not in exclude and pid not in result:
-                result.append(pid)
-                if len(result) >= top_n:
-                    break
+        # ✅ ĐÚNG — fallback cuối, sau tất cả các bước
+        if not result:
+            from app.models import SanPham
+            result = list(
+                SanPham.objects
+                .exclude(id_SanPham=current_product_id or 0)
+                .values_list('id_SanPham', flat=True)[:top_n]
+            )
 
-    # ✅ ĐÚNG — fallback cuối, sau tất cả các bước
-    if not result:
-        from app.models import SanPham
-        result = list(
-            SanPham.objects
-            .exclude(id_SanPham=current_product_id or 0)
-            .values_list('id_SanPham', flat=True)[:top_n]
-        )
+    # ── MỚI: Lọc theo gender trong session profile (nếu có) ──
+    gender_pref = request.session.get('guest_ai_profile', {}).get('gender')
+    if gender_pref and result:
+        result = _filter_products_by_gender(result, gender_pref, top_n)
 
     return result
 
@@ -387,20 +392,45 @@ def _get_user_behavior_extended(account_id: int) -> dict:
     return scores
 
 
-def _get_content_similar(seed_product_ids: list, top_n: int = 20) -> dict:
-    """Dùng FAISS index tìm SP tương tự với seed list."""
-    from app.ai.knowledge_base import INDEX_PATH, CHUNKS_PATH, _get_model
+# ── Cache toàn cục, chỉ load 1 lần ──
+_FAISS_INDEX = None
+_CHUNKS = None
+_CHUNK_IDS = None
+
+def _load_faiss_cache():
+    global _FAISS_INDEX, _CHUNKS, _CHUNK_IDS
+    if _FAISS_INDEX is not None:
+        return _FAISS_INDEX, _CHUNKS, _CHUNK_IDS
+
+    from app.ai.knowledge_base import INDEX_PATH, CHUNKS_PATH
     import faiss
+    import pickle
 
     if not os.path.exists(INDEX_PATH):
+        return None, None, None
+
+    _FAISS_INDEX = faiss.read_index(INDEX_PATH)
+    with open(CHUNKS_PATH, 'rb') as f:
+        _CHUNKS = pickle.load(f)
+    _CHUNK_IDS = [c['id'] for c in _CHUNKS if c['type'] == 'product']
+    return _FAISS_INDEX, _CHUNKS, _CHUNK_IDS
+
+def invalidate_faiss_cache():
+    """Xóa cache để lần gọi tiếp theo load lại FAISS index mới."""
+    global _FAISS_INDEX, _CHUNKS, _CHUNK_IDS
+    _FAISS_INDEX = None
+    _CHUNKS = None
+    _CHUNK_IDS = None
+
+def _get_content_similar(seed_product_ids: list, top_n: int = 20) -> dict:
+    """Dùng FAISS index (đã cache RAM) tìm SP tương tự với seed list."""
+    from app.ai.knowledge_base import _get_model
+
+    index, chunks, chunk_ids = _load_faiss_cache()
+    if index is None:
         return {}
 
-    index = faiss.read_index(INDEX_PATH)
-    with open(CHUNKS_PATH, 'rb') as f:
-        chunks = pickle.load(f)
-
     product_chunks = [c for c in chunks if c['type'] == 'product']
-    chunk_ids      = [c['id'] for c in product_chunks]
 
     if not chunk_ids:
         return {}
@@ -486,3 +516,35 @@ def _get_trending_products(top_n: int = 8) -> list[int]:
                    if p not in result]
 
     return result[:top_n]
+
+
+# ════════════════════════════════════════════════════════════════
+# F. GENDER FILTER — hỗ trợ lọc gợi ý theo giới tính ưa thích
+# ════════════════════════════════════════════════════════════════
+
+def _filter_products_by_gender(product_ids: list, gender: str, top_n: int) -> list:
+    """
+    Lọc product_id theo gender, dùng field 'gender' đã được tính sẵn
+    trong chunks (xem _infer_gender trong knowledge_base.py).
+
+    gender: 'nam' | 'nu' | 'unisex'
+    Nếu lọc ra rỗng -> trả về danh sách gốc (tránh mất gợi ý hoàn toàn).
+    """
+    if gender == 'unisex':
+        return product_ids[:top_n]
+
+    _, chunks, _ = _load_faiss_cache()
+    if not chunks:
+        return product_ids[:top_n]
+
+    gender_map = {
+        c['id']: c.get('gender', 'unisex')
+        for c in chunks if c['type'] == 'product'
+    }
+
+    filtered = [pid for pid in product_ids
+                 if gender_map.get(pid, 'unisex') in (gender, 'unisex')]
+
+    if filtered:
+        return filtered[:top_n]
+    return product_ids[:top_n]

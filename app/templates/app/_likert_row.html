@@ -1,0 +1,12 @@
+<div class="likert">
+    {% for i in "12345" %}
+    <label>
+        <input type="radio" name="{{ field }}" value="{{ i }}">
+        <div class="opt">{{ i }}</div>
+    </label>
+    {% endfor %}
+</div>
+<div class="scale-hint">
+    <span>Rất không đồng ý</span>
+    <span>Rất đồng ý</span>
+</div>

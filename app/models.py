@@ -832,3 +832,92 @@ class ChatbotHistory(models.Model):
         return f"[{self.Role}] User {self.id_TaiKhoan_id} @ {self.SessionId[:8]}"
     
     
+class GioHang(models.Model):
+    id_GioHang  = models.AutoField(primary_key=True)
+    id_TaiKhoan = models.ForeignKey(
+        TaiKhoan,
+        on_delete=models.CASCADE,
+        related_name='gio_hang',
+        db_column='id_TaiKhoan'   # ← chỉ định đúng tên cột trong DB
+    )
+    id_BienThe  = models.ForeignKey(
+        BienThe,
+        on_delete=models.CASCADE,
+        db_column='id_BienThe'    # ← chỉ định đúng tên cột trong DB
+    )
+    SoLuong     = models.IntegerField(default=1)
+    NgayThem    = models.DateTimeField(auto_now_add=True)
+    NgayCapNhat = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'GioHang'
+        unique_together = ('id_TaiKhoan', 'id_BienThe')
+
+
+# ════════════════════════════════════════════════════════════════
+# ĐÁNH GIÁ HỆ THỐNG — Recommendation Effectiveness & Satisfaction
+# ════════════════════════════════════════════════════════════════
+
+class AIRecommendImpression(models.Model):
+    """
+    Ghi lại mỗi lần hệ thống HIỂN THỊ gợi ý cho khách (dù khách
+    có click hay không). Kết hợp với AIRecommendClick (đã có sẵn)
+    để tính CTR = click / impression.
+    """
+    id_Impression = models.AutoField(primary_key=True)
+    id_TaiKhoan = models.ForeignKey(
+        'TaiKhoan', null=True, blank=True, on_delete=models.SET_NULL
+    )
+    source = models.CharField(max_length=50)
+    # 'personalized' | 'session_trending' | 'discovery' | 'chatbot'
+    product_count = models.IntegerField(default=0)
+    NgayHienThi = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'ai_recommend_impression'
+
+
+class SurveyResponse(models.Model):
+    """
+    Lưu kết quả khảo sát Likert-5 về mức độ hài lòng khách hàng.
+    13 câu hỏi chia 4 nhóm: Chất lượng gợi ý, Trải nghiệm Chatbot,
+    Cá nhân hóa, Hài lòng tổng thể.
+    """
+    id_Survey = models.AutoField(primary_key=True)
+    id_TaiKhoan = models.ForeignKey(
+        'TaiKhoan', null=True, blank=True, on_delete=models.SET_NULL
+    )
+
+    # Nhóm A — Chất lượng gợi ý sản phẩm
+    q1_phu_hop        = models.IntegerField()
+    q2_tim_nhanh      = models.IntegerField()
+    q3_da_dang        = models.IntegerField()
+    q4_tin_tuong      = models.IntegerField()
+
+    # Nhóm B — Trải nghiệm Chatbot
+    q5_hieu_dung      = models.IntegerField()
+    q6_phan_hoi_nhanh = models.IntegerField()
+    q7_de_hieu        = models.IntegerField()
+    q8_nhu_nhan_vien  = models.IntegerField()
+
+    # Nhóm C — Cá nhân hóa
+    q9_nho_so_thich   = models.IntegerField()
+    q10_cai_thien     = models.IntegerField()
+
+    # Nhóm D — Hài lòng tổng thể & Ý định sử dụng
+    q11_hai_long      = models.IntegerField()
+    q12_quay_lai      = models.IntegerField()
+    q13_gioi_thieu    = models.IntegerField()
+
+    # Câu hỏi mở
+    feedback_text = models.TextField(blank=True, null=True)
+
+    # Demographic
+    do_tuoi      = models.CharField(max_length=20, blank=True)
+    gioi_tinh    = models.CharField(max_length=10, blank=True)
+    tan_suat_mua = models.CharField(max_length=30, blank=True)
+
+    NgayTao = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'survey_response'

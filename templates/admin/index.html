@@ -310,6 +310,7 @@
     <button class="ai-tab" onclick="switchAI('behavior',this)">👁 Hành vi</button>
     <button class="ai-tab" onclick="switchAI('profiles',this)">🧠 AI Profiles</button>
     <button class="ai-tab" onclick="switchAI('revenue',this)">💰 Doanh thu</button>
+    <button class="ai-tab" onclick="switchAI('evaluation',this)">📋 Đánh giá hiệu quả</button>
   </div>
 
   <!-- ── OVERVIEW ── -->
@@ -457,6 +458,40 @@
     </div>
   </div>
 
+  <!-- ── ĐÁNH GIÁ HIỆU QUẢ ── -->
+  <div class="ai-panel" id="aip-evaluation">
+    <div class="ai-chart-head" style="margin-bottom:14px;">
+      <span class="ai-chart-title" style="font-size:14px;">📊 Hiệu quả gợi ý AI &amp; Mức độ hài lòng khách hàng</span>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span class="ai-chart-badge" id="evalGeneratedAt">—</span>
+        <select id="evalDaysSelect" onchange="loadEvaluationReport()"
+                style="background:var(--d-bg3); color:var(--d-text); border:1px solid var(--d-border);
+                       border-radius:8px; padding:6px 10px; font-size:11px; font-family:inherit;">
+          <option value="7">7 ngày qua</option>
+          <option value="30" selected>30 ngày qua</option>
+          <option value="90">90 ngày qua</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="ai-kpis" id="kpiEvaluation"></div>
+
+    <div class="ai-chart-card" style="margin-top:12px;">
+      <div class="ai-chart-head">
+        <span class="ai-chart-title">💬 Mức độ hài lòng khách hàng (Khảo sát Likert-5)</span>
+      </div>
+      <div style="padding:8px 4px; line-height:1.7;">
+        <p style="color:var(--d-textdim); font-size:12px; margin-bottom:14px;">
+          Kết quả khảo sát mức độ hài lòng được thu thập qua Google Form.
+          Nhấn vào liên kết bên dưới để xem biểu đồ tổng hợp theo từng câu hỏi.
+        </p>
+        <a href="THAY_BANG_LINK_GOOGLE_FORM_RESPONSES" target="_blank" class="ai-btn">
+          📈 Xem kết quả khảo sát
+        </a>
+      </div>
+    </div>
+  </div>
+
 </div><!-- /ai-dash-wrap -->
 {% endblock %}
 
@@ -497,6 +532,7 @@ function switchAI(id, btn) {
     overview:'Overview', recommend:'Recommendation AI',
     chatbot:'Chatbot AI', behavior:'User Behavior',
     profiles:'AI Profiles', revenue:'Doanh thu',
+    evaluation:'Đánh giá hiệu quả',
   };
   document.querySelector('.ai-header-title').innerHTML =
     `<span>${titles[id]}</span> Dashboard`;
@@ -524,6 +560,7 @@ async function loadAI() {
 }
 
 function renderAI(id) {
+  if (id === 'evaluation') { loadEvaluationReport(); return; }
   if (!D) return;
   ({overview:rOv, recommend:rRec, chatbot:rChat,
     behavior:rBeh, profiles:rProf, revenue:rRev})[id]?.();
@@ -809,6 +846,30 @@ function rRev() {
       backgroundColor:D.order_status.map(s=>SC2[s.TrangThai]||C.olive),borderWidth:0,hoverOffset:5}]
   }, options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
     plugins:{legend:{position:'bottom',labels:{boxWidth:9,padding:7,color:'rgba(232,240,216,0.5)'}}}}});
+}
+
+
+/* ── Đánh giá hiệu quả gợi ý (Trục 1) ── */
+async function loadEvaluationReport() {
+  const days = document.getElementById('evalDaysSelect').value;
+  const res = await fetch(`/api/admin/evaluation-report/?days=${days}`);
+  const data = await res.json();
+  if (!data.ok) return;
+
+  const r = data.report;
+  document.getElementById('evalGeneratedAt').textContent = 'Cập nhật: ' + r.generated_at;
+
+  document.getElementById('kpiEvaluation').innerHTML =
+    kpi('Tỷ lệ click (CTR)', r.ctr.ctr_percent + '%',
+        `${r.ctr.total_clicks} click / ${r.ctr.total_impressions} hiển thị`, C.teal, '🖱️') +
+    kpi('Tỷ lệ chuyển đổi', r.conversion.conversion_rate_percent + '%',
+        `${r.conversion.converted_to_purchase}/${r.conversion.total_clicks_with_account} click → mua`, C.gold, '🛒') +
+    kpi('Độ phủ sản phẩm', r.coverage.coverage_percent + '%',
+        `${r.coverage.recommended_at_least_once}/${r.coverage.total_products} sản phẩm`, C.blue, '🎯') +
+    kpi('Hiệu quả Chatbot', r.chatbot_resolution.resolution_rate_percent + '%',
+        `${r.chatbot_resolution.sessions_with_click}/${r.chatbot_resolution.total_chat_sessions} phiên chat`, C.olive, '💬') +
+    kpi('Cá nhân hóa TB', r.personalization.avg_confidence,
+        `${r.personalization.total_profiles} hồ sơ AI`, C.purple, '🧠');
 }
 
 // Bootstrap

@@ -1,0 +1,340 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Khảo sát trải nghiệm — Ami Perfumery</title>
+    <style>
+        :root {
+            --olive: #4B672D;
+            --mint: #EBF6C4;
+            --dark: #0d1208;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Jost', 'Segoe UI', sans-serif;
+            background: var(--mint);
+            color: var(--dark);
+            padding: 24px 16px 80px;
+        }
+        .container { max-width: 640px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 32px; }
+        .header h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 32px;
+            color: var(--olive);
+            margin-bottom: 8px;
+        }
+        .header p { color: #5a5a5a; font-size: 14px; line-height: 1.6; }
+
+        .card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .group-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 20px;
+            color: var(--olive);
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--mint);
+        }
+        .question { margin-bottom: 20px; }
+        .question label.q-text {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        .likert { display: flex; justify-content: space-between; gap: 6px; }
+        .likert label { flex: 1; text-align: center; cursor: pointer; }
+        .likert input[type="radio"] { display: none; }
+        .likert .opt {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 10px 4px;
+            border: 1.5px solid #ddd;
+            border-radius: 10px;
+            transition: all 0.15s;
+            font-size: 11px;
+            color: #888;
+        }
+        .likert input[type="radio"]:checked + .opt {
+            border-color: var(--olive);
+            background: var(--mint);
+            color: var(--olive);
+            font-weight: 600;
+        }
+        .scale-hint {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #999;
+            margin-top: 6px;
+            padding: 0 2px;
+        }
+
+        textarea, select, input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 1.5px solid #ddd;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 14px;
+            margin-top: 6px;
+        }
+        textarea:focus, select:focus { outline: none; border-color: var(--olive); }
+
+        .demo-row { margin-bottom: 16px; }
+        .demo-row label { font-size: 14px; font-weight: 500; }
+
+        .submit-btn {
+            display: block;
+            width: 100%;
+            padding: 16px;
+            background: var(--olive);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .submit-btn:hover { background: #3a521f; }
+        .submit-btn:disabled { background: #aaa; cursor: not-allowed; }
+
+        .error-msg {
+            color: #c0392b;
+            font-size: 13px;
+            margin-top: 6px;
+            display: none;
+        }
+        .success-screen { text-align: center; padding: 60px 20px; }
+        .success-screen .icon { font-size: 48px; margin-bottom: 16px; }
+        .success-screen h2 {
+            font-family: 'Cormorant Garamond', serif;
+            color: var(--olive);
+            font-size: 28px;
+            margin-bottom: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="surveyContainer">
+        <div class="header">
+            <h1>Khảo sát trải nghiệm</h1>
+            <p>
+                Cảm ơn bạn đã trải nghiệm <strong>Ami Perfumery</strong> — cửa hàng nước hoa
+                trực tuyến tích hợp AI gợi ý sản phẩm cá nhân hóa.<br>
+                Chia sẻ ý kiến của bạn (mất khoảng 3-5 phút) giúp chúng tôi cải thiện
+                trải nghiệm mua sắm tốt hơn. Mọi thông tin được giữ ẩn danh.
+            </p>
+        </div>
+
+        <form id="surveyForm">
+            <div class="card">
+                <div class="group-title">A. Chất lượng gợi ý sản phẩm</div>
+                <div class="question" data-field="q1_phu_hop">
+                    <label class="q-text">1. Các sản phẩm được hệ thống gợi ý phù hợp với sở thích của tôi.</label>
+                    {% include "app/_likert_row.html" with field="q1_phu_hop" %}
+                </div>
+                <div class="question" data-field="q2_tim_nhanh">
+                    <label class="q-text">2. Tôi tìm thấy sản phẩm mong muốn nhanh hơn nhờ tính năng gợi ý.</label>
+                    {% include "app/_likert_row.html" with field="q2_tim_nhanh" %}
+                </div>
+                <div class="question" data-field="q3_da_dang">
+                    <label class="q-text">3. Mức độ đa dạng của sản phẩm gợi ý đáp ứng được nhu cầu của tôi.</label>
+                    {% include "app/_likert_row.html" with field="q3_da_dang" %}
+                </div>
+                <div class="question" data-field="q4_tin_tuong">
+                    <label class="q-text">4. Tôi tin tưởng vào các gợi ý mà hệ thống đưa ra.</label>
+                    {% include "app/_likert_row.html" with field="q4_tin_tuong" %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="group-title">B. Trải nghiệm Chatbot tư vấn</div>
+                <div class="question" data-field="q5_hieu_dung">
+                    <label class="q-text">5. Chatbot hiểu đúng nhu cầu mà tôi mô tả.</label>
+                    {% include "app/_likert_row.html" with field="q5_hieu_dung" %}
+                </div>
+                <div class="question" data-field="q6_phan_hoi_nhanh">
+                    <label class="q-text">6. Chatbot phản hồi nhanh và mượt mà.</label>
+                    {% include "app/_likert_row.html" with field="q6_phan_hoi_nhanh" %}
+                </div>
+                <div class="question" data-field="q7_de_hieu">
+                    <label class="q-text">7. Câu trả lời của chatbot dễ hiểu và tự nhiên.</label>
+                    {% include "app/_likert_row.html" with field="q7_de_hieu" %}
+                </div>
+                <div class="question" data-field="q8_nhu_nhan_vien">
+                    <label class="q-text">8. Tôi cảm thấy được tư vấn như đang nói chuyện với nhân viên thật.</label>
+                    {% include "app/_likert_row.html" with field="q8_nhu_nhan_vien" %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="group-title">C. Cá nhân hóa</div>
+                <div class="question" data-field="q9_nho_so_thich">
+                    <label class="q-text">9. Hệ thống "nhớ" và sử dụng đúng sở thích tôi đã chia sẻ trước đó.</label>
+                    {% include "app/_likert_row.html" with field="q9_nho_so_thich" %}
+                </div>
+                <div class="question" data-field="q10_cai_thien">
+                    <label class="q-text">10. Gợi ý của hệ thống trở nên chính xác hơn khi tôi sử dụng nhiều lần.</label>
+                    {% include "app/_likert_row.html" with field="q10_cai_thien" %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="group-title">D. Hài lòng tổng thể</div>
+                <div class="question" data-field="q11_hai_long">
+                    <label class="q-text">11. Tôi hài lòng với trải nghiệm mua sắm có AI hỗ trợ trên website này.</label>
+                    {% include "app/_likert_row.html" with field="q11_hai_long" %}
+                </div>
+                <div class="question" data-field="q12_quay_lai">
+                    <label class="q-text">12. Tôi có khả năng quay lại sử dụng website này trong tương lai.</label>
+                    {% include "app/_likert_row.html" with field="q12_quay_lai" %}
+                </div>
+                <div class="question" data-field="q13_gioi_thieu">
+                    <label class="q-text">13. Tôi sẽ giới thiệu website này cho người khác.</label>
+                    {% include "app/_likert_row.html" with field="q13_gioi_thieu" %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="group-title">Ý kiến thêm</div>
+                <div class="demo-row">
+                    <label>Bạn thích nhất điều gì ở chatbot tư vấn, hoặc góp ý để cải thiện? (không bắt buộc)</label>
+                    <textarea name="feedback_text" rows="4" placeholder="Chia sẻ cảm nhận của bạn..."></textarea>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="group-title">Thông tin chung</div>
+                <div class="demo-row">
+                    <label>Độ tuổi của bạn</label>
+                    <select name="do_tuoi" required>
+                        <option value="">-- Chọn --</option>
+                        <option value="Dưới 18">Dưới 18</option>
+                        <option value="18-24">18 - 24</option>
+                        <option value="25-34">25 - 34</option>
+                        <option value="35-44">35 - 44</option>
+                        <option value="Trên 45">Trên 45</option>
+                    </select>
+                </div>
+                <div class="demo-row">
+                    <label>Giới tính</label>
+                    <select name="gioi_tinh" required>
+                        <option value="">-- Chọn --</option>
+                        <option value="Nam">Nam</option>
+                        <option value="Nữ">Nữ</option>
+                        <option value="Khác">Khác</option>
+                    </select>
+                </div>
+                <div class="demo-row">
+                    <label>Bạn mua nước hoa online với tần suất như thế nào?</label>
+                    <select name="tan_suat_mua" required>
+                        <option value="">-- Chọn --</option>
+                        <option value="Lần đầu">Đây là lần đầu</option>
+                        <option value="Hiếm khi">Hiếm khi (vài lần/năm)</option>
+                        <option value="Thường xuyên">Thường xuyên (hàng tháng)</option>
+                        <option value="Rất thường xuyên">Rất thường xuyên</option>
+                    </select>
+                </div>
+            </div>
+
+            <button type="submit" class="submit-btn" id="submitBtn">Gửi khảo sát</button>
+            <div class="error-msg" id="errorMsg"></div>
+        </form>
+
+        <div class="success-screen" id="successScreen" style="display:none;">
+            <div class="icon">🌿</div>
+            <h2>Cảm ơn bạn!</h2>
+            <p>Phản hồi của bạn đã được ghi nhận và sẽ giúp Ami Perfumery cải thiện trải nghiệm mua sắm tốt hơn.</p>
+        </div>
+    </div>
+
+    <script>
+        const LIKERT_FIELDS = [
+            'q1_phu_hop','q2_tim_nhanh','q3_da_dang','q4_tin_tuong',
+            'q5_hieu_dung','q6_phan_hoi_nhanh','q7_de_hieu','q8_nhu_nhan_vien',
+            'q9_nho_so_thich','q10_cai_thien',
+            'q11_hai_long','q12_quay_lai','q13_gioi_thieu',
+        ];
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+
+        document.getElementById('surveyForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const errorEl = document.getElementById('errorMsg');
+            const btn = document.getElementById('submitBtn');
+            errorEl.style.display = 'none';
+
+            const formData = new FormData(this);
+            const payload = {};
+
+            for (const field of LIKERT_FIELDS) {
+                const val = formData.get(field);
+                if (!val) {
+                    errorEl.textContent = 'Vui lòng trả lời đầy đủ tất cả các câu hỏi đánh giá (1-5).';
+                    errorEl.style.display = 'block';
+                    document.querySelector(`[data-field="${field}"]`).scrollIntoView({behavior:'smooth', block:'center'});
+                    return;
+                }
+                payload[field] = parseInt(val);
+            }
+
+            payload.feedback_text = formData.get('feedback_text') || '';
+            payload.do_tuoi = formData.get('do_tuoi') || '';
+            payload.gioi_tinh = formData.get('gioi_tinh') || '';
+            payload.tan_suat_mua = formData.get('tan_suat_mua') || '';
+
+            if (!payload.do_tuoi || !payload.gioi_tinh || !payload.tan_suat_mua) {
+                errorEl.textContent = 'Vui lòng điền đầy đủ thông tin chung.';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Đang gửi...';
+
+            try {
+                const res = await fetch('/api/survey/submit/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken') || '',
+                    },
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json();
+
+                if (data.ok) {
+                    document.getElementById('surveyForm').style.display = 'none';
+                    document.getElementById('successScreen').style.display = 'block';
+                } else {
+                    errorEl.textContent = data.message || 'Có lỗi xảy ra, vui lòng thử lại.';
+                    errorEl.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Gửi khảo sát';
+                }
+            } catch (err) {
+                errorEl.textContent = 'Không thể kết nối server. Vui lòng thử lại.';
+                errorEl.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Gửi khảo sát';
+            }
+        });
+    </script>
+</body>
+</html>

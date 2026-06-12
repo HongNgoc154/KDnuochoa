@@ -621,6 +621,11 @@ body {
       <button class="nav-item" onclick="showSection('revenue', this)">
         <span class="icon">💰</span> Doanh thu
       </button>
+
+      <div class="nav-section-label">Nghiên cứu</div>
+      <button class="nav-item" onclick="showSection('evaluation', this)">
+        <span class="icon">📋</span> Đánh giá hiệu quả
+      </button>
     </nav>
 
     <div class="sidebar-footer">
@@ -945,6 +950,55 @@ body {
       </div>
     </div>
 
+    <!-- ═══ SECTION: ĐÁNH GIÁ HIỆU QUẢ ═══ -->
+    <div class="page-section" id="section-evaluation">
+      <div class="page-header">
+        <h1 class="page-title">Đánh giá hiệu quả gợi ý &amp; Mức độ hài lòng</h1>
+        <div>
+          <select id="evalDaysSelect" onchange="loadEvaluationReport()"
+                  style="background:var(--bg3); color:var(--text); border:1px solid var(--border, #333);
+                         border-radius:8px; padding:8px 12px; font-size:13px;">
+            <option value="7">7 ngày qua</option>
+            <option value="30" selected>30 ngày qua</option>
+            <option value="90">90 ngày qua</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Phần 1: Hiệu quả gợi ý AI (dữ liệu hệ thống) -->
+      <div class="chart-card" style="margin-bottom:20px;">
+        <div class="chart-header">
+          <span class="chart-title">📊 Hiệu quả gợi ý AI (dữ liệu hệ thống)</span>
+          <span class="chart-badge" id="evalGeneratedAt">—</span>
+        </div>
+      </div>
+
+      <div class="kpi-grid" id="kpiEvaluation"></div>
+
+      <!-- Phần 2: Mức độ hài lòng khách hàng (khảo sát) -->
+      <div class="chart-card" style="margin-top:24px;">
+        <div class="chart-header">
+          <span class="chart-title">💬 Mức độ hài lòng khách hàng (Khảo sát Likert-5)</span>
+        </div>
+        <div class="chart-body" style="height:auto; padding:20px; line-height:1.8;">
+          <p style="color:var(--text-dim); margin-bottom:16px;">
+            Kết quả khảo sát mức độ hài lòng được thu thập qua Google Form
+            và xem chi tiết tại liên kết bên dưới (biểu đồ tổng hợp tự động
+            theo từng câu hỏi).
+          </p>
+          <a href="THAY_BANG_LINK_GOOGLE_FORM_RESPONSES" target="_blank"
+             style="display:inline-flex; align-items:center; gap:8px;
+                    padding:12px 20px; border-radius:10px;
+                    background:rgba(75,103,45,0.15);
+                    color:var(--mint); text-decoration:none;
+                    font-size:14px; font-weight:600;
+                    border:1px solid rgba(75,103,45,0.3);">
+            📈 Xem kết quả khảo sát (Google Form)
+          </a>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -991,6 +1045,7 @@ function showSection(id, btn) {
     overview: 'Overview', recommendation: 'Recommendation AI',
     chatbot: 'Chatbot AI', behavior: 'User Behavior',
     profiles: 'AI Profiles', revenue: 'Doanh thu',
+    evaluation: 'Đánh giá hiệu quả',
   };
   document.getElementById('topbarTitle').innerHTML = `<span>${titles[id]}</span> Dashboard`;
 
@@ -1044,6 +1099,7 @@ function renderSection(id) {
   if (id === 'behavior')       renderBehavior(d);
   if (id === 'profiles')       renderProfiles(d);
   if (id === 'revenue')        renderRevenue(d);
+  if (id === 'evaluation')     loadEvaluationReport();
 }
 
 /* ── KPI Card helper ── */
@@ -1058,6 +1114,37 @@ function kpiCard(label, value, meta, accent, icon, delta) {
       <div class="kpi-value">${value}</div>
       <div class="kpi-meta">${meta} ${deltaHtml}</div>
     </div>`;
+}
+
+/* ── Đánh giá hiệu quả gợi ý (Trục 1) ── */
+async function loadEvaluationReport() {
+  const days = document.getElementById('evalDaysSelect').value;
+  const res = await fetch(`/api/admin/evaluation-report/?days=${days}`);
+  const data = await res.json();
+  if (!data.ok) return;
+
+  const r = data.report;
+  document.getElementById('evalGeneratedAt').textContent = 'Cập nhật: ' + r.generated_at;
+
+  const html = [
+    kpiCard('Tỷ lệ click (CTR)', r.ctr.ctr_percent + '%',
+            `${r.ctr.total_clicks} click / ${r.ctr.total_impressions} hiển thị`,
+            'teal', '🖱️'),
+    kpiCard('Tỷ lệ chuyển đổi', r.conversion.conversion_rate_percent + '%',
+            `${r.conversion.converted_to_purchase}/${r.conversion.total_clicks_with_account} click → mua`,
+            'gold', '🛒'),
+    kpiCard('Độ phủ sản phẩm', r.coverage.coverage_percent + '%',
+            `${r.coverage.recommended_at_least_once}/${r.coverage.total_products} sản phẩm`,
+            'blue', '🎯'),
+    kpiCard('Hiệu quả Chatbot', r.chatbot_resolution.resolution_rate_percent + '%',
+            `${r.chatbot_resolution.sessions_with_click}/${r.chatbot_resolution.total_chat_sessions} phiên chat`,
+            'olive', '💬'),
+    kpiCard('Độ tin cậy cá nhân hóa TB', r.personalization.avg_confidence,
+            `${r.personalization.total_profiles} hồ sơ AI`,
+            'red', '🧠'),
+  ].join('');
+
+  document.getElementById('kpiEvaluation').innerHTML = html;
 }
 
 /* ── Top list helper ── */

@@ -143,6 +143,28 @@ class SanPhamNhomHuongInline(nested_admin.NestedStackedInline):
 
 
 # ═══════════════════════════════════════
+#  Bộ lọc tồn kho sản phẩm
+# ═══════════════════════════════════════
+class TonKhoSanPhamFilter(admin.SimpleListFilter):
+    title = "Tình trạng tồn kho"
+    parameter_name = "ton_kho"
+
+    def lookups(self, request, model_admin):
+        return (
+            ("in_stock", "Còn hàng"),
+            ("out_stock", "Hết hàng"),
+        )
+
+    def queryset(self, request, queryset):
+        san_pham_con_hang = BienThe.objects.filter(SoLuong__gt=0).values("id_SanPham")
+        if self.value() == "in_stock":
+            return queryset.filter(pk__in=san_pham_con_hang)
+        if self.value() == "out_stock":
+            return queryset.exclude(pk__in=san_pham_con_hang)
+        return queryset
+
+
+# ═══════════════════════════════════════
 #  SanPham
 # ═══════════════════════════════════════
 @admin.register(SanPham, site=admin_site)
@@ -150,12 +172,12 @@ class SanPhamAdmin(nested_admin.NestedModelAdmin):
     change_form_template = "admin/sanpham_change_form.html"
     add_form_template    = "admin/sanpham_change_form.html"
  
-    list_display       = ('product_card', 'TrangThai_badge', 'NongDo', 'DoLuuHuong',
+    list_display       = ('product_card', 'ton_kho_san_pham_badge', 'NongDo', 'DoLuuHuong',
                           'DoToaHuong', 'ten_thuong_hieu', 'ten_loai_san_pham',
                           'get_nhom_huong', 'so_bien_the')
     list_display_links = ('product_card',)
     search_fields      = ('TenSanPham',)
-    list_filter        = ('TrangThai_SanPham', 'id_ThuongHieu', 'id_LoaiSanPham', 'nhom_huongs')
+    list_filter        = (TonKhoSanPhamFilter, 'id_ThuongHieu', 'id_LoaiSanPham', 'nhom_huongs')
     list_per_page      = 20
     inlines            = []
  
@@ -412,11 +434,35 @@ class SanPhamAdmin(nested_admin.NestedModelAdmin):
 
     product_card.short_description = "Sản phẩm"
  
-    def TrangThai_badge(self, obj):
-        colors = {'active':('#e8f5e9','#2e7d32','● Đang bán'),'inactive':('#fce4ec','#c62828','● Ngừng bán'),'draft':('#fff8e1','#f57f17','● Nháp')}
-        bg,fg,label = colors.get(obj.TrangThai_SanPham,('#f5f5f5','#616161',f'● {obj.TrangThai_SanPham or "—"}'))
-        return format_html('<span style="background:{};color:{};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;">{}</span>',bg,fg,label)
-    TrangThai_badge.short_description = "Trạng thái"
+    def ton_kho_san_pham_badge(self, obj):
+        variants = BienThe.objects.filter(id_SanPham=obj)
+        total_variants = variants.count()
+
+        if total_variants == 0:
+            return format_html(
+                '<span style="background:#f5f5f5;color:#616161;padding:3px 10px;'
+                'border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;">'
+                '● Chưa có biến thể</span>'
+            )
+
+        in_stock_count = variants.filter(SoLuong__gt=0).count()
+        if in_stock_count > 0:
+            total_stock = sum(variant.SoLuong or 0 for variant in variants if (variant.SoLuong or 0) > 0)
+            return format_html(
+                '<span title="{} biến thể còn hàng · Tổng tồn {}" style="background:#e8f5e9;color:#2e7d32;'
+                'padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;">'
+                '● Còn hàng</span>',
+                in_stock_count,
+                total_stock,
+            )
+
+        return format_html(
+            '<span title="Tất cả {} biến thể đều hết hàng" style="background:#fce4ec;color:#c62828;'
+            'padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;">'
+            '● Hết hàng</span>',
+            total_variants,
+        )
+    ton_kho_san_pham_badge.short_description = "Trạng thái"
  
     def ten_thuong_hieu(self, obj):
         try: return obj.id_ThuongHieu.TenThuongHieu

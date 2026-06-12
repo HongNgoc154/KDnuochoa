@@ -40,3 +40,4 @@ def on_baiviet_save(sender, instance, created, **kwargs):
 @receiver(post_delete, sender='app.BaiViet')
 def on_baiviet_delete(sender, instance, **kwargs):
     _rebuild_kb()
+

@@ -2580,3 +2580,66 @@ body.filter-open .filter-sidebar { transform: translateX(0); }
   background: #141810;
   color: #e8e2d4;
 }
+
+/* ── Category Brand Grid ── */
+/* ── Category Brand Grid ── */
+.cat-brand-grid {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 20px !important;
+  padding: 12px 0 !important;
+  /* Xóa các thuộc tính grid nếu bị kế thừa */
+  grid-auto-flow: unset !important;
+  grid-template-columns: unset !important;
+  overflow-x: visible !important;
+}
+
+.cat-brand-chip {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px;
+  width: 150px;
+  min-height: 120px;
+  padding: 20px 16px;
+  background: #fff;
+  border: 1px solid rgba(87,98,56,0.14);
+  border-radius: 16px;
+  text-decoration: none;
+  transition: transform 0.35s cubic-bezier(.2,.7,.2,1),
+              box-shadow 0.35s ease,
+              border-color 0.25s ease;
+  /* Reset các thuộc tính scroll snap */
+  scroll-snap-align: unset !important;
+  flex-shrink: 0;
+}
+
+.cat-brand-chip:hover {
+  transform: scale(1.08) translateY(-4px) !important;
+  box-shadow: 0 16px 40px rgba(87,98,56,0.15);
+  border-color: rgba(87,98,56,0.3);
+}
+
+.cat-brand-chip img {
+  max-width: 90px;
+  max-height: 50px;
+  object-fit: contain;
+}
+
+.cat-brand-chip span {
+  font-family: 'Jost', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #2c3324;
+  text-align: center;
+}
+
+.cat-brand-chip:hover img {
+  transform: scale(1.05);
+}
+

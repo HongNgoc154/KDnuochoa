@@ -23,26 +23,22 @@
   </section>
 
   <section class="brand-strip section-space-sm reveal">
-    <div class="container">
-      <div class="strip-header">
-        <p class="section-label">Thương Hiệu Nổi Bật</p>
-      </div>
-      <div class="edge-carousel" data-carousel data-step="0.75">
-        <button class="edge-arrow edge-arrow-left" type="button" aria-label="Scroll trái">←</button>
-        <button class="edge-arrow edge-arrow-right" type="button" aria-label="Scroll phải">→</button>
-        <div class="edge-track brand-track" data-carousel-track>
-          {% for brand in brands %}
-          {% with brand_slug=brand.TenThuongHieu|slugify %}
-          <a class="brand-chip stagger-{% cycle '1' '2' %}" href="{% if brand_slug %}{% url 'brand-detail' brand_slug %}{% else %}{% url 'brand-list' %}{% endif %}">
-            <img src="{{ brand.LogoUrl.url }}" alt="{{ brand.TenThuongHieu }}">
-            <span>{{ brand.TenThuongHieu }}</span>
-          </a>
-          {% endwith %}
-          {% endfor %}
-        </div>
-      </div>
+  <div class="container">
+    <div class="strip-header">
+      <p class="section-label">Thương Hiệu Nổi Bật</p>
     </div>
-  </section>
+    <div class="cat-brand-grid">
+      {% for brand in brands %}
+      {% with brand_slug=brand.TenThuongHieu|slugify %}
+      <a class="cat-brand-chip" href={% if brand_slug %}{% url 'brand-detail' brand_slug %}{% else %}{% url 'brand-list' %}{% endif %}">
+            <img src="{{ brand.LogoUrl.url }}" alt="{{ brand.TenThuongHieu }}">
+        <span>{{ brand.TenThuongHieu }}</span>
+      </a>
+      {% endwith %}
+      {% endfor %}
+    </div>
+  </div>
+</section>
 
   <section class="category-toolbar">
     <div class="container category-toolbar-inner reveal">
@@ -85,8 +81,12 @@
 
       <div class="filter-block">
         <h3>Giá</h3>
-        <input type="range" id="priceRange" min="1000000" max="8000000" step="100000" value="8000000">
-        <p class="range-value">Đến <strong id="priceValue">8.000.000₫</strong></p>
+        <input type="range" id="priceRange"
+              min="0"
+              max="{{ max_price }}"
+              step="100000"
+              value="{{ max_price }}">
+        <p class="range-value">Đến <strong id="priceValue">{{ max_price_display }}</strong></p>
       </div>
 
       <div class="filter-block">
@@ -196,31 +196,45 @@
   </section>
 
   <section class="related-posts section-space">
-    <div class="container">
-      <div class="strip-header reveal"><p class="section-label">Bài viết liên quan</p></div>
-      <div class="edge-carousel reveal" data-carousel data-step="0.85">
-        <button class="edge-arrow edge-arrow-left" type="button" aria-label="Scroll trái">←</button>
-        <button class="edge-arrow edge-arrow-right" type="button" aria-label="Scroll phải">→</button>
-        <div class="edge-track article-track" data-carousel-track>
-          {% for article in related_articles %}
-          <a href="{% url 'article-detail' article.id_BaiViet %}" class="article-card article-slide">
-            <div class="article-img">
-              <div class="article-img-bg" style="background-image:url('{% if article.AnhDaiDien %}{{ article.AnhDaiDien.url }}{% else %}https://images.unsplash.com/photo-1588405748880-12d1d2a59a75?auto=format&fit=crop&w=1000&q=80{% endif %}')"></div>
-            </div>
-            <div class="article-body">
-              <p class="article-cat">{{ breadcrumb|default:'Nước hoa' }}</p>
-              <h3 class="article-title">{{ article.TieuDe }}</h3>
-              <p class="article-desc">{{ article.NoiDung|default:''|truncatewords:18 }}</p>
-            </div>
-          </a>
-          {% empty %}
-          <p>Chưa có bài viết liên quan.</p>
-          {% endfor %}
+  <div class="container">
+    <div class="strip-header reveal"><p class="section-label">Bài viết liên quan</p></div>
+
+    <!-- Grid bài viết canh giữa -->
+    <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:24px;margin-top:8px;">
+      {% for article in related_articles %}
+      <a href="{% url 'article-detail' article.id_BaiViet %}"
+         style="text-decoration:none;color:inherit;width:340px;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #ece8dc;transition:transform .35s ease,box-shadow .35s ease;display:block;"
+         onmouseover="this.style.transform='translateY(-6px)';this.style.boxShadow='0 16px 40px rgba(87,98,56,0.14)'"
+         onmouseout="this.style.transform='';this.style.boxShadow=''">
+        <div style="aspect-ratio:16/9;overflow:hidden;background:#f4f0e6;">
+          <div style="width:100%;height:100%;background-image:url('{% if article.AnhDaiDien %}{{ article.AnhDaiDien.url }}{% else %}https://images.unsplash.com/photo-1588405748880-12d1d2a59a75?auto=format&fit=crop&w=1000&q=80{% endif %}');background-size:cover;background-position:center;transition:transform .6s ease;"
+               onmouseover="this.style.transform='scale(1.06)'"
+               onmouseout="this.style.transform=''"></div>
         </div>
-      </div>
-      <a class="pd-more-link" href="{% url 'blog-list' %}" style="margin-top:20px;display:inline-flex;">Xem thêm</a>
+        <div style="padding:20px 22px 24px;">
+          <p style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#576238;font-weight:600;margin-bottom:8px;">{{ breadcrumb|default:'Nước hoa' }}</p>
+          <h3 style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;line-height:1.3;margin-bottom:10px;color:#2a2a2a;">{{ article.TieuDe }}</h3>
+          <p style="font-size:13px;color:#6b6b5e;line-height:1.75;">{{ article.NoiDung|default:''|safe|striptags|truncatewords:18 }}</p>
+        </div>
+      </a>
+      {% empty %}
+      <p style="color:#6b6b5e;font-size:14px;">Chưa có bài viết liên quan.</p>
+      {% endfor %}
     </div>
-  </section>
+
+    <!-- Nút xem thêm -->
+    <div style="text-align:center;margin-top:40px;">
+      <a href="{% url 'blog-list' %}"
+         style="display:inline-flex;align-items:center;gap:10px;padding:14px 36px;background:#576238;color:#fff;border-radius:40px;font-family:'Jost',sans-serif;font-size:11px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;text-decoration:none;transition:all .3s ease;"
+         onmouseover="this.style.background='transparent';this.style.color='#576238';this.style.boxShadow='inset 0 0 0 1.5px #576238'"
+         onmouseout="this.style.background='#576238';this.style.color='#fff';this.style.boxShadow='none'">
+        Xem thêm bài viết
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+
+  </div>
+</section>
 
   <section class="customer-reviews section-space">
     <div class="container">
@@ -233,7 +247,7 @@
               <strong>{{ review.id_TaiKhoan.TenDangNhap|default:review.id_TaiKhoan.Username|default:'Khách hàng' }}</strong>
               <span>{% for _ in "12345"|make_list %}{% if forloop.counter <= review.SoSao %}⭐{% else %}☆{% endif %}{% endfor %}</span>
             </div>
-            <p>“{{ review.BinhLuan|default:'Khách hàng đã để lại đánh giá tích cực.' }}”</p>
+            <p>"{{ review.NoiDung|default:'Khách hàng đã để lại đánh giá tích cực.'|truncatewords:20 }}"</p>
           </article>
           {% empty %}
           <article class="review-card" data-segment="all"><div class="review-head"><strong>Ami</strong><span>⭐⭐⭐⭐⭐</span></div><p>“Chưa có đánh giá mới. Hãy là người đầu tiên đánh giá sản phẩm.”</p></article>
@@ -246,6 +260,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'app/js/main.js' %}"></script>
+{% comment %} <script src="{% static 'app/js/main.js' %}"></script> {% endcomment %}
 <script src="{% static 'app/js/wishlist.js' %}"></script>
 {% endblock %}

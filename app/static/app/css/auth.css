@@ -625,6 +625,7 @@ body.dark-mode {
   color: rgba(240,234,220,.8);
   cursor: pointer;
   display: flex; align-items: center; justify-content: center; gap: 8px;
+  text-decoration: none;
   transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), transform .22s var(--ease), box-shadow .22s;
   letter-spacing: .3px;
 }

@@ -53,8 +53,11 @@ def save_ami_session(backend, user, response, request, *args, **kwargs):
 
 def _trigger_ai_personalization(account_id):
     """Cập nhật cache AI sau khi đăng nhập."""
-    try:
-        from app.ai.personalize import get_personalized_recommendations
-        get_personalized_recommendations(account_id, top_n=8)
-    except Exception as e:
-        print(f'[AI] Personalization trigger failed: {e}')
+    import threading
+    def _bg(acc_id):
+        try:
+            from app.ai.personalize import get_personalized_recommendations
+            get_personalized_recommendations(account_id, top_n=8)
+        except Exception as e:
+            print(f'[AI] Personalization trigger failed: {e}')
+    threading.Thread(target=_bg, args=(account_id,), daemon=True).start()

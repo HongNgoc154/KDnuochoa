@@ -51,8 +51,16 @@ urlpatterns = [
     path("toggle-favorite/", views.toggle_favorite, name="toggle-favorite"),
     path('wishlist-status/<int:product_id>/', views.get_wishlist_status, name='wishlist-status'),
     path('submit-review/', views.submit_review, name='submit-review'),
+    path('api/check-stock/', views.check_stock_api, name='check-stock'),
     path('api/place-order/', views.place_order_api, name='place-order'),
     path('api/update-profile/', views.update_profile_api, name='update-profile'),
+    path('api/cart/',        views.cart_get_api,    name='cart-get'),
+    path('api/cart/sync/',   views.cart_sync_api,   name='cart-sync'),
+    path('api/cart/update/', views.cart_update_api, name='cart-update'),
+    path('api/survey/submit/', views.submit_survey_api, name='survey-submit'),
+    path('api/survey/stats/', views.survey_stats_api, name='survey-stats'),
+    path('khao-sat/', views.survey_page, name='survey-page'),
+    path('api/admin/evaluation-report/', views.ai_evaluation_report_api, name='evaluation-report'),
 
     # VNPAY
     path('api/vnpay-create/',        views.vnpay_create, name='vnpay-create'),
