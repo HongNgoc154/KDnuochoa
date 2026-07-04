@@ -33,7 +33,8 @@
   /* ── State ── */
   let isOpen      = false;
   let isLoading   = false;
-  let chatHistory = [];
+  let chatHistory = JSON.parse(sessionStorage.getItem('ami_chat_history') || '[]');
+  window.amiChatSessionId = sessionStorage.getItem('ami_chat_session_id') || null;
   let pendingSuggestions = [];
   let hasUnread   = false;
   let turnCount   = 0;
@@ -51,7 +52,23 @@
     hasUnread = false;
     setTimeout(() => inputEl.focus(), 320);
     scrollToBottom();
+
+    
   }
+
+  // Khôi phục tin nhắn cũ từ sessionStorage
+  (function restoreHistory() {
+    if (!chatHistory.length) return;
+    // Xóa tin chào mặc định nếu có history
+    const welcome = messages.querySelector('[data-welcome]');
+    if (welcome) welcome.closest('.ami-chat__msg')?.remove();
+    if (quickReplies) quickReplies.remove();
+
+    chatHistory.forEach(msg => {
+      if (msg.role === 'user') appendUserMsg(msg.content);
+      else if (msg.role === 'assistant') appendBotMsg(msg.content);
+    });
+  })();
 
   function closeChat() {
     isOpen = false;
@@ -86,12 +103,17 @@
     scrollToBottom();
   }
 
-  function appendBotMsg(text) {
+  function appendBotMsg(text, isHtml = false) {
     const row = document.createElement('div');
     row.className = 'ami-chat__msg ami-chat__msg--bot';
-    const formatted = escHtml(text)
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\n/g, '<br>');
+    let formatted;
+    if (isHtml) {
+      formatted = text.replace(/\n/g, '<br>');
+    } else {
+      formatted = escHtml(text)
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+    }
     row.innerHTML = `<div class="ami-chat__bubble">${formatted}</div>`;
     messages.appendChild(row);
     scrollToBottom();
@@ -195,8 +217,10 @@ function setComposerLoading(loading) {
         const data = await res.json();
         if (data.ok) {
           chatHistory = data.history || [];
+          sessionStorage.setItem('ami_chat_history', JSON.stringify(chatHistory));
           window.amiChatSessionId = data.session_id || window.amiChatSessionId;
-          appendBotMsg(data.reply || '');
+          const hasHtml = data.reply && (data.reply.includes('<a ') || data.reply.includes('<br>'));
+          appendBotMsg(data.reply || '', hasHtml);
           appendProductCards(data.suggestions || []);
           if (data.intent) showIntentBadge(data.intent);
           turnCount++;
@@ -240,6 +264,7 @@ function setComposerLoading(loading) {
 
           if (evt.t === 'meta') {
             window.amiChatSessionId = evt.session_id || window.amiChatSessionId;
+            sessionStorage.setItem('ami_chat_session_id', window.amiChatSessionId || '');
             pendingSuggestions = evt.suggestions_data || [];  // lưu tạm, chưa hiện
             if (evt.intent) showIntentBadge(evt.intent);
           }
@@ -258,6 +283,7 @@ function setComposerLoading(loading) {
 
           if (evt.t === 'done') {
             chatHistory = evt.history || [];
+            sessionStorage.setItem('ami_chat_history', JSON.stringify(chatHistory));
 
             // Chỉ hiện sản phẩm khi chatbot chủ động gợi ý
             if (evt.show_products && pendingSuggestions.length) {

@@ -10,6 +10,7 @@
 
 {% block extrahead %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 /* ══════════════════════════════════════════════
    AMI AI DASHBOARD — Dark Luxury
@@ -99,6 +100,7 @@
   align-items: center;
   gap: 10px;
 }
+
 
 .ai-live-badge {
   display: flex; align-items: center; gap: 5px;
@@ -274,6 +276,16 @@
 /* ── Responsive ── */
 @media(max-width:1200px) { .ai-kpis { grid-template-columns:repeat(2,1fr); } }
 @media(max-width:900px)  { .ai-row.c2,.ai-row.ceq { grid-template-columns:1fr; } }
+
+/* ── Export menu item ── */
+.ai-export-item {
+  display: block; width: 100%; text-align: left;
+  padding: 9px 14px; background: none; border: none;
+  color: var(--d-text); font-size: 12px;
+  border-radius: 7px; cursor: pointer; font-family: inherit;
+  transition: background .15s;
+}
+.ai-export-item:hover { background: rgba(75,103,45,0.25); }
 </style>
 {% endblock %}
 
@@ -298,6 +310,36 @@
         <div class="ai-live-dot"></div>
         Live data
       </div>
+
+      <!-- BỘ LỌC THỜI GIAN -->
+      <select id="globalDaysSelect" onchange="changeDays()"
+              style="background:var(--d-bg3); color:var(--d-text);
+                     border:1px solid var(--d-border);
+                     border-radius:8px; padding:7px 12px;
+                     font-size:12px; font-family:inherit; cursor:pointer;">
+        <option value="7">7 ngày</option>
+        <option value="14">14 ngày</option>
+        <option value="30" selected>30 ngày</option>
+        <option value="60">60 ngày</option>
+        <option value="90">90 ngày</option>
+      </select>
+
+      <!-- NÚT XUẤT DỮ LIỆU -->
+      <div style="position:relative; display:inline-block;">
+        <button class="ai-btn" id="exportBtn" onclick="toggleExportMenu(event)"
+                style="background:rgba(201,169,110,0.15);
+                       border-color:rgba(201,169,110,0.3); color:var(--d-gold);">
+          ⬇ Xuất dữ liệu
+        </button>
+        <div id="exportMenu" style="
+          display:none; position:absolute; right:0; top:calc(100% + 6px);
+          background:var(--d-bg3); border:1px solid rgba(75,103,45,0.35);
+          border-radius:10px; padding:6px; min-width:190px; z-index:200;
+          box-shadow:0 8px 24px rgba(0,0,0,0.6);">
+          <button onclick="exportData()" class="ai-export-item">📊 Xuất Excel (.xlsx)</button>
+        </div>
+      </div>
+
       <button class="ai-btn" onclick="loadAI()">↻ Làm mới</button>
     </div>
   </div>
@@ -485,7 +527,7 @@
           Kết quả khảo sát mức độ hài lòng được thu thập qua Google Form.
           Nhấn vào liên kết bên dưới để xem biểu đồ tổng hợp theo từng câu hỏi.
         </p>
-        <a href="THAY_BANG_LINK_GOOGLE_FORM_RESPONSES" target="_blank" class="ai-btn">
+        <a href="https://docs.google.com/forms/d/1oaMPSCH6D1eysHR5TEqg9ChrHWu2gNfXfYhPs3uBB_Q/edit#responses" target="_blank" class="ai-btn">
           📈 Xem kết quả khảo sát
         </a>
       </div>
@@ -872,7 +914,64 @@ async function loadEvaluationReport() {
         `${r.personalization.total_profiles} hồ sơ AI`, C.purple, '🧠');
 }
 
+/* ══════════════════════════════════════
+   BỘ LỌC THỜI GIAN + XUẤT DỮ LIỆU
+══════════════════════════════════════ */
+
+let currentDays = 30;
+
+function changeDays() {
+  currentDays = parseInt(document.getElementById('globalDaysSelect').value);
+  // Cập nhật subtitle
+  document.querySelector('.ai-header-sub').textContent =
+    `AI Analytics · ${currentDays} ngày gần nhất`;
+  // Reset cache tab đã render
+  Object.keys(loaded).forEach(k => delete loaded[k]);
+  // Load lại với days mới
+  loadAI();
+}
+
+/* Override loadAI để truyền ?days= */
+async function loadAI() {
+  const loader = document.getElementById('aiLoader');
+  if (loader) { loader.style.opacity = '1'; loader.style.display = 'flex'; }
+  try {
+    const r = await fetch(`/api/admin/ai-dashboard/?days=${currentDays}`);
+    const d = await r.json();
+    if (!d.ok) return;
+    D = d;
+    Object.keys(loaded).forEach(k => delete loaded[k]);
+    renderAI('overview'); loaded['overview'] = true;
+  } catch(e) { console.error('[AI]', e); }
+  finally {
+    if (loader) {
+      loader.style.opacity = '0';
+      setTimeout(() => loader.style.display = 'none', 300);
+    }
+  }
+}
+
+/* ── Export menu toggle ── */
+function toggleExportMenu(e) {
+  e.stopPropagation();
+  const menu = document.getElementById('exportMenu');
+  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+document.addEventListener('click', () => {
+  const m = document.getElementById('exportMenu');
+  if (m) m.style.display = 'none';
+});
+
+/* ── Export Excel (SheetJS) ── */
+function exportData(type) {
+  document.getElementById('exportMenu').style.display = 'none';
+  const stamp = new Date().toISOString().slice(0,10);
+  // Gọi thẳng Django view — server tạo Excel có màu đầy đủ
+  window.location.href = `/api/admin/ai-dashboard/export-excel/?days=${currentDays}`;
+}
+
 // Bootstrap
 loadAI();
+
 </script>
 {% endblock %}

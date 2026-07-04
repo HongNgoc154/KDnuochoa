@@ -61,6 +61,8 @@ urlpatterns = [
     path('api/survey/stats/', views.survey_stats_api, name='survey-stats'),
     path('khao-sat/', views.survey_page, name='survey-page'),
     path('api/admin/evaluation-report/', views.ai_evaluation_report_api, name='evaluation-report'),
+    path('api/admin/them-thuong-hieu/', views.api_them_thuong_hieu, name='api-them-thuong-hieu'),
+    path('api/admin/ai-dashboard/export-excel/', views.ai_dashboard_export_excel, name='ai-dashboard-export-excel'),
 
     # VNPAY
     path('api/vnpay-create/',        views.vnpay_create, name='vnpay-create'),
@@ -86,7 +88,7 @@ urlpatterns = [
     path('admin-api/them-sp-moi/', views.admin_api_them_sp_moi,name='admin-api-them-sp-moi'),
     # path('admin/phieunhap-list/',          views.admin_phieunhap_list,         name='admin-phieunhap-list'),
     # path('admin/api/chi-tiet-phieu/',      views.admin_api_chi_tiet_phieu,     name='admin-api-chi-tiet-phieu'),
-    path('admin/api/xuat-excel/', views.admin_api_xuat_excel, name='admin-api-xuat-excel'),
+    path('admin-api/xuat-excel/', views.admin_api_xuat_excel, name='admin-api-xuat-excel'),
 
     # ── Admin helper: Thuộc tính & Giá trị thuộc tính ──
     path('api/admin/thuoc-tinh/',          views.api_thuoc_tinh_list,       name='api-thuoc-tinh'),

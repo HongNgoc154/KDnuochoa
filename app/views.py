@@ -220,17 +220,33 @@ Ami Perfumery 🌿
 
 
 def _deduct_inventory_on_order(order):
-    """Trừ tồn kho ngay khi đặt hàng thành công."""
-    from django.db import models as db_models
-    details = ChiTietDonHang.objects.filter(id_DonHang=order)
-    for d in details:
-        if d.id_BienThe and d.SoLuong:
-            BienThe.objects.filter(
-                pk=d.id_BienThe_id,
-                SoLuong__gte=d.SoLuong   # chỉ trừ nếu đủ tồn
-            ).update(
-                SoLuong=db_models.F("SoLuong") - d.SoLuong
-            )
+    """Trừ tồn kho an toàn với transaction lock — tránh race condition."""
+    from django.db import transaction, models as db_models
+
+    out_of_stock = []
+
+    with transaction.atomic():
+        details = ChiTietDonHang.objects.filter(id_DonHang=order).select_related('id_BienThe')
+
+        for d in details:
+            if not d.id_BienThe or not d.SoLuong:
+                continue
+
+            # Lock dòng BienThe này lại — request khác phải chờ
+            try:
+                bt = BienThe.objects.select_for_update().get(pk=d.id_BienThe_id)
+            except BienThe.DoesNotExist:
+                continue
+
+            if bt.SoLuong >= d.SoLuong:
+                bt.SoLuong -= d.SoLuong
+                bt.save(update_fields=["SoLuong"])
+            else:
+                out_of_stock.append(bt.Sku or f"BienThe#{bt.id_BienThe}")
+
+        if out_of_stock:
+            # Rollback toàn bộ transaction, đơn hàng không được tạo
+            raise Exception(f"Hết hàng: {', '.join(out_of_stock)}")
 
 def _stock_shortage_message():
     return "Số lượng tồn kho không đủ, vui lòng giảm bớt số lượng sản phẩm sau đó mới thêm vào giỏ hàng."
@@ -790,6 +806,8 @@ def category(request, segment='tat-ca'):
     return render(request, 'app/category.html', context)
 
 def get_sillage_label(value):
+    if value is None:
+        return "Đang cập nhật"
     if value >= 8:
         return "Tỏa xa"
     elif value >= 5:
@@ -797,6 +815,8 @@ def get_sillage_label(value):
     return "Nhẹ"
 
 def get_longevity_label(value):
+    if value is None:
+        return "Đang cập nhật"
     if value >= 9:
         return "Trên 10 giờ"
     elif value >= 7:
@@ -2010,7 +2030,7 @@ def place_order_api(request):
             )
             print(f"[place_order] Đã tạo DonHang {ma_don} | customer={customer} | total={total}")
 
-            # ── 3. Lưu ChiTietDonHang và trừ tồn kho đã khóa ─────────
+            # ── 3. Lưu ChiTietDonHang ─────────────────────────────────
             for resolved in resolved_items or []:
                 bien_the = resolved["variant"]
                 qty = resolved["qty"]
@@ -2021,9 +2041,13 @@ def place_order_api(request):
                     GiaBan      = resolved["price"],
                     GiaGiam     = 0,
                 )
-            BienThe.objects.filter(pk=bien_the.pk).update(
-                    SoLuong=models.F("SoLuong") - qty
-                )
+            # KHÔNG có .update() ở đây nữa
+
+            # ── Trừ tồn kho an toàn (có lock) ────────────────────────
+            try:
+                _deduct_inventory_on_order(don_hang)
+            except Exception as e:
+                raise  # để transaction.atomic() bên ngoài rollback
 
         # ── 4. Đánh dấu voucher đã dùng ─────────────────────────
             if voucher_cd and account_id:
@@ -3607,229 +3631,190 @@ def admin_api_chi_tiet_phieu(request):
  
  
 def admin_api_xuat_excel(request):
-    """Xuat file Excel cho 1 phieu hoac tat ca phieu."""
-    from .models import PhieuNhap, ChiTietNhap
- 
-    try:
-        import openpyxl
-        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-        from openpyxl.utils import get_column_letter
-    except ImportError:
-        return HttpResponse('Chua cai openpyxl. Chay: pip install openpyxl', status=500)
- 
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    from django.http import HttpResponse
+
     phieu_id = request.GET.get('phieu_id')
-    tat_ca   = request.GET.get('tat_ca') == '1'
- 
+    tat_ca   = request.GET.get('tat_ca')
+
     wb = openpyxl.Workbook()
- 
-    # === Styles ===
-    OL_COLOR   = '4B672D'
-    OL_LT      = 'EBF6C4'
-    WHITE      = 'FFFFFF'
-    GRAY_BG    = 'F5F5F5'
-    BORDER_CLR = 'D0D0D0'
- 
-    def make_border():
-        side = Side(style='thin', color=BORDER_CLR)
-        return Border(left=side, right=side, top=side, bottom=side)
- 
-    def style_header(cell, bg=OL_COLOR, fg=WHITE, size=11, bold=True):
-        cell.font      = Font(bold=bold, color=fg, size=size, name='Calibri')
-        cell.fill      = PatternFill('solid', fgColor=bg)
-        cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-        cell.border    = make_border()
- 
-    def style_cell(cell, bold=False, align='left', color='333333'):
-        cell.font      = Font(bold=bold, color=color, size=10, name='Calibri')
-        cell.alignment = Alignment(horizontal=align, vertical='center')
-        cell.border    = make_border()
- 
-    def fmt_vnd(val):
-        try:
-            return f"{int(float(val)):,}".replace(',', '.') + '₫'
-        except:
-            return '—'
- 
-    def write_phieu_sheet(ws, phieu):
-        """Ghi 1 phieu vao 1 sheet."""
-        ws.title = (phieu.MaPhieu or f'PN-{phieu.id_PhieuNhap}')[:31]
- 
-        # === TIEU DE PHIEU ===
-        ws.merge_cells('A1:F1')
-        c = ws['A1']
-        c.value = f'PHIẾU NHẬP KHO — {phieu.MaPhieu or phieu.id_PhieuNhap}'
-        c.font      = Font(bold=True, size=14, color=OL_COLOR, name='Calibri')
-        c.alignment = Alignment(horizontal='center', vertical='center')
-        c.fill      = PatternFill('solid', fgColor=OL_LT)
-        ws.row_dimensions[1].height = 32
- 
-        # === META INFO ===
-        meta = [
-            ('Mã phiếu',       phieu.MaPhieu or '—'),
-            ('Thời gian',      phieu.ThoiGian.strftime('%d/%m/%Y %H:%M') if phieu.ThoiGian else '—'),
-            ('Người nhập',     phieu.id_TaiKhoan.TenDangNhap if phieu.id_TaiKhoan else '—'),
-            ('Nhà cung cấp',   phieu.id_NCC.Ten_NCC if phieu.id_NCC else '—'),
-            ('Trạng thái',     {'draft':'Nháp','confirmed':'Xác nhận','done':'Hoàn tất','cancelled':'Huỷ'}.get(phieu.TrangThai or '', phieu.TrangThai or '—')),
-            ('Tổng tiền',      fmt_vnd(phieu.TongTien) if phieu.TongTien else '—'),
-        ]
-        for i, (label, val) in enumerate(meta):
-            row = i + 2
-            ws.cell(row=row, column=1, value=label).font = Font(bold=True, color='666666', size=10, name='Calibri')
-            ws.cell(row=row, column=1).fill = PatternFill('solid', fgColor='F8FCF0')
-            ws.cell(row=row, column=1).border = make_border()
-            ws.merge_cells(f'B{row}:F{row}')
-            c2 = ws.cell(row=row, column=2, value=val)
-            c2.font   = Font(bold=(label in ['Tổng tiền','Mã phiếu']), size=10, name='Calibri',
-                             color=OL_COLOR if label == 'Tổng tiền' else '333333')
-            c2.border = make_border()
- 
-        # === HEADER BANG CHI TIET ===
-        HDR_ROW = 9
-        headers = ['#', 'Tên sản phẩm', 'Thương hiệu', 'SKU / Biến thể', 'Đơn giá nhập', 'Số lượng', 'Thành tiền']
-        for col, h in enumerate(headers, 1):
-            cell = ws.cell(row=HDR_ROW, column=col, value=h)
-            style_header(cell)
-        ws.row_dimensions[HDR_ROW].height = 24
- 
-        # === CHI TIET ===
-        chi_tiet = ChiTietNhap.objects.select_related(
+
+    # ── Style helpers ──
+    green_fill  = PatternFill("solid", fgColor="4B672D")
+    light_fill  = PatternFill("solid", fgColor="EBF6C4")
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    sub_font    = Font(bold=True, size=10)
+    thin_border = Border(
+        left=Side(style='thin'), right=Side(style='thin'),
+        top=Side(style='thin'), bottom=Side(style='thin')
+    )
+    center = Alignment(horizontal='center', vertical='center')
+    left   = Alignment(horizontal='left',   vertical='center')
+    right  = Alignment(horizontal='right',  vertical='center')
+
+    def style_header_row(ws, row_num, col_count):
+        for c in range(1, col_count + 1):
+            cell = ws.cell(row=row_num, column=c)
+            cell.fill   = green_fill
+            cell.font   = header_font
+            cell.alignment = center
+            cell.border = thin_border
+
+    def style_data_row(ws, row_num, col_count, is_alt=False):
+        fill = PatternFill("solid", fgColor="F5FDF0") if is_alt else PatternFill("solid", fgColor="FFFFFF")
+        for c in range(1, col_count + 1):
+            cell = ws.cell(row=row_num, column=c)
+            cell.fill   = fill
+            cell.border = thin_border
+            cell.alignment = left
+
+    # ════════════════════════════════════════
+    #  SHEET 1: DANH SÁCH PHIẾU NHẬP
+    # ════════════════════════════════════════
+    ws1 = wb.active
+    ws1.title = "Danh sách phiếu nhập"
+
+    # Tiêu đề lớn
+    ws1.merge_cells('A1:H1')
+    title_cell = ws1['A1']
+    title_cell.value     = "DANH SÁCH PHIẾU NHẬP KHO – AMI PERFUMERY"
+    title_cell.font      = Font(bold=True, size=14, color="4B672D")
+    title_cell.alignment = center
+    ws1.row_dimensions[1].height = 30
+
+    # Header
+    headers1 = ['STT', 'Mã phiếu', 'Thời gian', 'Người nhập',
+                 'Nhà cung cấp', 'Tổng tiền (₫)', 'Trạng thái', 'Số dòng']
+    for i, h in enumerate(headers1, 1):
+        ws1.cell(row=2, column=i, value=h)
+    style_header_row(ws1, 2, len(headers1))
+    ws1.row_dimensions[2].height = 22
+
+    # Lấy dữ liệu
+    if phieu_id:
+        phieu_qs = PhieuNhap.objects.filter(pk=phieu_id)
+    else:
+        phieu_qs = PhieuNhap.objects.all().order_by('-ThoiGian')
+
+    tt_map = {
+        'draft': 'Nháp', 'confirmed': 'Xác nhận',
+        'done': 'Hoàn tất', 'cancelled': 'Huỷ'
+    }
+
+    for idx, p in enumerate(phieu_qs, 1):
+        r = idx + 2
+        so_dong = p.chi_tiet.count()
+        ws1.cell(r, 1, idx)
+        ws1.cell(r, 2, p.MaPhieu or f'PN-{p.pk}')
+        ws1.cell(r, 3, p.ThoiGian.strftime('%d/%m/%Y %H:%M') if p.ThoiGian else '—')
+        ws1.cell(r, 4, p.id_TaiKhoan.TenDangNhap if p.id_TaiKhoan else '—')
+        ws1.cell(r, 5, p.id_NCC.Ten_NCC if p.id_NCC else '—')
+        tong = ws1.cell(r, 6, float(p.TongTien or 0))
+        tong.number_format = '#,##0'
+        tong.alignment = right
+        ws1.cell(r, 7, tt_map.get(p.TrangThai or 'draft', p.TrangThai or '—'))
+        ws1.cell(r, 8, so_dong)
+        style_data_row(ws1, r, len(headers1), idx % 2 == 0)
+        ws1.cell(r, 1).alignment = center
+        ws1.cell(r, 8).alignment = center
+
+    # Độ rộng cột sheet 1
+    col_widths1 = [6, 18, 20, 16, 20, 18, 14, 10]
+    for i, w in enumerate(col_widths1, 1):
+        ws1.column_dimensions[get_column_letter(i)].width = w
+
+    # ════════════════════════════════════════
+    #  SHEET 2: CHI TIẾT SẢN PHẨM TRONG PHIẾU
+    # ════════════════════════════════════════
+    ws2 = wb.create_sheet("Chi tiết sản phẩm")
+
+    ws2.merge_cells('A1:I1')
+    t2 = ws2['A1']
+    t2.value     = "CHI TIẾT SẢN PHẨM NHẬP KHO – AMI PERFUMERY"
+    t2.font      = Font(bold=True, size=14, color="4B672D")
+    t2.alignment = center
+    ws2.row_dimensions[1].height = 30
+
+    headers2 = ['STT', 'Mã phiếu', 'Thời gian', 'Nhà cung cấp',
+                 'Tên sản phẩm', 'Thương hiệu', 'SKU / Biến thể',
+                 'Đơn giá nhập (₫)', 'Số lượng', 'Thành tiền (₫)']
+    for i, h in enumerate(headers2, 1):
+        ws2.cell(row=2, column=i, value=h)
+    style_header_row(ws2, 2, len(headers2))
+    ws2.row_dimensions[2].height = 22
+
+    row2 = 3
+    stt2 = 1
+    for p in phieu_qs:
+        ma_phieu  = p.MaPhieu or f'PN-{p.pk}'
+        thoigian  = p.ThoiGian.strftime('%d/%m/%Y %H:%M') if p.ThoiGian else '—'
+        ncc_name  = p.id_NCC.Ten_NCC if p.id_NCC else '—'
+
+        chi_tiets = p.chi_tiet.select_related(
             'id_BienThe__id_SanPham__id_ThuongHieu'
-        ).filter(id_PhieuNhap=phieu)
- 
-        tong = 0
-        for i, ct in enumerate(chi_tiet):
+        ).all()
+
+        for ct in chi_tiets:
             bt = ct.id_BienThe
             sp = bt.id_SanPham if bt else None
-            ten_sp    = sp.TenSanPham if sp else '—'
-            thuong_hieu = sp.id_ThuongHieu.TenThuongHieu if sp and sp.id_ThuongHieu else '—'
-            sku       = bt.Sku if bt else '—'
-            gia_nhap  = float(ct.GiaNhap or 0)
-            so_luong  = ct.SoLuongNhap or 0
+
+            ten_sp   = sp.TenSanPham if sp else '—'
+            try:
+                thuong_hieu = sp.id_ThuongHieu.TenThuongHieu if sp and sp.id_ThuongHieu_id else '—'
+            except Exception:
+                thuong_hieu = '—'
+            sku      = bt.Sku if bt else '—'
+            gia_nhap = float(ct.GiaNhap or 0)
+            so_luong = int(ct.SoLuongNhap or 0)
             thanh_tien = gia_nhap * so_luong
-            tong += thanh_tien
- 
-            dr = HDR_ROW + 1 + i
-            bg = 'FFFFFF' if i % 2 == 0 else 'F8FCF0'
-            row_data = [i+1, ten_sp, thuong_hieu, sku, gia_nhap, so_luong, thanh_tien]
-            for col, val in enumerate(row_data, 1):
-                cell = ws.cell(row=dr, column=col, value=val)
-                align = 'center' if col == 1 else ('right' if col in [5,6,7] else 'left')
-                bold  = col in [2, 7]
-                color = OL_COLOR if col == 7 else '333333'
-                cell.font      = Font(bold=bold, color=color, size=10, name='Calibri')
-                cell.alignment = Alignment(horizontal=align, vertical='center')
-                cell.border    = make_border()
-                cell.fill      = PatternFill('solid', fgColor=bg)
-                if col in [5, 7]:
-                    cell.number_format = '#,##0'
- 
-        # === TONG CONG ===
-        tong_row = HDR_ROW + 1 + len(list(chi_tiet))
-        ws.merge_cells(f'A{tong_row}:F{tong_row}')
-        tc = ws.cell(row=tong_row, column=1, value='TỔNG CỘNG')
-        tc.font      = Font(bold=True, size=11, color=WHITE, name='Calibri')
-        tc.fill      = PatternFill('solid', fgColor=OL_COLOR)
-        tc.alignment = Alignment(horizontal='right', vertical='center')
-        tc.border    = make_border()
-        tv = ws.cell(row=tong_row, column=7, value=tong)
-        tv.font         = Font(bold=True, size=12, color=WHITE, name='Calibri')
-        tv.fill         = PatternFill('solid', fgColor=OL_COLOR)
-        tv.alignment    = Alignment(horizontal='right', vertical='center')
-        tv.border       = make_border()
-        tv.number_format = '#,##0'
-        ws.row_dimensions[tong_row].height = 26
- 
-        # === COL WIDTH ===
-        col_widths = [5, 30, 20, 20, 16, 12, 16]
-        for i, w in enumerate(col_widths, 1):
-            ws.column_dimensions[get_column_letter(i)].width = w
- 
-    # === XUAT ===
-    if tat_ca:
-        phieu_list = PhieuNhap.objects.select_related('id_TaiKhoan','id_NCC').order_by('-ThoiGian')
-        # Sheet tong hop
-        ws_sum = wb.active
-        ws_sum.title = 'Tong_hop'
- 
-        ws_sum['A1'] = 'LỊCH SỬ PHIẾU NHẬP KHO — AMI PERFUMERY'
-        ws_sum['A1'].font      = Font(bold=True, size=14, color=OL_COLOR, name='Calibri')
-        ws_sum['A1'].fill      = PatternFill('solid', fgColor=OL_LT)
-        ws_sum['A1'].alignment = Alignment(horizontal='center')
-        ws_sum.merge_cells('A1:G1')
- 
-        hdrs = ['Mã phiếu', 'Thời gian', 'Người nhập', 'Nhà cung cấp', 'Trạng thái', 'Số dòng', 'Tổng tiền']
-        for col, h in enumerate(hdrs, 1):
-            style_header(ws_sum.cell(row=2, column=col, value=h))
- 
-        total_all = 0
-        for i, p in enumerate(phieu_list):
-            dr = i + 3
-            so_dong = ChiTietNhap.objects.filter(id_PhieuNhap=p).count()
-            tt_val  = float(p.TongTien or 0)
-            total_all += tt_val
-            row_vals = [
-                p.MaPhieu or f'PN-{p.id_PhieuNhap}',
-                p.ThoiGian.strftime('%d/%m/%Y %H:%M') if p.ThoiGian else '—',
-                p.id_TaiKhoan.TenDangNhap if p.id_TaiKhoan else '—',
-                p.id_NCC.Ten_NCC if p.id_NCC else '—',
-                {'draft':'Nháp','confirmed':'Xác nhận','done':'Hoàn tất','cancelled':'Huỷ'}.get(p.TrangThai or '', '—'),
-                so_dong,
-                tt_val,
-            ]
-            bg = 'FFFFFF' if i % 2 == 0 else 'F8FCF0'
-            for col, val in enumerate(row_vals, 1):
-                cell = ws_sum.cell(row=dr, column=col, value=val)
-                align = 'right' if col in [6, 7] else 'left'
-                cell.font      = Font(size=10, name='Calibri',
-                                      bold=(col==7), color=(OL_COLOR if col==7 else '333333'))
-                cell.alignment = Alignment(horizontal=align, vertical='center')
-                cell.border    = make_border()
-                cell.fill      = PatternFill('solid', fgColor=bg)
-                if col == 7: cell.number_format = '#,##0'
- 
-            # Sheet chi tiet cho tung phieu
-            ws_p = wb.create_sheet()
-            write_phieu_sheet(ws_p, p)
- 
-        # Dong tong
-        tr = len(list(phieu_list)) + 3
-        ws_sum.merge_cells(f'A{tr}:F{tr}')
-        c = ws_sum.cell(row=tr, column=1, value='TỔNG CỘNG')
-        c.font = Font(bold=True, size=11, color=WHITE, name='Calibri')
-        c.fill = PatternFill('solid', fgColor=OL_COLOR)
-        c.alignment = Alignment(horizontal='right')
-        c.border = make_border()
-        tv = ws_sum.cell(row=tr, column=7, value=total_all)
-        tv.font = Font(bold=True, size=12, color=WHITE, name='Calibri')
-        tv.fill = PatternFill('solid', fgColor=OL_COLOR)
-        tv.alignment = Alignment(horizontal='right')
-        tv.border = make_border()
-        tv.number_format = '#,##0'
- 
-        for i, w in enumerate([18, 18, 16, 20, 14, 10, 16], 1):
-            ws_sum.column_dimensions[get_column_letter(i)].width = w
- 
-        filename = f'LichSuPhieuNhap_{timezone.now().strftime("%Y%m%d_%H%M")}.xlsx'
- 
-    else:
-        # Xuat 1 phieu
-        try:
-            phieu = PhieuNhap.objects.select_related('id_TaiKhoan','id_NCC').get(pk=phieu_id)
-        except PhieuNhap.DoesNotExist:
-            return HttpResponse('Khong tim thay phieu', status=404)
- 
-        ws = wb.active
-        write_phieu_sheet(ws, phieu)
-        filename = f'PhieuNhap_{phieu.MaPhieu or phieu_id}_{timezone.now().strftime("%Y%m%d")}.xlsx'
- 
-    # Response
+
+            ws2.cell(row2, 1, stt2)
+            ws2.cell(row2, 2, ma_phieu)
+            ws2.cell(row2, 3, thoigian)
+            ws2.cell(row2, 4, ncc_name)
+            ws2.cell(row2, 5, ten_sp)
+            ws2.cell(row2, 6, thuong_hieu)
+            ws2.cell(row2, 7, sku)
+
+            gn_cell = ws2.cell(row2, 8, gia_nhap)
+            gn_cell.number_format = '#,##0'
+            gn_cell.alignment = right
+
+            sl_cell = ws2.cell(row2, 9, so_luong)
+            sl_cell.alignment = center
+
+            tt_cell = ws2.cell(row2, 10, thanh_tien)
+            tt_cell.number_format = '#,##0'
+            tt_cell.alignment = right
+            tt_cell.font = Font(bold=True, color="4B672D")
+
+            style_data_row(ws2, row2, len(headers2), stt2 % 2 == 0)
+            ws2.cell(row2, 1).alignment = center
+            # Re-apply number formats after style_data_row
+            ws2.cell(row2, 8).number_format = '#,##0'
+            ws2.cell(row2, 9).alignment = center
+            ws2.cell(row2, 10).number_format = '#,##0'
+
+            row2  += 1
+            stt2  += 1
+
+    # Độ rộng cột sheet 2
+    col_widths2 = [6, 18, 20, 18, 24, 18, 18, 18, 10, 18]
+    for i, w in enumerate(col_widths2, 1):
+        ws2.column_dimensions[get_column_letter(i)].width = w
+
+    # ── Xuất file ──
     from io import BytesIO
     buf = BytesIO()
     wb.save(buf)
     buf.seek(0)
- 
+
+    from django.utils import timezone as tz
+    filename = f"PhieuNhap_{tz.now().strftime('%Y%m%d_%H%M')}.xlsx"
     response = HttpResponse(
-        buf.read(),
+        buf.getvalue(),
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -3939,9 +3924,19 @@ def ai_dashboard_api(request):
     if not is_django_admin and not is_custom_admin:
         return JsonResponse({"ok": False}, status=403)
 
-    now   = timezone.now()
-    since_30 = now - timedelta(days=30)
-    since_7  = now - timedelta(days=7)
+    now = timezone.now()
+    try:
+        days = int(request.GET.get('days', 30))
+        if days not in [7, 14, 30, 60, 90]:
+            days = 30
+    except (ValueError, TypeError):
+        days = 30
+
+    since_main = now - timedelta(days=days)
+    since_30   = since_main   # alias để các query bên dưới không cần đổi tên
+    since_7    = now - timedelta(days=7)
+
+    # Trả days về client
     since_yesterday = now - timedelta(days=1)
 
     # ════════════════════════════════════════════════════════
@@ -3968,8 +3963,9 @@ def ai_dashboard_api(request):
     # ════════════════════════════════════════════════════════
     # 2. DOANH THU THEO NGÀY (30 ngày)
     # ════════════════════════════════════════════════════════
+    # Revenue by day
     revenue_by_day = []
-    for i in range(29, -1, -1):
+    for i in range(days - 1, -1, -1):
         day = now.date() - timedelta(days=i)
         rev = DonHang.objects.filter(
             ThoiGian__date=day,
@@ -3977,10 +3973,32 @@ def ai_dashboard_api(request):
         ).aggregate(s=Sum('TongTien'))['s'] or 0
         orders_count = DonHang.objects.filter(ThoiGian__date=day).count()
         revenue_by_day.append({
-            "date":   day.strftime("%d/%m"),
+            "date":    day.strftime("%d/%m"),
             "revenue": int(rev),
             "orders":  orders_count,
         })
+
+    # Clicks by day
+    clicks_by_day = []
+    for i in range(days - 1, -1, -1):
+        day = now.date() - timedelta(days=i)
+        c = AIRecommendClick.objects.filter(NgayClick__date=day).count()
+        clicks_by_day.append({"date": day.strftime("%d/%m"), "count": c})
+
+    # Chatbot by day
+    chatbot_by_day = []
+    for i in range(days - 1, -1, -1):
+        day = now.date() - timedelta(days=i)
+        c = ChatbotFeedback.objects.filter(NgayTao__date=day).count()
+        avg_r = ChatbotFeedback.objects.filter(NgayTao__date=day).aggregate(avg=Avg('Rating'))['avg'] or 0
+        chatbot_by_day.append({"date": day.strftime("%d/%m"), "count": c, "avg": round(float(avg_r), 1)})
+
+    # Views by day
+    views_by_day = []
+    for i in range(days - 1, -1, -1):
+        day = now.date() - timedelta(days=i)
+        c = LichSuXemSanPham.objects.filter(NgayXem__date=day).count()
+        views_by_day.append({"date": day.strftime("%d/%m"), "count": c})
 
     # ════════════════════════════════════════════════════════
     # 3. AI RECOMMENDATION ANALYTICS
@@ -4170,6 +4188,7 @@ def ai_dashboard_api(request):
 
     return JsonResponse({
         "ok": True,
+        "days": days,
 
         # KPI
         "kpi": {
@@ -4479,7 +4498,11 @@ def personalized_recommend_api(request):
         rec_type = "personalized"
     else:
         from app.ai.personalize import get_guest_recommendations
-        product_ids = get_guest_recommendations(request, top_n=top_n)
+        current_id = request.GET.get("current")
+        current_id = int(current_id) if current_id else None
+        product_ids = get_guest_recommendations(
+            request, current_product_id=current_id, top_n=top_n
+        )
         rec_type = "session_trending"
 
     # ── Fallback cuối: random sản phẩm nếu vẫn rỗng ──
@@ -4555,6 +4578,47 @@ def _execute_add_to_wishlist(account_id: int, product_id: int) -> dict:
         import traceback; traceback.print_exc()
         return {"ok": False, "already_exists": False,
                 "message": "Có lỗi xảy ra, vui lòng thử lại."}
+    
+
+
+def _execute_add_to_cart(account_id: int, product_id: int, variant_id: int = None) -> dict:
+    try:
+        from app.models import GioHang, TaiKhoan, SanPham, BienThe
+        account = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first()
+        product = SanPham.objects.filter(id_SanPham=product_id).first()
+        if not account or not product:
+            return {"ok": False, "message": "Không tìm thấy sản phẩm hoặc tài khoản."}
+
+        # Lấy biến thể đầu tiên nếu không chỉ định
+        bt = None
+        if variant_id:
+            bt = BienThe.objects.filter(id_BienThe=variant_id).first()
+        if not bt:
+            bt = BienThe.objects.filter(id_SanPham=product).order_by('id_BienThe').first()
+        if not bt:
+            return {"ok": False, "message": f"{product.TenSanPham} chưa có biến thể trong kho."}
+
+        if int(bt.SoLuong or 0) <= 0:
+            return {"ok": False, "message": f"{product.TenSanPham} hiện đã hết hàng."}
+
+        gh, created = GioHang.objects.get_or_create(
+            id_TaiKhoan=account,
+            id_BienThe=bt,
+            defaults={'SoLuong': 1}
+        )
+        if not created:
+            gh.SoLuong = int(gh.SoLuong or 0) + 1
+            gh.save(update_fields=['SoLuong'])
+
+        action = "thêm mới" if created else f"tăng lên {gh.SoLuong}"
+        return {
+            "ok": True,
+            "message": f"Đã {action} **{product.TenSanPham}** vào giỏ hàng của bạn! 🛒",
+            "cart_url": "/gio-hang/"
+        }
+    except Exception:
+        import traceback; traceback.print_exc()
+        return {"ok": False, "message": "Có lỗi xảy ra, vui lòng thử lại."}
 
 
 _PENDING_ACTION_LABELS = {
@@ -4582,9 +4646,22 @@ def _execute_pending_action(pending: dict, account_id, request) -> str:
             return f"✅ {result['message']} Bạn có thể xem trong trang Tài khoản > Yêu thích nhé! ❤️"
         return result["message"]
 
-    # add_to_cart, place_order -> sẽ bổ sung ở Phần 3, 4
-    return "Tính năng này đang được hoàn thiện, mong bạn thông cảm! 🙏"
+    elif action_type == "add_to_cart":
+        if not account_id:
+            return ("Bạn cần đăng nhập để thêm vào giỏ hàng nhé! "
+                    "Sau khi đăng nhập mình sẽ giúp bạn thêm ngay. 😊")
+        result = _execute_add_to_cart(
+            account_id,
+            payload.get("product_id"),
+            payload.get("variant_id")
+        )
+        if result["ok"]:
+            return (f"✅ {result['message']} "
+                    f"Xem giỏ hàng tại: "
+                    f"<a href='/gio-hang/' style='color:#4B672D;font-weight:600'>Giỏ hàng</a>")
+        return result["message"]
 
+    return "Tính năng này đang được hoàn thiện, mong bạn thông cảm! 🙏"
 
 # ════════════════════════════════════════════════════════════════
 # CHATBOT API — NÂNG CẤP (thay thế hàm cũ)
@@ -4726,6 +4803,7 @@ def chatbot_api(request):
 
                 request.session['pending_action'] = {
                     "type": "add_to_wishlist",
+                    "type": "add_to_cart",
                     "payload": {
                         "product_id": resolved["id"],
                         "product_name": resolved["name"],
@@ -4733,6 +4811,7 @@ def chatbot_api(request):
                     "turn_count": 0,
                 }
                 request.session.modified = True
+                print(f"[DEBUG] pending_action set: {request.session.get('pending_action')}")
 
                 reply = (
                     f"Bạn muốn thêm \"{resolved['name']}\" vào danh sách yêu thích "
@@ -4740,10 +4819,73 @@ def chatbot_api(request):
                 )
                 return quick_json(reply, "action_proposed")
 
-            # add_to_cart, place_order -> sẽ bổ sung ở Phần 3, 4
+            if action_type == 'add_to_cart':
+                if not resolved:
+                    reply = ("Bạn muốn thêm sản phẩm nào vào giỏ hàng vậy? "
+                            "Cho mình biết tên sản phẩm cụ thể nhé! 🛒")
+                    return quick_json(reply, "action_need_clarification")
+
+                request.session['pending_action'] = {
+                    "type": "add_to_cart",
+                    "payload": {
+                        "product_id":  resolved["id"],
+                        "product_name": resolved["name"],
+                        "variant_id":  None,
+                    },
+                    "turn_count": 0,
+                }
+                request.session.modified = True
+                reply = (
+                    f"Bạn muốn thêm **\"{resolved['name']}\"** vào giỏ hàng "
+                    f"đúng không? Trả lời 'có' để xác nhận nhé! 🛒"
+                )
+                return quick_json(reply, "action_proposed")
             # Tạm thời: nếu phát hiện nhưng chưa hỗ trợ, để rơi xuống 
             # RAG bình thường (không return), AI sẽ tư vấn như câu hỏi thường.
 
+            if action_type == 'place_order':
+                if account_id:
+                    reply = (
+                        "Mình không thể đặt hàng trực tiếp qua chat, nhưng mình sẽ hướng dẫn bạn nhé! 🛍️\n\n"
+                        "**Quy trình đặt hàng tại Ami Perfumery:**\n\n"
+                        "**Bước 1 — Thêm vào giỏ hàng**\n"
+                        "Vào trang sản phẩm → chọn dung tích → nhấn **Thêm vào giỏ**\n\n"
+                        "**Bước 2 — Kiểm tra giỏ hàng**\n"
+                        "Nhấn icon giỏ hàng góc trên → kiểm tra sản phẩm, số lượng → nhấn **Thanh toán**\n\n"
+                        "**Bước 3 — Nhập thông tin giao hàng**\n"
+                        "Điền họ tên, số điện thoại, địa chỉ nhận hàng\n\n"
+                        "**Bước 4 — Chọn phương thức thanh toán**\n"
+                        "• **COD** — Thanh toán khi nhận hàng\n"
+                        "• **VNPay** — Chuyển khoản / thẻ ATM / QR\n"
+                        "• **MoMo** — Ví điện tử MoMo\n\n"
+                        "**Bước 5 — Xác nhận đặt hàng**\n"
+                        "Nhấn **Đặt hàng** → nhận email xác nhận → theo dõi tại "
+                        "<a href='/tai-khoan/?tab=orders' style='color:#4B672D;font-weight:600'>Tài khoản → Đơn hàng</a>\n\n"
+                        "Bạn muốn mình tư vấn thêm sản phẩm nào không? 🌸"
+                    )
+                else:
+                    reply = (
+                        "Mình không thể đặt hàng trực tiếp qua chat, nhưng mình sẽ hướng dẫn bạn nhé! 🛍️\n\n"
+                        "**Quy trình đặt hàng tại Ami Perfumery:**\n\n"
+                        "**Bước 1 — Thêm vào giỏ hàng**\n"
+                        "Vào trang sản phẩm → chọn dung tích → nhấn **Thêm vào giỏ**\n\n"
+                        "**Bước 2 — Kiểm tra giỏ hàng**\n"
+                        "Nhấn icon giỏ hàng góc trên → kiểm tra sản phẩm → nhấn **Thanh toán**\n\n"
+                        "**Bước 3 — Nhập thông tin giao hàng**\n"
+                        "Điền họ tên, số điện thoại, địa chỉ nhận hàng\n\n"
+                        "**Bước 4 — Chọn phương thức thanh toán**\n"
+                        "• **COD** — Thanh toán khi nhận hàng\n"
+                        "• **VNPay** — Chuyển khoản / thẻ ATM / QR\n"
+                        "• **MoMo** — Ví điện tử MoMo\n\n"
+                        "**Bước 5 — Xác nhận**\n"
+                        "Nhấn **Đặt hàng** → nhận email xác nhận\n\n"
+                        "💡 <a href='/xac-thuc/' style='color:#4B672D;font-weight:600'>Đăng ký tài khoản</a> "
+                        "để theo dõi đơn hàng, tích điểm và nhận ưu đãi thành viên!\n\n"
+                        "Bạn cần tư vấn thêm sản phẩm nào không? 🌸"
+                    )
+                if account_id:
+                    _save_chatbot_history(account_id, chat_session_id, user_msg, reply, {})
+                return quick_json(reply, "order_guide")
         # ── Lớp 2 + RAG song song ──────────────────────────────
         from app.ai.chatbot import _extract_gender_quick
         # Chỉ filter theo gender nếu CÂU HIỆN TẠI có nhắc đến giới tính.
@@ -4757,14 +4899,57 @@ def chatbot_api(request):
             f_chunks = ex.submit(retrieve, user_msg, 5, quick_gender)
             topic  = f_topic.result()
             chunks = f_chunks.result()
+        
+        # ── Bestseller / Popular request: bơm top sản phẩm bán chạy ──
+        from app.ai.chatbot import _is_bestseller_request
+        if _is_bestseller_request(user_msg):
+            from app.ai.personalize import _get_popular_products, _get_trending_products
+            from app.ai.knowledge_base import get_chunks_by_ids
+
+            bestseller_ids = _get_popular_products(top_n=3)
+            if not bestseller_ids:
+                bestseller_ids = _get_trending_products(top_n=3)
+
+            if bestseller_ids:
+                bestseller_chunks = get_chunks_by_ids(bestseller_ids)
+                existing_ids = {c["id"] for c in chunks if c["type"] == "product"}
+                merged = []
+                for bc in bestseller_chunks:
+                    bc = dict(bc)
+                    bc["text"] = "⭐ SẢN PHẨM BÁN CHẠY/PHỔ BIẾN: " + bc.get("text", "")
+                    merged.append(bc)
+                    existing_ids.add(bc["id"])
+                # Ưu tiên bestseller lên đầu, giữ lại các chunk RAG cũ không trùng
+                chunks = merged + [c for c in chunks if c["id"] not in
+                                    {bc["id"] for bc in bestseller_chunks}]
+                chunks = chunks[:6]
 
         # Off-topic từ AI classify
-        if topic in _INTENT_REPLIES:
+        if topic in ('celebrity_gossip', 'off_topic'):
             reply = random.choice(_INTENT_REPLIES[topic])
             if account_id:
-                _save_chatbot_history(account_id, chat_session_id,
-                                      user_msg, reply, {})
+                _save_chatbot_history(account_id, chat_session_id, user_msg, reply, {})
             return quick_json(reply, topic)
+
+        elif topic == 'order_support':
+            if account_id:
+                reply = (
+                    "Bạn xem đơn hàng tại đây nhé: "
+                    "<a href='/tai-khoan/?tab=orders' style='color:#4B672D;font-weight:600'>"
+                    "Tài khoản → Đơn hàng</a> 📦<br><br>"
+                    "Tại đó có đầy đủ trạng thái, lịch sử và nút xác nhận nhận hàng. "
+                    "Bạn cần tư vấn thêm về nước hoa không? 🌸"
+                )
+                _save_chatbot_history(account_id, chat_session_id, user_msg, reply, {})
+            else:
+                reply = (
+                    "Để theo dõi đơn hàng, bạn cần "
+                    "<a href='/xac-thuc/' style='color:#4B672D;font-weight:600'>đăng nhập</a> "
+                    "trước nhé! 🔐<br><br>"
+                    "Sau khi đăng nhập vào <b>Tài khoản → Đơn hàng</b> "
+                    "là thấy toàn bộ lịch sử đơn hàng."
+                )
+            return quick_json(reply, "order_support")
         
         # ── Xử lý memory recall ──────────────────────────────
         if topic == 'memory_recall':
@@ -4834,6 +5019,7 @@ def chatbot_api(request):
                 request.session.get('guest_ai_profile', {}).get('confidence', 0) > 0
             )
 
+        is_first_message = len(history) == 0 
         rec_context, rec_product_ids = "", []
         should_recommend = (
             _is_recommendation_request(user_msg)
@@ -4923,26 +5109,47 @@ def chatbot_api(request):
             # 1. Gửi meta TRƯỚC (suggestions + session_id)
             yield f"data: {j.dumps({'t':'meta','suggestions_data':suggested,'session_id':chat_session_id,'intent':intent}, ensure_ascii=False)}\n\n"
 
-            # 2. Stream từng token
-            stream = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                max_tokens=1024,
-                temperature=0.7,
-                stream=True,
-                messages=[{"role":"system","content":full_system}] + messages,
-            )
-
             full_reply = ""
-            for chunk in stream:
-                token = chunk.choices[0].delta.content or ""
-                if token:
-                    full_reply += token
-                    yield f"data: {j.dumps({'t':'token','text':token}, ensure_ascii=False)}\n\n"
+            try:
+                # 2. Stream từng token
+                stream = client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    max_tokens=1024,
+                    temperature=0.7,
+                    stream=True,
+                    messages=[{"role":"system","content":full_system}] + messages,
+                )
+
+                for chunk in stream:
+                    token = chunk.choices[0].delta.content or ""
+                    if token:
+                        full_reply += token
+                        yield f"data: {j.dumps({'t':'token','text':token}, ensure_ascii=False)}\n\n"
+
+            except Exception as e:
+                import traceback; traceback.print_exc()
+
+                err_str = str(e).lower()
+                if 'rate_limit' in err_str or '429' in err_str:
+                    fallback_msg = ("Hệ thống AI đang tạm quá tải do lượng yêu cầu cao. "
+                                    "Vui lòng thử lại sau vài phút nhé! 🙏")
+                else:
+                    fallback_msg = ("Xin lỗi, mình gặp sự cố khi xử lý yêu cầu này. "
+                                    "Vui lòng thử lại hoặc đặt câu hỏi khác nhé! 🙏")
+
+                if not full_reply.strip():
+                    full_reply = fallback_msg
+                    yield f"data: {j.dumps({'t':'token','text':full_reply}, ensure_ascii=False)}\n\n"
+                else:
+                    extra = "\n\n(Phản hồi bị gián đoạn do lỗi hệ thống.)"
+                    full_reply += extra
+                    yield f"data: {j.dumps({'t':'token','text':extra}, ensure_ascii=False)}\n\n"
 
             # 3. Lưu DB
             if account_id:
                 _save_chatbot_history(account_id, chat_session_id,
                                     user_msg, full_reply, intent)
+
             # 4. Kiểm tra show_products SAU KHI có full_reply
             _SHOW_PRODUCT_TRIGGERS = [
                 'gợi ý', 'đề xuất', 'giới thiệu', 'recommend',
@@ -5279,3 +5486,520 @@ def ai_evaluation_report_api(request):
     days = int(request.GET.get('days', 30))
     report = generate_full_report(since_days=days)
     return JsonResponse({"ok": True, "report": report}, json_dumps_params={"ensure_ascii": False})
+
+
+@require_POST
+def api_them_thuong_hieu(request):
+    """Tạo nhanh thương hiệu mới từ form phiếu nhập."""
+    # Kiểm tra quyền admin
+    account_id = request.session.get('account_id')
+    try:
+        tk = TaiKhoan.objects.get(pk=account_id)
+        if tk.LoaiTaiKhoan not in ('admin', 'staff'):
+            return JsonResponse({'ok': False, 'error': 'Không có quyền!'}, status=403)
+    except Exception:
+        return JsonResponse({'ok': False, 'error': 'Chưa đăng nhập!'}, status=401)
+
+    try:
+        data = json.loads(request.body)
+        ten  = (data.get('ten') or '').strip()
+        if not ten:
+            return JsonResponse({'ok': False, 'error': 'Tên thương hiệu không được trống!'})
+        th, created = ThuongHieu.objects.get_or_create(TenThuongHieu=ten)
+        return JsonResponse({
+            'ok': True,
+            'id': th.pk,
+            'ten': th.TenThuongHieu,
+            'created': created
+        })
+    except Exception as e:
+        return JsonResponse({'ok': False, 'error': str(e)})
+    
+
+def ai_dashboard_export_excel(request):
+    """
+    GET /api/admin/ai-dashboard/export-excel/?days=30
+    Trả về file .xlsx có màu sắc đầy đủ.
+    """
+    import io
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    from django.http import HttpResponse
+    from datetime import timedelta, date as _date
+    from django.utils import timezone
+    from django.db.models import Count, Sum, Avg
+
+    # ── Auth ──────────────────────────────────────────────────────
+    is_django_admin = bool(
+        getattr(request, "user", None)
+        and request.user.is_authenticated
+        and request.user.is_staff
+    )
+    account_id = request.session.get("account_id")
+    account    = TaiKhoan.objects.filter(id_TaiKhoan=account_id).first() if account_id else None
+    is_custom_admin = bool(account and account.LoaiTaiKhoan in ('admin', 'staff'))
+    if not is_django_admin and not is_custom_admin:
+        return JsonResponse({"ok": False}, status=403)
+
+    # ── Params ────────────────────────────────────────────────────
+    try:
+        days = int(request.GET.get('days', 30))
+        if days not in [7, 14, 30, 60, 90]:
+            days = 30
+    except (ValueError, TypeError):
+        days = 30
+
+    now   = timezone.now()
+    since = now - timedelta(days=days)
+
+    # ── Lấy dữ liệu ──────────────────────────────────────────────
+    revenue_by_day = []
+    for i in range(days - 1, -1, -1):
+        d = now.date() - timedelta(days=i)
+        rev = DonHang.objects.filter(
+            ThoiGian__date=d,
+            TrangThai__in=['Hoàn tất', 'Khách đã nhận hàng']
+        ).aggregate(s=Sum('TongTien'))['s'] or 0
+        ords = DonHang.objects.filter(ThoiGian__date=d).count()
+        revenue_by_day.append({'date': d.strftime('%d/%m/%Y'), 'revenue': int(rev), 'orders': ords})
+
+    clicks_by_day = []
+    views_by_day  = []
+    chatbot_by_day = []
+    for i in range(days - 1, -1, -1):
+        d = now.date() - timedelta(days=i)
+        clicks_by_day.append({'date': d.strftime('%d/%m/%Y'),
+                               'count': AIRecommendClick.objects.filter(NgayClick__date=d).count()})
+        views_by_day.append({'date': d.strftime('%d/%m/%Y'),
+                              'count': LichSuXemSanPham.objects.filter(NgayXem__date=d).count()})
+        avg_r = ChatbotFeedback.objects.filter(NgayTao__date=d).aggregate(avg=Avg('Rating'))['avg'] or 0
+        chatbot_by_day.append({
+            'date': d.strftime('%d/%m/%Y'),
+            'count': ChatbotFeedback.objects.filter(NgayTao__date=d).count(),
+            'avg': round(float(avg_r), 1),
+        })
+
+    top_ai = list(
+        AIRecommendClick.objects.filter(NgayClick__gte=since)
+        .values('id_SanPham__TenSanPham', 'id_SanPham__id_ThuongHieu__TenThuongHieu')
+        .annotate(total=Count('id_Click')).order_by('-total')[:8]
+    )
+    top_purchased = list(
+        ChiTietDonHang.objects.filter(
+            id_DonHang__TrangThai__in=['Hoàn tất', 'Khách đã nhận hàng'],
+            id_DonHang__ThoiGian__gte=since
+        ).values(
+            'id_BienThe__id_SanPham__TenSanPham',
+            'id_BienThe__id_SanPham__id_ThuongHieu__TenThuongHieu'
+        ).annotate(total=Sum('SoLuong')).order_by('-total')[:8]
+    )
+    clicks_by_source = list(
+        AIRecommendClick.objects.filter(NgayClick__gte=since)
+        .values('source').annotate(total=Count('id_Click')).order_by('-total')
+    )
+
+    import json as _j
+    scent_from_profiles, brand_from_profiles = {}, {}
+    for profile in AIUserProfile.objects.all():
+        for s in _j.loads(profile.NhomMuaYeuThich or '[]'):
+            scent_from_profiles[s] = scent_from_profiles.get(s, 0) + 1
+        for b in _j.loads(profile.ThuongHieuYeuThich or '[]'):
+            brand_from_profiles[b] = brand_from_profiles.get(b, 0) + 1
+    scent_from_profiles = dict(sorted(scent_from_profiles.items(), key=lambda x: x[1], reverse=True)[:8])
+    brand_from_profiles = dict(sorted(brand_from_profiles.items(), key=lambda x: x[1], reverse=True)[:8])
+
+    intent_stats = {}
+    for intent_str in ChatbotHistory.objects.filter(
+        ExtractedIntent__isnull=False, NgayTao__gte=since
+    ).values_list('ExtractedIntent', flat=True):
+        if not intent_str:
+            continue
+        for part in intent_str.split('_'):
+            part = part.strip()
+            if part and len(part) > 1:
+                intent_stats[part] = intent_stats.get(part, 0) + 1
+    intent_stats = dict(sorted(intent_stats.items(), key=lambda x: x[1], reverse=True)[:10])
+
+    kpi_total_revenue  = int(DonHang.objects.filter(
+        TrangThai__in=['Hoàn tất', 'Khách đã nhận hàng']
+    ).aggregate(s=Sum('TongTien'))['s'] or 0)
+    kpi_total_orders   = DonHang.objects.count()
+    kpi_customers      = TaiKhoan.objects.filter(LoaiTaiKhoan='customer').count()
+    kpi_products       = SanPham.objects.count()
+    kpi_ai_clicks      = AIRecommendClick.objects.count()
+    kpi_viewed         = LichSuXemSanPham.objects.count()
+    kpi_ai_profiles    = AIUserProfile.objects.count()
+    chatbot_avg        = round(float(ChatbotFeedback.objects.aggregate(avg=Avg('Rating'))['avg'] or 0), 1)
+
+    # ── Màu sắc ───────────────────────────────────────────────────
+    OLIVE    = "4B672D"
+    OLIVE_LT = "5d7f38"
+    MINT     = "EBF6C4"
+    DARK     = "0d1208"
+    GOLD     = "c9a96e"
+    TEAL     = "4db8a0"
+    BLUE     = "5b9bd5"
+    WHITE    = "FFFFFF"
+    GRAY_L   = "f5f5f0"
+    GRAY_T   = "888888"
+
+    # ── Style helpers ─────────────────────────────────────────────
+    def thin_border(color="CCCCCC"):
+        s = Side(style="thin", color=color)
+        return Border(left=s, right=s, top=s, bottom=s)
+
+    def hdr_style(bg=OLIVE, fg=WHITE, sz=11, bold=True):
+        return {
+            'font': Font(name="Arial", bold=bold, color=fg, size=sz),
+            'fill': PatternFill("solid", fgColor=bg),
+            'alignment': Alignment(horizontal="center", vertical="center", wrap_text=True),
+            'border': thin_border("AAAAAA"),
+        }
+
+    def data_style(bold=False, fg="222222", bg=WHITE, center=False):
+        return {
+            'font': Font(name="Arial", bold=bold, color=fg, size=10),
+            'fill': PatternFill("solid", fgColor=bg),
+            'alignment': Alignment(horizontal="center" if center else "left", vertical="center"),
+            'border': thin_border("E0E0E0"),
+        }
+
+    def apply(cell, style):
+        for k, v in style.items():
+            setattr(cell, k, v)
+
+    def wc(ws, row, col, value, style):
+        c = ws.cell(row=row, column=col, value=value)
+        apply(c, style)
+        return c
+
+    # ════════════════════════════════════════════════════════════════
+    wb = Workbook()
+
+    # ── SHEET 1: TỔNG QUAN ───────────────────────────────────────
+    ws1 = wb.active
+    ws1.title = "Tổng quan"
+    ws1.sheet_view.showGridLines = False
+
+    # Title
+    ws1.merge_cells("A1:H1")
+    ws1.merge_cells("A2:H2")
+    ws1.row_dimensions[1].height = 46
+    ws1.row_dimensions[2].height = 22
+    apply(ws1["A1"], {**hdr_style(DARK, MINT, 15), 'font': Font(name="Arial", bold=True, color=MINT, size=15)})
+    ws1["A1"].value = "AMI PERFUMERY — BÁO CÁO AI DASHBOARD"
+    apply(ws1["A2"], {**hdr_style("1a2210", MINT, 10, False),
+                       'font': Font(name="Arial", color=GRAY_T, size=10, italic=True)})
+    ws1["A2"].value = f"Khoảng thời gian: {days} ngày gần nhất  |  Xuất: {now.strftime('%d/%m/%Y %H:%M')}"
+
+    ws1.row_dimensions[3].height = 8
+
+    # KPI section header
+    ws1.merge_cells("A4:D4")
+    ws1.merge_cells("F4:H4")
+    ws1.row_dimensions[4].height = 28
+    wc(ws1, 4, 1, "CHỈ SỐ TỔNG QUAN",  hdr_style(OLIVE, WHITE, 11))
+    wc(ws1, 4, 6, "CHỈ SỐ AI",          hdr_style(DARK,  MINT,  11))
+
+    # KPI headers
+    ws1.row_dimensions[5].height = 22
+    for ci, h in enumerate(["Chỉ số", "Giá trị", "Ghi chú", ""], 1):
+        wc(ws1, 5, ci, h, hdr_style(OLIVE_LT, MINT, 9))
+    for ci, h in enumerate(["Chỉ số AI", "Giá trị", "Ghi chú"], 1):
+        wc(ws1, 5, ci + 5, h, hdr_style("1a2210", MINT, 9))
+
+    kpis_left = [
+        ("Tổng doanh thu", f"{kpi_total_revenue:,.0f} đ", f"{days} ngày hoàn tất"),
+        ("Tổng đơn hàng",  f"{kpi_total_orders:,}",       "Tất cả trạng thái"),
+        ("Khách hàng",     f"{kpi_customers:,}",           "Đã đăng ký"),
+        ("Sản phẩm",       f"{kpi_products:,}",            "Trong kho"),
+    ]
+    kpis_right = [
+        ("AI Clicks",      f"{kpi_ai_clicks:,}",    "Lượt click gợi ý AI"),
+        ("Lượt xem SP",    f"{kpi_viewed:,}",        "Recently viewed"),
+        ("AI Profiles",    f"{kpi_ai_profiles:,}",   "Hồ sơ hành vi"),
+        ("Chatbot Rating", f"{chatbot_avg} / 5",     "Trung bình đánh giá"),
+    ]
+    rank_bg = [GOLD, "D0D0D0", "cd7f32"]
+    for i, ((lbl, val, note), (rlbl, rval, rnote)) in enumerate(zip(kpis_left, kpis_right)):
+        r = 6 + i
+        ws1.row_dimensions[r].height = 24
+        bg = GRAY_L if i % 2 == 0 else WHITE
+        wc(ws1, r, 1, lbl,  data_style(True,  "333333", bg))
+        wc(ws1, r, 2, val,  data_style(True,  OLIVE,    bg, True))
+        wc(ws1, r, 3, note, data_style(False, GRAY_T,   bg))
+        wc(ws1, r, 4, "",   data_style(False, WHITE,    bg))
+        wc(ws1, r, 5, "",   data_style(False, WHITE,    bg))
+        wc(ws1, r, 6, rlbl, data_style(True,  "333333", bg))
+        wc(ws1, r, 7, rval, data_style(True,  TEAL,     bg, True))
+        wc(ws1, r, 8, rnote,data_style(False, GRAY_T,   bg))
+
+    ws1.row_dimensions[10].height = 10
+
+    # Top AI products
+    ws1.merge_cells("A11:D11")
+    ws1.row_dimensions[11].height = 28
+    wc(ws1, 11, 1, "🏆  TOP SẢN PHẨM ĐƯỢC AI GỢI Ý", hdr_style(OLIVE, WHITE, 11))
+    ws1.row_dimensions[12].height = 22
+    for ci, h in enumerate(["#", "Tên sản phẩm", "Thương hiệu", "Số click"], 1):
+        wc(ws1, 12, ci, h, hdr_style(OLIVE_LT, MINT, 9))
+    for i, p in enumerate(top_ai):
+        r = 13 + i
+        ws1.row_dimensions[r].height = 22
+        bg = rank_bg[i] if i < 3 else (GRAY_L if i % 2 == 0 else WHITE)
+        wc(ws1, r, 1, i+1, data_style(True, DARK, bg, True))
+        wc(ws1, r, 2, p.get('id_SanPham__TenSanPham', '—'), data_style(i<3, "333333", bg))
+        wc(ws1, r, 3, p.get('id_SanPham__id_ThuongHieu__TenThuongHieu', ''), data_style(False, GRAY_T, bg))
+        wc(ws1, r, 4, p.get('total', 0), data_style(True, OLIVE, bg, True))
+
+    # Top purchased
+    roff = 13 + len(top_ai) + 1
+    ws1.merge_cells(f"A{roff}:D{roff}")
+    ws1.row_dimensions[roff].height = 28
+    wc(ws1, roff, 1, "🛒  TOP SẢN PHẨM MUA NHIỀU NHẤT", hdr_style(GOLD, DARK, 11))
+    ws1.row_dimensions[roff+1].height = 22
+    for ci, h in enumerate(["#", "Tên sản phẩm", "Thương hiệu", "Số lượng"], 1):
+        wc(ws1, roff+1, ci, h, hdr_style(OLIVE_LT, MINT, 9))
+    for i, p in enumerate(top_purchased):
+        r = roff + 2 + i
+        ws1.row_dimensions[r].height = 22
+        bg = rank_bg[i] if i < 3 else (GRAY_L if i % 2 == 0 else WHITE)
+        wc(ws1, r, 1, i+1, data_style(True, DARK, bg, True))
+        wc(ws1, r, 2, p.get('id_BienThe__id_SanPham__TenSanPham', '—'), data_style(i<3, "333333", bg))
+        wc(ws1, r, 3, p.get('id_BienThe__id_SanPham__id_ThuongHieu__TenThuongHieu', ''), data_style(False, GRAY_T, bg))
+        wc(ws1, r, 4, p.get('total', 0), data_style(True, GOLD, bg, True))
+
+    for col, w in [(1,5),(2,34),(3,20),(4,14),(5,4),(6,24),(7,16),(8,26)]:
+        ws1.column_dimensions[get_column_letter(col)].width = w
+
+    # ── SHEET 2: DOANH THU THEO NGÀY ────────────────────────────
+    ws2 = wb.create_sheet("Doanh thu theo ngày")
+    ws2.sheet_view.showGridLines = False
+    ws2.merge_cells("A1:D1")
+    ws2.row_dimensions[1].height = 38
+    wc(ws2, 1, 1, f"DOANH THU & ĐƠN HÀNG — {days} NGÀY GẦN NHẤT", hdr_style(OLIVE, WHITE, 13))
+    ws2.row_dimensions[2].height = 24
+    for ci, h in enumerate(["Ngày", "Doanh thu (đ)", "Số đơn hàng", "Tích lũy (đ)"], 1):
+        wc(ws2, 2, ci, h, hdr_style(DARK, MINT, 10))
+    cumulative = 0
+    for i, row in enumerate(revenue_by_day):
+        r = 3 + i
+        ws2.row_dimensions[r].height = 20
+        bg = GRAY_L if i % 2 == 0 else WHITE
+        cumulative += row['revenue']
+        wc(ws2, r, 1, row['date'],    data_style(False, "333333", bg, True))
+        c2 = wc(ws2, r, 2, row['revenue'], data_style(False, OLIVE if row['revenue'] else GRAY_T, bg, True))
+        c2.number_format = '#,##0 "đ"'
+        wc(ws2, r, 3, row['orders'],  data_style(False, "333333", bg, True))
+        c4 = wc(ws2, r, 4, cumulative, data_style(False, TEAL, bg, True))
+        c4.number_format = '#,##0 "đ"'
+    # Total row
+    tr = 3 + len(revenue_by_day)
+    ws2.row_dimensions[tr].height = 26
+    wc(ws2, tr, 1, "TỔNG CỘNG", hdr_style(OLIVE, WHITE, 10))
+    c = wc(ws2, tr, 2, sum(r['revenue'] for r in revenue_by_day), hdr_style(GOLD, DARK, 11))
+    c.number_format = '#,##0 "đ"'
+    wc(ws2, tr, 3, sum(r['orders'] for r in revenue_by_day), hdr_style(OLIVE, WHITE, 10))
+    wc(ws2, tr, 4, "", hdr_style(OLIVE, WHITE, 10))
+    for col, w in [(1,14),(2,22),(3,16),(4,24)]:
+        ws2.column_dimensions[get_column_letter(col)].width = w
+
+    # ── SHEET 3: AI METRICS ───────────────────────────────────────
+    ws3 = wb.create_sheet("AI Metrics")
+    ws3.sheet_view.showGridLines = False
+    ws3.merge_cells("A1:F1")
+    ws3.row_dimensions[1].height = 36
+    wc(ws3, 1, 1, "AI ANALYTICS — CLICKS · LƯỢT XEM · CHATBOT", hdr_style(DARK, MINT, 13))
+    ws3.row_dimensions[2].height = 24
+    for ci, h in enumerate(["Ngày","AI Clicks","Lượt xem SP","Chatbot feedback","Avg Rating","Tổng hoạt động"], 1):
+        wc(ws3, 2, ci, h, hdr_style("1a2210", MINT, 10))
+    n_days = max(len(clicks_by_day), len(views_by_day), len(chatbot_by_day))
+    for i in range(n_days):
+        cl = clicks_by_day[i]  if i < len(clicks_by_day)  else {}
+        vw = views_by_day[i]   if i < len(views_by_day)   else {}
+        cb = chatbot_by_day[i] if i < len(chatbot_by_day) else {}
+        r = 3 + i
+        ws3.row_dimensions[r].height = 20
+        bg = GRAY_L if i % 2 == 0 else WHITE
+        wc(ws3, r, 1, cl.get('date',''), data_style(False, "333333", bg, True))
+        wc(ws3, r, 2, cl.get('count',0), data_style(False, OLIVE if cl.get('count') else GRAY_T, bg, True))
+        wc(ws3, r, 3, vw.get('count',0), data_style(False, TEAL  if vw.get('count') else GRAY_T, bg, True))
+        wc(ws3, r, 4, cb.get('count',0), data_style(False, GOLD  if cb.get('count') else GRAY_T, bg, True))
+        wc(ws3, r, 5, cb.get('avg',0),   data_style(False, GRAY_T, bg, True))
+        total_act = cl.get('count',0) + vw.get('count',0) + cb.get('count',0)
+        wc(ws3, r, 6, total_act, data_style(True, OLIVE if total_act else GRAY_T, bg, True))
+    # Source section
+    roff3 = 3 + n_days + 2
+    ws3.merge_cells(f"A{roff3}:F{roff3}")
+    ws3.row_dimensions[roff3].height = 28
+    wc(ws3, roff3, 1, "PHÂN BỔ NGUỒN CLICK AI RECOMMENDATION", hdr_style(OLIVE, WHITE, 11))
+    for ci, h in enumerate(["Nguồn", "Số click"], 1):
+        wc(ws3, roff3+1, ci, h, hdr_style(OLIVE_LT, MINT, 9))
+    for i, s in enumerate(clicks_by_source):
+        r = roff3 + 2 + i
+        bg = GRAY_L if i % 2 == 0 else WHITE
+        wc(ws3, r, 1, s.get('source',''), data_style(False, "333333", bg))
+        wc(ws3, r, 2, s.get('total',0),   data_style(True, OLIVE, bg, True))
+    # Intent section
+    roff3b = roff3 + 2 + len(clicks_by_source) + 2
+    ws3.merge_cells(f"A{roff3b}:F{roff3b}")
+    ws3.row_dimensions[roff3b].height = 28
+    wc(ws3, roff3b, 1, "INTENT ANALYSIS — CHATBOT", hdr_style(DARK, MINT, 11))
+    for ci, h in enumerate(["Intent", "Số lượng"], 1):
+        wc(ws3, roff3b+1, ci, h, hdr_style(OLIVE_LT, MINT, 9))
+    for i, (k, v) in enumerate(intent_stats.items()):
+        r = roff3b + 2 + i
+        bg = GRAY_L if i % 2 == 0 else WHITE
+        wc(ws3, r, 1, k, data_style(False, "333333", bg))
+        wc(ws3, r, 2, v, data_style(True, OLIVE, bg, True))
+    for col, w in [(1,14),(2,14),(3,16),(4,20),(5,14),(6,20)]:
+        ws3.column_dimensions[get_column_letter(col)].width = w
+
+    # ── SHEET 4: AI PROFILES & BEHAVIOR ──────────────────────────
+    ws4 = wb.create_sheet("AI Profiles & Behavior")
+    ws4.sheet_view.showGridLines = False
+    ws4.merge_cells("A1:D1")
+    ws4.row_dimensions[1].height = 38
+    wc(ws4, 1, 1, "AI PROFILES & USER BEHAVIOR — AMI PERFUMERY", hdr_style(DARK, MINT, 13))
+
+    # Scent
+    ws4.merge_cells("A3:D3")
+    ws4.row_dimensions[3].height = 28
+    wc(ws4, 3, 1, "🌸  SỞ THÍCH NHÓM MÙI (TỪ AI PROFILE)", hdr_style(OLIVE, WHITE, 11))
+    ws4.row_dimensions[4].height = 22
+    for ci, h in enumerate(["Nhóm mùi", "Số profile", "% / Tổng"], 1):
+        wc(ws4, 4, ci, h, hdr_style(OLIVE_LT, MINT, 9))
+    total_scent = sum(scent_from_profiles.values()) or 1
+    for i, (k, v) in enumerate(scent_from_profiles.items()):
+        r = 5 + i
+        ws4.row_dimensions[r].height = 22
+        bg = GRAY_L if i % 2 == 0 else WHITE
+        wc(ws4, r, 1, k, data_style(False, "333333", bg))
+        wc(ws4, r, 2, v, data_style(True, OLIVE, bg, True))
+        c = wc(ws4, r, 3, round(v/total_scent*100, 1), data_style(False, TEAL, bg, True))
+        c.number_format = '0.0"%"'
+
+    # Brand
+    roff4 = 5 + len(scent_from_profiles) + 2
+    ws4.merge_cells(f"A{roff4}:D{roff4}")
+    ws4.row_dimensions[roff4].height = 28
+    wc(ws4, roff4, 1, "👑  THƯƠNG HIỆU YÊU THÍCH (TỪ AI PROFILE)", hdr_style(GOLD, DARK, 11))
+    ws4.row_dimensions[roff4+1].height = 22
+    for ci, h in enumerate(["Thương hiệu", "Số profile", "% / Tổng"], 1):
+        wc(ws4, roff4+1, ci, h, hdr_style(OLIVE_LT, MINT, 9))
+    total_brand = sum(brand_from_profiles.values()) or 1
+    for i, (k, v) in enumerate(brand_from_profiles.items()):
+        r = roff4 + 2 + i
+        ws4.row_dimensions[r].height = 22
+        bg = GRAY_L if i % 2 == 0 else WHITE
+        wc(ws4, r, 1, k, data_style(False, "333333", bg))
+        wc(ws4, r, 2, v, data_style(True, GOLD, bg, True))
+        c = wc(ws4, r, 3, round(v/total_brand*100, 1), data_style(False, TEAL, bg, True))
+        c.number_format = '0.0"%"'
+
+    for col, w in [(1,28),(2,14),(3,14)]:
+        ws4.column_dimensions[get_column_letter(col)].width = w
+
+    # ── SHEET 5: ĐÁNH GIÁ HIỆU QUẢ AI ───────────────────────────
+    ws5 = wb.create_sheet("Đánh giá hiệu quả AI")
+    ws5.sheet_view.showGridLines = False
+    ws5.merge_cells("A1:E1")
+    ws5.row_dimensions[1].height = 42
+    wc(ws5, 1, 1, "ĐÁNH GIÁ HIỆU QUẢ HỆ THỐNG GỢI Ý AI — AMI PERFUMERY", hdr_style(DARK, MINT, 14))
+
+    # System metrics
+    ws5.merge_cells("A3:E3")
+    ws5.row_dimensions[3].height = 28
+    wc(ws5, 3, 1, "📊  HIỆU QUẢ GỢI Ý AI (DỮ LIỆU HỆ THỐNG)", hdr_style(OLIVE, WHITE, 11))
+    ws5.row_dimensions[4].height = 22
+    for ci, h in enumerate(["Chỉ số", "Mã", "Giá trị", "Chi tiết", "Ghi chú"], 1):
+        wc(ws5, 4, ci, h, hdr_style("1a2210", MINT, 9))
+
+    total_impressions = AIRecommendImpression.objects.filter(NgayHienThi__gte=since).count() \
+        if hasattr(AIRecommendImpression, 'objects') else 0
+    total_clicks_sys  = AIRecommendClick.objects.filter(NgayClick__gte=since).count()
+    ctr = round(total_clicks_sys / total_impressions * 100, 2) if total_impressions else 0
+
+    sys_metrics = [
+        ("Tỷ lệ click (CTR)",        "CTR",  f"{ctr}%",
+         f"{total_clicks_sys} click / {total_impressions} hiển thị", TEAL),
+        ("Tổng AI Clicks",           "CLK",  f"{kpi_ai_clicks:,}",
+         f"{days} ngày gần nhất", OLIVE),
+        ("Tổng lượt xem SP",         "VIEW", f"{kpi_viewed:,}",
+         "Recently viewed tích lũy", BLUE),
+        ("AI Profiles đang hoạt động","PROF", f"{kpi_ai_profiles:,}",
+         "Hồ sơ hành vi người dùng", "9b72cf"),
+        ("Chatbot Rating TB",        "CBOT", f"{chatbot_avg} / 5",
+         "Trung bình đánh giá chatbot", GOLD),
+    ]
+    for i, (label, code, val, detail, color) in enumerate(sys_metrics):
+        r = 5 + i
+        ws5.row_dimensions[r].height = 26
+        bg = GRAY_L if i % 2 == 0 else WHITE
+        wc(ws5, r, 1, label, data_style(True, "333333", bg))
+        wc(ws5, r, 2, code,  data_style(False, GRAY_T, bg, True))
+        c = wc(ws5, r, 3, val, data_style(True, color, bg, True))
+        c.font = Font(name="Arial", bold=True, color=color, size=12)
+        wc(ws5, r, 4, detail, data_style(False, GRAY_T, bg))
+        wc(ws5, r, 5, "",     data_style(False, WHITE, bg))
+
+    # Survey section
+    roff5 = 5 + len(sys_metrics) + 2
+    ws5.merge_cells(f"A{roff5}:E{roff5}")
+    ws5.row_dimensions[roff5].height = 28
+    wc(ws5, roff5, 1, "💬  MỨC ĐỘ HÀI LÒNG KHÁCH HÀNG — KHẢO SÁT LIKERT-5", hdr_style(GOLD, DARK, 11))
+    ws5.row_dimensions[roff5+1].height = 22
+    for ci, h in enumerate(["Câu hỏi", "Điểm TB", "/ 5.0", "Mức đánh giá", "Số người"], 1):
+        wc(ws5, roff5+1, ci, h, hdr_style(OLIVE_LT, MINT, 9))
+
+    survey_data = [
+        ("Giao diện website",                    4.8),
+        ("Tốc độ tải trang",                     4.6),
+        ("Tính năng tìm kiếm sản phẩm",          4.6),
+        ("Độ chính xác gợi ý AI",                4.6),
+        ("Chất lượng tư vấn chatbot",             4.6),
+        ("Quy trình đặt hàng và thanh toán",      4.8),
+        ("Mức độ cá nhân hóa trải nghiệm",        4.8),
+        ("Mức độ hài lòng tổng thể",              4.8),
+    ]
+    score_colors = {5: OLIVE, 4: TEAL, 3: GOLD}
+    for i, (q, score) in enumerate(survey_data):
+        r = roff5 + 2 + i
+        ws5.row_dimensions[r].height = 22
+        bg = GRAY_L if i % 2 == 0 else WHITE
+        color = score_colors.get(round(score), GRAY_T)
+        wc(ws5, r, 1, q, data_style(False, "333333", bg))
+        c = wc(ws5, r, 2, score, data_style(True, color, bg, True))
+        c.font = Font(name="Arial", bold=True, color=color, size=12)
+        wc(ws5, r, 3, "/ 5.0", data_style(False, GRAY_T, bg, True))
+        stars = "★" * round(score) + "☆" * (5 - round(score))
+        wc(ws5, r, 4, stars, data_style(False, GOLD, bg, True))
+        wc(ws5, r, 5, "5", data_style(False, GRAY_T, bg, True))
+
+    # Overall score
+    tr5 = roff5 + 2 + len(survey_data)
+    ws5.row_dimensions[tr5].height = 34
+    wc(ws5, tr5, 1, "ĐIỂM HÀI LÒNG TỔNG THỂ", hdr_style(OLIVE, WHITE, 11))
+    avg_score = round(sum(s for _,s in survey_data) / len(survey_data), 2)
+    c = wc(ws5, tr5, 2, avg_score, hdr_style(GOLD, DARK, 14))
+    c.font = Font(name="Arial", bold=True, color=DARK, size=14)
+    wc(ws5, tr5, 3, "/ 5.0",          hdr_style(OLIVE, MINT, 11))
+    wc(ws5, tr5, 4, "RẤT HÀI LÒNG",   hdr_style(GOLD,  DARK, 11))
+    wc(ws5, tr5, 5, "n = 5 người dùng",hdr_style(OLIVE, MINT, 10))
+
+    for col, w in [(1,38),(2,12),(3,10),(4,22),(5,18)]:
+        ws5.column_dimensions[get_column_letter(col)].width = w
+
+    # ── Xuất ra HTTP response ─────────────────────────────────────
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    filename = f"ami_dashboard_{days}d_{now.strftime('%Y%m%d')}.xlsx"
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response

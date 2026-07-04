@@ -213,11 +213,17 @@ _WISHLIST_KEYWORDS = [
 
 _CART_KEYWORDS = [
     'thêm vào giỏ', 'cho vào giỏ', 'bỏ vào giỏ', 'thêm giỏ hàng',
-    'mua chai', 'mua sản phẩm', 'đặt mua',
+    'mua chai', 'mua sản phẩm', 'đặt mua','vào giỏ hàng',      # ← thêm
+    'thêm vào giỏ hàng',
+    'bỏ vào giỏ hàng',   
+    'cho vào giỏ hàng',
 ]
 
 _ORDER_KEYWORDS = [
     'đặt hàng', 'mua ngay', 'thanh toán ngay', 'order ngay', 'chốt đơn',
+    'đặt mua', 'tôi muốn mua', 'mua sản phẩm này', 'mua cái này',
+    'cho tôi mua', 'tôi mua', 'muốn đặt', 'đặt đơn',
+    'thanh toán', 'checkout', 'tiến hành mua',
 ]
 
 def _detect_action_intent(message: str) -> str | None:
@@ -322,6 +328,23 @@ def _extract_gender_quick(text: str) -> str | None:
             return gender
     return None
 
+
+# ════════════════════════════════════════════════════════════════
+# A8. BESTSELLER / TRENDING REQUEST DETECTION
+# ════════════════════════════════════════════════════════════════
+
+_BESTSELLER_KEYWORDS = [
+    'bán chạy', 'bán nhiều nhất', 'bán nhiều', 'phổ biến', 'hot nhất',
+    'nổi tiếng nhất', 'được ưa chuộng', 'được yêu thích nhất',
+    'top sản phẩm', 'top bán', 'sản phẩm hot', 'sản phẩm hit',
+    'best seller', 'bestseller', 'xu hướng', 'trending',
+    'mọi người mua nhiều', 'khách hay mua',
+]
+
+def _is_bestseller_request(message: str) -> bool:
+    """Phát hiện câu hỏi về sản phẩm bán chạy/phổ biến nhất."""
+    msg = message.lower()
+    return any(kw in msg for kw in _BESTSELLER_KEYWORDS)
 
 # ════════════════════════════════════════════════════════════════
 # B. INTENT CLASSIFICATION — Lớp 1: Keyword, Lớp 2: AI
@@ -443,6 +466,12 @@ _INTENT_REPLIES = {
         "Mình chỉ là chuyên gia về mùi hương thôi bạn ơi! 😄 "
         "Nếu có thắc mắc về nước hoa hay sản phẩm tại Ami, "
         "mình sẵn sàng hỗ trợ ngay!",
+    ],
+
+    "order_support": [
+        "Để xem thông tin đơn hàng, bạn vào **Tài khoản → Đơn hàng** nhé! "
+        "Tại đó bạn có thể theo dõi trạng thái, xác nhận nhận hàng hoặc yêu cầu hủy đơn. "
+        "Bạn cần mình tư vấn thêm về nước hoa không? 🌸",
     ],
 }
 

@@ -54,7 +54,7 @@ def get_guest_recommendations(request, current_product_id=None, top_n=8):
         if len(result) < top_n:
             trending = _get_trending_products(top_n)
             for pid in trending:
-                if pid not in exclude and pid not in result:
+                if pid not in exclude and pid not in result and pid != current_product_id:
                     result.append(pid)
                     if len(result) >= top_n:
                         break
@@ -62,9 +62,12 @@ def get_guest_recommendations(request, current_product_id=None, top_n=8):
         # ✅ ĐÚNG — fallback cuối, sau tất cả các bước
         if not result:
             from app.models import SanPham
+            exclude_all = list(exclude) + ([current_product_id] if current_product_id else [])
             result = list(
                 SanPham.objects
-                .exclude(id_SanPham=current_product_id or 0)
+                .filter(TrangThai_SanPham='active')
+                .exclude(id_SanPham__in=exclude_all)
+                .order_by('-id_SanPham')
                 .values_list('id_SanPham', flat=True)[:top_n]
             )
 
@@ -117,7 +120,7 @@ def get_personalized_recommendations(account_id: int, top_n: int = 8,
 
     # Loại sản phẩm đã mua nhiều
     purchased = {pid for pid, sc in behavior_scores.items()
-                 if sc >= WEIGHT_PURCHASE}
+             if sc >= WEIGHT_PURCHASE * 3}  # >= 15.0
     filtered = {pid: sc for pid, sc in hybrid.items()
                 if pid not in purchased}
 

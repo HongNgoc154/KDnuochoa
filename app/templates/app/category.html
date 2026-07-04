@@ -30,7 +30,7 @@
     <div class="cat-brand-grid">
       {% for brand in brands %}
       {% with brand_slug=brand.TenThuongHieu|slugify %}
-      <a class="cat-brand-chip" href={% if brand_slug %}{% url 'brand-detail' brand_slug %}{% else %}{% url 'brand-list' %}{% endif %}">
+      <a class="cat-brand-chip" href="{% if brand_slug %}{% url 'brand-detail' brand_slug %}{% else %}{% url 'brand-list' %}{% endif %}">
             <img src="{{ brand.LogoUrl.url }}" alt="{{ brand.TenThuongHieu }}">
         <span>{{ brand.TenThuongHieu }}</span>
       </a>

@@ -1,24 +1,158 @@
 ﻿{% extends "admin/change_list.html" %}
-{% load i18n admin_urls %}
-{% load static %}
-{% block object-tools %}
-<ul class="object-tools">
-  {% if xuat_excel_url %}
-  <li>
-    <a href="{{ xuat_excel_url }}" style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;background:#2e7d32;color:#fff;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;" download>
-      &#128196; Xuất Excel
+{% load i18n admin_urls static admin_list %}
+
+{% block extrastyle %}{{ block.super }}{% endblock %}
+{% block extrahead %}{{ block.super }}{% endblock %}
+{% block breadcrumbs %}{{ block.super }}{% endblock %}
+
+{% block content %}
+
+<!-- Page header — CHỈ RENDER 1 LẦN, có thêm nút Excel -->
+<div class="ami-page-header">
+  <div>
+    <h1 class="ami-page-title">{{ cl.opts.verbose_name_plural|capfirst }}</h1>
+    <p class="ami-page-sub">{{ cl.result_count }} bản ghi{% if cl.query %} · Tìm: "<strong>{{ cl.query }}</strong>"{% endif %}</p>
+  </div>
+  <div class="ami-page-actions" style="display:flex;gap:10px;align-items:center;">
+    <a href="/admin-api/xuat-excel/?tat_ca=1"
+       style="display:inline-flex;align-items:center;gap:6px;
+              padding:11px 22px;background:#1565c0;color:#fff;
+              border-radius:40px;font-size:12px;font-weight:600;
+              letter-spacing:1.5px;text-transform:uppercase;
+              text-decoration:none;box-shadow:0 2px 8px rgba(21,101,192,.3);
+              transition:all .2s;font-family:var(--fb);"
+       download>
+      📊 Xuất Excel
     </a>
-  </li>
-  {% endif %}
-  {% block object-tools-items %}
     {% if has_add_permission %}
-    <li>
-      {% url cl.opts|admin_urlname:"add" as add_url %}
-      <a href="{% add_preserved_filters add_url is_popup to_field %}" class="addlink">
-        {% blocktranslate with cl.opts.verbose_name as name %}Add {{ name }}{% endblocktranslate %}
-      </a>
-    </li>
+    <a href="{% url cl.opts|admin_urlname:'add' %}" class="ami-btn-add">
+      Thêm {{ cl.opts.verbose_name }}
+    </a>
     {% endif %}
-  {% endblock %}
-</ul>
+  </div>
+</div>
+
+<div id="content-main">
+
+  <div id="ami-toolbar-row">
+    {% block search %}{% search_form cl %}{% endblock %}
+    {% if cl.has_filters %}<div class="ami-toolbar-divider"></div>{% endif %}
+    {% if cl.has_filters %}
+    <div id="ami-filter-chips"></div>
+    <div id="ami-filter-source" style="display:none;">
+      {% for spec in cl.filter_specs %}
+        {% admin_list_filter cl spec %}
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div>
+    {% block date_hierarchy %}{% if cl.date_hierarchy %}{% date_hierarchy cl %}{% endif %}{% endblock %}
+    <form id="changelist-form" method="post"
+          {% if cl.formset and cl.formset.is_multipart %}enctype="multipart/form-data"{% endif %} novalidate>
+      {% csrf_token %}
+      {% if cl.formset %}<div>{{ cl.formset.management_form }}</div>{% endif %}
+      {% block result_list %}
+      {% if cl.result_count %}
+      <div class="ami-results-wrap">
+        {% if action_form and actions_on_top and cl.show_admin_actions %}{% admin_actions %}{% endif %}
+        {% result_list cl %}
+        {% if action_form and actions_on_bottom and cl.show_admin_actions %}{% admin_actions %}{% endif %}
+      </div>
+      {% endif %}
+      {% endblock %}
+      {% block pagination %}
+      {% if cl.result_count %}
+      <div class="changelist-footer">{% pagination cl %}</div>
+      {% endif %}
+      {% endblock %}
+    </form>
+
+    {% if cl.result_count == 0 %}
+    <div class="ami-empty-state">
+      <div class="ami-empty-icon">🌿</div>
+      <p class="ami-empty-title">{% if cl.query %}Không tìm thấy kết quả{% else %}Chưa có dữ liệu{% endif %}</p>
+      <p class="ami-empty-sub">{% if cl.query %}Không tìm thấy "<strong>{{ cl.query }}</strong>"{% else %}Chưa có {{ cl.opts.verbose_name_plural }} nào.{% endif %}</p>
+      {% if has_add_permission and not cl.query %}
+      <a href="{% url cl.opts|admin_urlname:'add' %}" class="ami-add-first">Thêm {{ cl.opts.verbose_name }} đầu tiên</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+(function() {
+  var source = document.getElementById('ami-filter-source');
+  var chipsWrap = document.getElementById('ami-filter-chips');
+  if (!source || !chipsWrap) return;
+  var details = source.querySelectorAll('details');
+  if (details.length > 0) {
+    details.forEach(function(det) {
+      var title = det.querySelector('summary');
+      var titleText = title ? title.textContent.trim().replace(/^\s*By\s*/i, '') : 'Lọc';
+      var links = det.querySelectorAll('a');
+      var activeLink = det.querySelector('li.selected a');
+      var activeText = activeLink ? activeLink.textContent.trim() : null;
+      buildChip(titleText, links, activeText);
+    });
+  } else {
+    var h3s = source.querySelectorAll('h3');
+    h3s.forEach(function(h3) {
+      var titleText = h3.textContent.trim().replace(/^\s*By\s*/i, '');
+      var ul = h3.nextElementSibling;
+      if (!ul || ul.tagName !== 'UL') return;
+      var links = ul.querySelectorAll('a');
+      var activeEl = ul.querySelector('li.selected a');
+      var activeText = activeEl ? activeEl.textContent.trim() : null;
+      buildChip(titleText, links, activeText);
+    });
+  }
+  function buildChip(title, links, activeText) {
+    if (links.length === 0) return;
+    var chip = document.createElement('div');
+    chip.className = 'ami-chip';
+    var btn = document.createElement('div');
+    btn.className = 'ami-chip-btn' + (activeText && activeText !== 'Tất cả' && activeText !== 'All' ? ' active' : '');
+    btn.innerHTML = '<span>' + title + '</span>';
+    if (activeText && activeText !== 'Tất cả' && activeText !== 'All') {
+      btn.innerHTML += '<span class="ami-chip-active-val">' + activeText + '</span>';
+    }
+    btn.innerHTML += '<span class="ami-chip-arrow">▼</span>';
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      document.querySelectorAll('.ami-chip.open').forEach(function(c) { if (c !== chip) c.classList.remove('open'); });
+      chip.classList.toggle('open');
+    });
+    var dropdown = document.createElement('div');
+    dropdown.className = 'ami-chip-dropdown';
+    links.forEach(function(a) {
+      var item = document.createElement('a');
+      item.href = a.href;
+      item.textContent = a.textContent.trim();
+      var li = a.parentElement;
+      if (li && li.classList.contains('selected')) item.className = 'is-selected';
+      dropdown.appendChild(item);
+    });
+    chip.appendChild(btn);
+    chip.appendChild(dropdown);
+    chipsWrap.appendChild(chip);
+  }
+  document.addEventListener('click', function() {
+    document.querySelectorAll('.ami-chip.open').forEach(function(c) { c.classList.remove('open'); });
+  });
+  document.querySelectorAll('#result_list tbody tr').forEach(function(row) {
+    var link = row.querySelector('td:not(.action-checkbox) a');
+    if (!link) return;
+    row.addEventListener('click', function(e) {
+      if (e.target.closest('.action-checkbox') || e.target.tagName === 'A' || e.target.tagName === 'INPUT') return;
+      link.click();
+    });
+  });
+})();
+</script>
+
+<script src="{% static 'admin/js/ami_admin.js' %}" defer></script>
 {% endblock %}

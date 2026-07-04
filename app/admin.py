@@ -164,6 +164,66 @@ class TonKhoSanPhamFilter(admin.SimpleListFilter):
         return queryset
 
 
+from django.contrib.admin import SimpleListFilter
+
+class TrangThaiTonKhoFilter(SimpleListFilter):
+    title = 'Tình trạng tồn kho'
+    parameter_name = 'tinh_trang_ton_kho'
+
+    def lookups(self, request, model_admin):
+        return [
+            ('con_hang', 'Còn hàng'),
+            ('het_hang', 'Hết hàng'),
+        ]
+
+    def queryset(self, request, queryset):
+        if self.value() == 'con_hang':
+            return queryset.filter(bienthe__SoLuong__gt=0).distinct()
+        if self.value() == 'het_hang':
+            return queryset.exclude(bienthe__SoLuong__gt=0).distinct()
+        return queryset
+
+
+class ThuongHieuFilter(SimpleListFilter):
+    title = 'Thương hiệu'
+    parameter_name = 'id_ThuongHieu'
+
+    def lookups(self, request, model_admin):
+        return [(th.pk, th.TenThuongHieu) for th in ThuongHieu.objects.all()]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(id_ThuongHieu=self.value())
+        return queryset
+
+
+class LoaiSanPhamFilter(SimpleListFilter):
+    title = 'Loại sản phẩm'
+    parameter_name = 'id_LoaiSanPham'
+
+    def lookups(self, request, model_admin):
+        from .models import LoaiSanPham
+        return [(l.pk, l.TenLoaiSanPham) for l in LoaiSanPham.objects.all()]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(id_LoaiSanPham=self.value())
+        return queryset
+
+
+class NhomHuongFilter(SimpleListFilter):
+    title = 'Nhóm hương'
+    parameter_name = 'nhom_huongs'
+
+    def lookups(self, request, model_admin):
+        from .models import NhomHuong
+        return [(n.pk, n.TenNhomHuong) for n in NhomHuong.objects.all()]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(nhom_huongs=self.value())
+        return queryset
+
 # ═══════════════════════════════════════
 #  SanPham
 # ═══════════════════════════════════════
@@ -172,14 +232,130 @@ class SanPhamAdmin(nested_admin.NestedModelAdmin):
     change_form_template = "admin/sanpham_change_form.html"
     add_form_template    = "admin/sanpham_change_form.html"
  
-    list_display       = ('product_card', 'ton_kho_san_pham_badge', 'NongDo', 'DoLuuHuong',
-                          'DoToaHuong', 'ten_thuong_hieu', 'ten_loai_san_pham',
-                          'get_nhom_huong', 'so_bien_the')
+    list_display = ('product_card', 'ton_kho_san_pham_badge', 'nong_do_display',
+                'do_luu_huong_display', 'do_toa_huong_display', 'ten_thuong_hieu',
+                'ten_loai_san_pham', 'get_nhom_huong', 'so_bien_the')
     list_display_links = ('product_card',)
     search_fields      = ('TenSanPham',)
-    list_filter        = (TonKhoSanPhamFilter, 'id_ThuongHieu', 'id_LoaiSanPham', 'nhom_huongs')
+    list_filter = (
+        TrangThaiTonKhoFilter,
+        ThuongHieuFilter,
+        LoaiSanPhamFilter,
+        NhomHuongFilter,
+    )
     list_per_page      = 20
     inlines            = []
+
+    # ── Xóa sản phẩm — xử lý FK thủ công vì SQL Server không có CASCADE ──
+    def _do_delete_sanpham(self, obj):
+        from django.db import connection
+        pk = obj.pk
+
+        with connection.cursor() as c:
+            # 1. BienThe_ThuocTinh (FK → BienThe → SanPham)
+            c.execute("""
+                DELETE FROM BienThe_ThuocTinh
+                WHERE id_BienThe IN (
+                    SELECT id_BienThe FROM BienThe WHERE id_SanPham = %s
+                )
+            """, [pk])
+
+        with connection.cursor() as c:
+            # 2. ChiTietNhap (FK → BienThe)
+            c.execute("""
+                DELETE FROM ChiTietNhap
+                WHERE id_BienThe IN (
+                    SELECT id_BienThe FROM BienThe WHERE id_SanPham = %s
+                )
+            """, [pk])
+
+        with connection.cursor() as c:
+            # 3. ChiTietDonHang (FK → BienThe)
+            c.execute("""
+                DELETE FROM ChiTietDonHang
+                WHERE id_BienThe IN (
+                    SELECT id_BienThe FROM BienThe WHERE id_SanPham = %s
+                )
+            """, [pk])
+
+        with connection.cursor() as c:
+            # 4. HinhAnh liên quan đến BienThe của sản phẩm này
+            c.execute("""
+                DELETE FROM HinhAnh
+                WHERE id_BienThe IN (
+                    SELECT id_BienThe FROM BienThe WHERE id_SanPham = %s
+                )
+            """, [pk])
+
+        with connection.cursor() as c:
+            # 5. BienThe (FK → SanPham)
+            c.execute("DELETE FROM BienThe WHERE id_SanPham = %s", [pk])
+
+        with connection.cursor() as c:
+            # 6. HinhAnh trực tiếp của sản phẩm
+            c.execute("DELETE FROM HinhAnh WHERE id_SanPham = %s", [pk])
+
+        with connection.cursor() as c:
+            # 7. SanPham_NhomHuong
+            c.execute("DELETE FROM SanPham_NhomHuong WHERE id_SanPham = %s", [pk])
+
+        with connection.cursor() as c:
+            # 8. DanhGia
+            c.execute("DELETE FROM DanhGia WHERE id_SanPham = %s", [pk])
+
+        with connection.cursor() as c:
+            # 9. YeuThich
+            c.execute("DELETE FROM YeuThich WHERE id_SanPham = %s", [pk])
+
+        with connection.cursor() as c:
+            # 10. LichSuXemSanPham (nếu có)
+            c.execute("DELETE FROM LichSuXemSanPham WHERE id_SanPham = %s", [pk])
+
+        # 11. Cuối cùng xóa SanPham
+        obj.delete()
+
+    def delete_model(self, request, obj):
+        """Xóa 1 sản phẩm từ trang chi tiết."""
+        self._do_delete_sanpham(obj)
+
+    def delete_queryset(self, request, queryset):
+        """Xóa hàng loạt từ list view."""
+        for obj in queryset:
+            self._do_delete_sanpham(obj)
+
+    # Thêm 3 method wrapper này vào class SanPhamAdmin:
+
+    def nong_do_display(self, obj):
+        return obj.NongDo or '—'
+    nong_do_display.short_description = 'Nồng độ'
+
+    def do_luu_huong_display(self, obj):
+        return obj.DoLuuHuong or '—'
+    do_luu_huong_display.short_description = 'Độ lưu hương'
+
+    def do_toa_huong_display(self, obj):
+        return obj.DoToaHuong or '—'
+    do_toa_huong_display.short_description = 'Độ tỏa hương'
+
+    def trang_thai_display(self, obj):
+        return obj.TrangThai_SanPham or '—'
+    trang_thai_display.short_description = 'Trạng thái'
+
+    def thuong_hieu_display(self, obj):
+        return obj.id_ThuongHieu.TenThuongHieu if obj.id_ThuongHieu else '—'
+    thuong_hieu_display.short_description = 'Thương hiệu'
+
+    def loai_display(self, obj):
+        return obj.id_LoaiSanPham.TenLoaiSanPham if obj.id_LoaiSanPham else '—'
+    loai_display.short_description = 'Loại'
+
+    def nhom_huong_display(self, obj):
+        return ', '.join(h.TenNhomHuong for h in obj.nhom_huongs.all()[:2]) or '—'
+    nhom_huong_display.short_description = 'Nhóm hương'
+
+    def bien_the_count(self, obj):
+        return obj.bienthe_set.count()
+    bien_the_count.short_description = 'Biến thể'
  
     def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
         # Chặn object_id không phải số
@@ -681,13 +857,36 @@ class BienTheThuocTinhAdmin(admin.ModelAdmin):
 
 @admin.register(ThuongHieu, site=admin_site)
 class ThuongHieuAdmin(admin.ModelAdmin):
+    def logo_display(self, obj):
+        if obj.LogoUrl:
+            return format_html('<img src="{}" style="height:40px;border-radius:6px;">', obj.LogoUrl.url if hasattr(obj.LogoUrl, 'url') else obj.LogoUrl)
+        return '—'
+    logo_display.short_description = 'Logo'
+
+    def ten_thuong_hieu_display(self, obj):
+        url = reverse('myadmin:app_thuonghieu_change', args=[obj.pk])
+        return format_html(
+            '<a href="{}" style="text-decoration:none;color:#2d2d2d;font-weight:600;">{}</a>',
+            url, obj.TenThuongHieu or '—'
+        )
+    ten_thuong_hieu_display.short_description = 'Tên thương hiệu'
+
+    def so_san_pham(self, obj):
+        return SanPham.objects.filter(id_ThuongHieu=obj).count()
+    so_san_pham.short_description = 'Sản phẩm'
+
+    def mo_ta_display(self, obj):
+        return obj.MoTa or '—'
+    mo_ta_display.short_description = 'Mô tả'
     change_form_template = "admin/thuonghieu_change_form.html"
     add_form_template    = "admin/thuonghieu_change_form.html"
  
-    list_display   = ('logo_preview', 'TenThuongHieu', 'so_san_pham', 'MoTa')
+    list_display = ('logo_display', 'ten_thuong_hieu_display', 'so_san_pham', 'mo_ta_display')
     list_display_links = None
     search_fields  = ('TenThuongHieu',)
     list_per_page  = 20
+
+    
  
     def logo_preview(self, obj):
         if obj.LogoUrl:
@@ -716,10 +915,22 @@ class LoaiSanPhamAdmin(admin.ModelAdmin):
     add_form_template    = "admin/loaisanpham_change_form.html"
  
     # Đầy đủ tất cả cột trong DB
-    list_display   = ('hinhanh_preview', 'TenLoaiSanPham', 'mo_ta_short', 'GhiChu', 'so_san_pham')
+    list_display = ('hinhanh_preview', 'ten_loai_display', 'mo_ta_short', 'ghi_chu_display', 'so_san_pham')
     list_display_links = None
     search_fields  = ('TenLoaiSanPham', 'MoTa', 'GhiChu')
     list_per_page  = 20
+
+    def ten_loai_display(self, obj):
+        url = reverse('myadmin:app_loaisanpham_change', args=[obj.pk])
+        return format_html(
+            '<a href="{}" style="text-decoration:none;color:#2d2d2d;font-weight:600;">{}</a>',
+            url, obj.TenLoaiSanPham or '—'
+        )
+    ten_loai_display.short_description = 'Tên loại sản phẩm'
+
+    def ghi_chu_display(self, obj):
+        return obj.GhiChu or '—'
+    ghi_chu_display.short_description = 'Ghi chú'
  
     def hinhanh_preview(self, obj):
         if obj.HinhanhUrl:
@@ -756,16 +967,27 @@ class LoaiSanPhamAdmin(admin.ModelAdmin):
         js  = ('ckeditor/ckeditor/ckeditor.js',)
 
 
+
+class LoaiHuongNhomFilter(SimpleListFilter):
+    title = 'Loại hương'
+    parameter_name = 'LoaiHuong'
+    def lookups(self, request, model_admin):
+        from .models import NhomHuong
+        vals = NhomHuong.objects.exclude(LoaiHuong__isnull=True).exclude(LoaiHuong='').values_list('LoaiHuong', flat=True).distinct()
+        return [(v, v) for v in vals]
+    def queryset(self, request, queryset):
+        if self.value(): return queryset.filter(LoaiHuong=self.value())
+        return queryset
 @admin.register(NhomHuong, site=admin_site)
 class NhomHuongAdmin(admin.ModelAdmin):
     change_form_template = "admin/nhomhuong_change_form.html"
     add_form_template    = "admin/nhomhuong_change_form.html"
  
-    list_display   = ('icon_preview', 'TenNhomHuong', 'LoaiHuong',
-                      'mau_sac_display', 'mo_ta_short', 'so_san_pham')
+    list_display = ('icon_preview', 'ten_nhom_display', 'loai_huong_display',
+                'mau_sac_display', 'mo_ta_short', 'so_san_pham')
     list_display_links = None
     search_fields  = ('TenNhomHuong', 'LoaiHuong')
-    list_filter    = ('LoaiHuong',)
+    list_filter = (LoaiHuongNhomFilter,)
     list_per_page  = 20
  
     LOAI_HUONG_CHOICES = [
@@ -773,6 +995,22 @@ class NhomHuongAdmin(admin.ModelAdmin):
         'Gourmand', 'Fruity', 'Aquatic', 'Spicy', 'Leather',
         'Top Notes', 'Heart Notes', 'Base Notes',
     ]
+
+    def ten_nhom_display(self, obj):
+        url = reverse('myadmin:app_nhomhuong_change', args=[obj.pk])
+        return format_html(
+            '<a href="{}" style="text-decoration:none;color:#2d2d2d;font-weight:600;">{}</a>',
+            url, obj.TenNhomHuong or '—'
+        )
+    ten_nhom_display.short_description = 'Tên nhóm hương'
+
+    def loai_huong_display(self, obj):
+        return obj.LoaiHuong or '—'
+    loai_huong_display.short_description = 'Loại hương'
+
+    def mau_sac_display(self, obj):
+        return obj.MauSac or '—'
+    mau_sac_display.short_description = 'Màu sắc'
  
     def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
         extra_context = extra_context or {}
@@ -837,7 +1075,32 @@ class HinhAnhAdmin(admin.ModelAdmin):
         return "—"
     image_preview.short_description = "Ảnh"
 
+class NgayTaoBaiVietFilter(SimpleListFilter):
+    title = 'Ngày tạo'
+    parameter_name = 'NgayTao'
+    def lookups(self, request, model_admin):
+        return [('today','Hôm nay'),('week','Tuần này'),('month','Tháng này')]
+    def queryset(self, request, queryset):
+        from django.utils import timezone
+        now = timezone.now()
+        if self.value() == 'today':
+            return queryset.filter(NgayTao__date=now.date())
+        if self.value() == 'week':
+            return queryset.filter(NgayTao__gte=now-__import__('datetime').timedelta(days=7))
+        if self.value() == 'month':
+            return queryset.filter(NgayTao__year=now.year, NgayTao__month=now.month)
+        return queryset
 
+class TacGiaFilter(SimpleListFilter):
+    title = 'Tác giả'
+    parameter_name = 'TacGia'
+    def lookups(self, request, model_admin):
+        from .models import BaiViet
+        return [(t, t) for t in BaiViet.objects.exclude(TacGia__isnull=True).values_list('TacGia', flat=True).distinct()]
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(TacGia=self.value())
+        return queryset
 # ═══════════════════════════════════════
 #  BaiViet
 # ═══════════════════════════════════════
@@ -851,16 +1114,20 @@ class BaiVietAdmin(admin.ModelAdmin):
         'tieude_card',
         'noidung_preview',
         'tacgia_card',
-        'NgayTao'
+        'ngay_tao_display'
     )
 
     # bỏ link mặc định của Django
     list_display_links = None
 
     search_fields = ('TieuDe', 'TacGia', 'NoiDung')
-    list_filter = ('NgayTao', 'TacGia')
+    list_filter = (NgayTaoBaiVietFilter, TacGiaFilter)
     ordering = ('-NgayTao',)
     list_per_page = 20
+
+    def ngay_tao_display(self, obj):
+        return obj.NgayTao
+    ngay_tao_display.short_description = 'Ngày tạo'
 
 
     def anh_preview(self, obj):
@@ -957,7 +1224,12 @@ class BaiVietAdmin(admin.ModelAdmin):
     class Media:
         css = {'all': ('admin/css/ami_luxury.css',)}
         js = ('ckeditor/ckeditor/ckeditor.js',)
-
+        
+    def save_model(self, request, obj, form, change):
+        if not obj.NgayTao:
+            from django.utils import timezone
+            obj.NgayTao = timezone.now()
+        super().save_model(request, obj, form, change)
 
 # ═══════════════════════════════════════
 #  HoiDap
@@ -984,21 +1256,49 @@ class HoiDapAdminForm(forms.ModelForm):
                 self.fields['tra_loi_noi_dung'].initial = existing.NoiDung
                 self.fields['tra_loi_noi_dung'].help_text = '⚠️ Đã có câu trả lời. Sửa ở đây sẽ cập nhật.'
 
+# Thêm custom filter trước class:
+class NgayTaoHoiDapFilter(SimpleListFilter):
+    title = 'Ngày tạo'
+    parameter_name = 'NgayTao'
+    def lookups(self, request, model_admin):
+        return [('today','Hôm nay'),('week','Tuần này'),('month','Tháng này')]
+    def queryset(self, request, queryset):
+        from django.utils import timezone
+        import datetime
+        now = timezone.now()
+        if self.value() == 'today': return queryset.filter(NgayTao__date=now.date())
+        if self.value() == 'week':  return queryset.filter(NgayTao__gte=now-datetime.timedelta(days=7))
+        if self.value() == 'month': return queryset.filter(NgayTao__year=now.year, NgayTao__month=now.month)
+        return queryset
 
+class TrangThaiHoiDapFilter(SimpleListFilter):
+    title = 'Trạng thái'
+    parameter_name = 'TrangThai'
+    def lookups(self, request, model_admin):
+        return [('pending','Đang chờ'),('answered','Đã trả lời'),('hidden','Ẩn')]
+    def queryset(self, request, queryset):
+        if self.value(): return queryset.filter(TrangThai=self.value())
+        return queryset
 @admin.register(HoiDap, site=admin_site)
 class HoiDapAdmin(admin.ModelAdmin):
     change_form_template = "admin/hoidap_change_form.html"
     # KHÔNG có add_form_template — ẩn nút "Thêm mới" bằng has_add_permission
  
-    list_display   = ('id_HoiDap', 'ten_san_pham', 'ten_khach_hang',
-                      'noi_dung_short', 'trang_thai_badge', 'NgayTao')
+    list_display = ('id_hoidap_display', 'ten_san_pham', 'ten_khach_hang',
+                'noi_dung_short', 'trang_thai_badge', 'ngay_tao_hd_display')
     list_display_links = ('id_HoiDap', 'noi_dung_short')
     list_display_links = None
-    list_filter    = ('TrangThai', 'NgayTao')
+    list_filter  = (TrangThaiHoiDapFilter, NgayTaoHoiDapFilter)
     search_fields  = ('NoiDung', 'id_TaiKhoan__TenDangNhap', 'id_SanPham__TenSanPham')
     ordering       = ('-NgayTao',)
     list_per_page  = 20
  
+    def id_hoidap_display(self, obj): return obj.id_HoiDap
+    id_hoidap_display.short_description = 'ID'
+
+    def ngay_tao_hd_display(self, obj): return obj.NgayTao
+    ngay_tao_hd_display.short_description = 'Ngày tạo'
+
     def has_add_permission(self, request):
         """Ẩn nút Thêm mới — câu hỏi đến từ khách hàng."""
         return False
@@ -1040,7 +1340,30 @@ class HoiDapAdmin(admin.ModelAdmin):
     class Media:
         css = {'all': ('admin/css/ami_luxury.css',)}
 
+# Thêm custom filter:
+class SoSaoFilter(SimpleListFilter):
+    title = 'Số sao'
+    parameter_name = 'SoSao'
+    def lookups(self, request, model_admin):
+        return [('5','⭐⭐⭐⭐⭐ 5 sao'),('4','⭐⭐⭐⭐ 4 sao'),
+                ('3','⭐⭐⭐ 3 sao'),('2','⭐⭐ 2 sao'),('1','⭐ 1 sao')]
+    def queryset(self, request, queryset):
+        if self.value(): return queryset.filter(SoSao=self.value())
+        return queryset
 
+class NgayDanhGiaFilter(SimpleListFilter):
+    title = 'Ngày đánh giá'
+    parameter_name = 'NgayDanhGia'
+    def lookups(self, request, model_admin):
+        return [('today','Hôm nay'),('week','Tuần này'),('month','Tháng này')]
+    def queryset(self, request, queryset):
+        from django.utils import timezone
+        import datetime
+        now = timezone.now()
+        if self.value() == 'today': return queryset.filter(NgayDanhGia__date=now.date())
+        if self.value() == 'week':  return queryset.filter(NgayDanhGia__gte=now-datetime.timedelta(days=7))
+        if self.value() == 'month': return queryset.filter(NgayDanhGia__year=now.year, NgayDanhGia__month=now.month)
+        return queryset
 # ═══════════════════════════════════════
 #  DanhGia
 # ═══════════════════════════════════════
@@ -1049,15 +1372,22 @@ class DanhGiaAdmin(admin.ModelAdmin):
     change_form_template = "admin/danhgia_change_form.html"
     # KHÔNG có add_form_template — ẩn nút "Thêm mới"
  
-    list_display   = ('id_DanhGia', 'ten_san_pham', 'ten_khach_hang',
-                      'sao_display', 'noi_dung_short', 'phan_hoi_badge', 'NgayDanhGia')
+    list_display = ('id_danhgia_display', 'ten_san_pham', 'ten_khach_hang',
+                'sao_display', 'noi_dung_short', 'phan_hoi_badge',
+                'ngay_danh_gia_display')
     list_display_links = ('id_DanhGia', 'noi_dung_short')
     list_display_links = None
-    list_filter    = ('SoSao', 'NgayDanhGia')
+    list_filter  = (SoSaoFilter, NgayDanhGiaFilter)
     search_fields  = ('NoiDung', 'id_TaiKhoan__TenDangNhap', 'id_SanPham__TenSanPham')
     ordering       = ('-NgayDanhGia',)
     list_per_page  = 20
  
+    def id_danhgia_display(self, obj): return obj.id_DanhGia
+    id_danhgia_display.short_description = 'ID'
+
+    def ngay_danh_gia_display(self, obj): return obj.NgayDanhGia
+    ngay_danh_gia_display.short_description = 'Ngày đánh giá'
+
     def has_add_permission(self, request):
         """Ẩn nút Thêm mới — đánh giá đến từ khách hàng."""
         return False
@@ -1166,34 +1496,66 @@ class KhuyenMaiForm(django_forms.ModelForm):
         model = KhuyenMai
         fields = '__all__'
 
+class TrangThaiKMFilter(SimpleListFilter):
+    title = 'Trạng thái'
+    parameter_name = 'TrangThai'
+    def lookups(self, request, model_admin):
+        return [('active','Hoạt động'),('inactive','Tạm dừng')]
+    def queryset(self, request, queryset):
+        if self.value(): return queryset.filter(TrangThai=self.value())
+        return queryset
 
+class LoaiKMFilter(SimpleListFilter):
+    title = 'Loại khuyến mãi'
+    parameter_name = 'LoaiKhuyenMai'
+    def lookups(self, request, model_admin):
+        vals = KhuyenMai.objects.exclude(LoaiKhuyenMai__isnull=True).values_list('LoaiKhuyenMai', flat=True).distinct()
+        return [(v, v) for v in vals]
+    def queryset(self, request, queryset):
+        if self.value(): return queryset.filter(LoaiKhuyenMai=self.value())
+        return queryset
+
+class LoaiGiamFilter(SimpleListFilter):
+    title = 'Loại giảm'
+    parameter_name = 'LoaiGiam'
+    def lookups(self, request, model_admin):
+        return [('percent','% Phần trăm'),('fixed','₫ Cố định'),('free_ship','Miễn ship')]
+    def queryset(self, request, queryset):
+        if self.value(): return queryset.filter(LoaiGiam=self.value())
+        return queryset
 @admin.register(KhuyenMai, site=admin_site)
 class KhuyenMaiAdmin(admin.ModelAdmin):
     form = KhuyenMaiForm
     change_form_template = "admin/khuyenmai_change_form.html"
     add_form_template    = "admin/khuyenmai_change_form.html"
  
-    list_display = (
-        'ma_km_card',
-        'ten_km_card',
-        'LoaiKhuyenMai',
-        'loai_giam_badge',
-        'gia_tri_display',
-        'SoLuong',
-        'DaSuDung',
-        'trang_thai_badge',
-        'NgayBatDau',
-        'NgayKetThuc'
-    )
+    list_display = ('ma_km_card','ten_km_card','loai_khuyen_mai_display',
+                'loai_giam_badge','gia_tri_display','so_luong_display',
+                'da_su_dung_display','trang_thai_badge',
+                'ngay_bat_dau_display','ngay_ket_thuc_display')
 
     list_display_links = None
     # list_display_links = ('MaKhuyenMai',)
     search_fields  = ('MaKhuyenMai', 'TenKhuyenMai', 'MoTa')
-    list_filter    = ('TrangThai', 'LoaiKhuyenMai', 'LoaiGiam')
+    list_filter = (TrangThaiKMFilter, LoaiKMFilter, LoaiGiamFilter)
     ordering       = ('-id_KhuyenMai',)
     list_per_page  = 20
 
-    
+    def loai_khuyen_mai_display(self, obj):
+        return obj.LoaiKhuyenMai or '—'
+    loai_khuyen_mai_display.short_description = 'Loại khuyến mãi'
+
+    def so_luong_display(self, obj): return obj.SoLuong or '—'
+    so_luong_display.short_description = 'Số lượng'
+
+    def da_su_dung_display(self, obj): return obj.DaSuDung or 0
+    da_su_dung_display.short_description = 'Đã dùng'
+
+    def ngay_bat_dau_display(self, obj): return obj.NgayBatDau
+    ngay_bat_dau_display.short_description = 'Ngày bắt đầu'
+
+    def ngay_ket_thuc_display(self, obj): return obj.NgayKetThuc
+    ngay_ket_thuc_display.short_description = 'Ngày kết thúc'
 
     def ma_km_card(self, obj):
         url = reverse(
@@ -1376,20 +1738,44 @@ Ami Perfumery Team 🌸
         return mark_safe('<span style="color:#9e9e9e;font-weight:600;">● Tạm dừng</span>')
     trang_thai_badge.short_description = "Trạng thái"
 
+
+
+
+class DaSuDungFilter(SimpleListFilter):
+    title = 'Tình trạng sử dụng'
+    parameter_name = 'DaSuDung'
+    def lookups(self, request, model_admin):
+        return [('0','Chưa dùng'),('1','Đã dùng')]
+    def queryset(self, request, queryset):
+        if self.value() == '0': return queryset.filter(DaSuDung=False)
+        if self.value() == '1': return queryset.filter(DaSuDung=True)
+        return queryset
+
+class HangThanhVienKMFilter(SimpleListFilter):
+    title = 'Hạng thành viên'
+    parameter_name = 'HangThanhVien'
+    def lookups(self, request, model_admin):
+        return [('Member','Member'),('Silver','Silver'),('Gold','Gold'),('Platinum','Platinum')]
+    def queryset(self, request, queryset):
+        if self.value(): return queryset.filter(id_TaiKhoan__HangThanhVien=self.value())
+        return queryset
 @admin.register(KhuyenMaiTaiKhoan, site=admin_site)
 class KhuyenMaiTaiKhoanAdmin(admin.ModelAdmin):
     # Template chỉ xem — không có form chỉnh sửa
     change_form_template = "admin/khuyenmaitaikhoan_change_form.html"
  
-    list_display   = ('ma_voucher', 'ten_khach_hang', 'hang_thanh_vien',
-                      'da_su_dung_badge', 'NgayNhan', 'han_su_dung')
+    list_display = ('ma_voucher','ten_khach_hang','hang_thanh_vien',
+                'da_su_dung_badge','ngay_nhan_display','han_su_dung')
     list_display_links = ('ma_voucher', 'ten_khach_hang')
     list_display_links = None
-    list_filter    = ('DaSuDung', 'id_KhuyenMai', 'id_TaiKhoan__HangThanhVien')
+    list_filter = (DaSuDungFilter, 'id_KhuyenMai', HangThanhVienKMFilter)
     search_fields  = ('id_TaiKhoan__TenDangNhap', 'id_TaiKhoan__Email',
                       'id_KhuyenMai__MaKhuyenMai', 'id_KhuyenMai__TenKhuyenMai')
     ordering       = ('-NgayNhan',)
     list_per_page  = 30
+
+    def ngay_nhan_display(self, obj): return obj.NgayNhan
+    ngay_nhan_display.short_description = 'Ngày nhận'
  
     # Không cho thêm mới — chỉ phân phối qua form KhuyenMai
     def has_add_permission(self, request):
@@ -1478,6 +1864,33 @@ class KhuyenMaiTaiKhoanAdmin(admin.ModelAdmin):
         css = {'all': ('admin/css/ami_luxury.css',)}
 
 
+
+class TrangThaiTKFilter(SimpleListFilter):
+    title = 'Trạng thái'
+    parameter_name = 'TrangThai_TaiKhoan'
+    def lookups(self, request, model_admin):
+        return [('active','Hoạt động'),('locked','Đã khóa')]
+    def queryset(self, request, queryset):
+        if self.value(): return queryset.filter(TrangThai_TaiKhoan=self.value())
+        return queryset
+
+class LoaiTKFilter(SimpleListFilter):
+    title = 'Loại tài khoản'
+    parameter_name = 'LoaiTaiKhoan'
+    def lookups(self, request, model_admin):
+        return [('customer','Khách hàng'),('admin','Admin'),('staff','Staff')]
+    def queryset(self, request, queryset):
+        if self.value(): return queryset.filter(LoaiTaiKhoan=self.value())
+        return queryset
+
+class HangTVFilter(SimpleListFilter):
+    title = 'Hạng thành viên'
+    parameter_name = 'HangThanhVien'
+    def lookups(self, request, model_admin):
+        return [('Member','Member'),('Silver','Silver'),('Gold','Gold'),('Platinum','Platinum')]
+    def queryset(self, request, queryset):
+        if self.value(): return queryset.filter(HangThanhVien=self.value())
+        return queryset
 # ═══════════════════════════════════════
 #  TaiKhoan
 # ═══════════════════════════════════════
@@ -1486,15 +1899,21 @@ class TaiKhoanAdmin(admin.ModelAdmin):
     change_form_template = "admin/taikhoan_change_form.html"
     add_form_template    = "admin/taikhoan_change_form.html"
 
-    list_display       = ('email_with_avatar', 'ten_dang_nhap', 'SDT', 'hang_badge', 'trang_thai_toggle', 'NgayTao')
+    list_display = ('email_with_avatar','ten_dang_nhap','sdt_display',
+                'hang_badge','trang_thai_toggle','ngay_tao_tk_display')
     # list_display_links = ('email_with_avatar', 'ten_dang_nhap')
     list_display_links = None
     search_fields      = ('TenDangNhap', 'Username', 'Email', 'SDT')
-    list_filter        = ('TrangThai_TaiKhoan', 'LoaiTaiKhoan', 'HangThanhVien')
+    list_filter = (TrangThaiTKFilter, LoaiTKFilter, HangTVFilter)
     ordering           = ('-NgayTao',)
     list_per_page      = 25
     actions            = ['action_lock', 'action_unlock']
 
+    def sdt_display(self, obj): return obj.SDT or '—'
+    sdt_display.short_description = 'SĐT'
+
+    def ngay_tao_tk_display(self, obj): return obj.NgayTao
+    ngay_tao_tk_display.short_description = 'Ngày tạo'
     # ── Actions ──────────────────────────────────────────────────
     def action_lock(self, request, queryset):
         queryset.update(TrangThai_TaiKhoan='locked')
@@ -1789,18 +2208,38 @@ class TaiKhoanAdmin(admin.ModelAdmin):
     class Media:
         css = {'all': ('admin/css/ami_luxury.css',)}
 
-
+class GioiTinhFilter(SimpleListFilter):
+    title = 'Giới tính'
+    parameter_name = 'GioiTinh'
+    def lookups(self, request, model_admin):
+        return [('Nam','Nam'),('Nữ','Nữ'),('Khác','Khác')]
+    def queryset(self, request, queryset):
+        if self.value(): return queryset.filter(GioiTinh=self.value())
+        return queryset
 # ═══════════════════════════════════════
 #  KhachHang
 # ═══════════════════════════════════════
 @admin.register(KhachHang, site=admin_site)
 class KhachHangAdmin(admin.ModelAdmin):
-    list_display  = ('id_KhachHang', 'TenKhachHang', 'get_email', 'DiaChi', 'GioiTinh')
+    list_display = ('id_kh_display','ten_kh_display','get_email',
+                'dia_chi_display','gioi_tinh_display')
     list_display_links = None
     search_fields = ('TenKhachHang', 'id_TaiKhoan__Email', 'id_TaiKhoan__Username')
-    list_filter   = ('GioiTinh',)
+    list_filter = (GioiTinhFilter,)
     list_per_page = 25
 
+
+    def id_kh_display(self, obj): return obj.id_KhachHang
+    id_kh_display.short_description = 'ID'
+
+    def ten_kh_display(self, obj): return obj.TenKhachHang or '—'
+    ten_kh_display.short_description = 'Tên khách hàng'
+
+    def dia_chi_display(self, obj): return obj.DiaChi or '—'
+    dia_chi_display.short_description = 'Địa chỉ'
+
+    def gioi_tinh_display(self, obj): return obj.GioiTinh or '—'
+    gioi_tinh_display.short_description = 'Giới tính'
     def get_email(self, obj):
         try: return obj.id_TaiKhoan.Email
         except: return "—"
@@ -1817,13 +2256,48 @@ class NhaCungCapAdmin(admin.ModelAdmin):
     class Media:
         css = {'all': ('admin/css/ami_luxury.css',)}
  
- 
+
+
+class TrangThaiPhieuFilter(SimpleListFilter):
+    title = 'Trạng thái'
+    parameter_name = 'TrangThai'
+    def lookups(self, request, model_admin):
+        return [('draft','Nháp'),('confirmed','Xác nhận'),
+                ('done','Hoàn tất'),('cancelled','Huỷ')]
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(TrangThai=self.value())
+        return queryset
+
+
+class ThoiGianPhieuFilter(SimpleListFilter):
+    title = 'Thời gian'
+    parameter_name = 'ThoiGian'
+
+    def lookups(self, request, model_admin):
+        return [
+            ('today', 'Hôm nay'),
+            ('week',  'Tuần này'),
+            ('month', 'Tháng này'),
+        ]
+
+    def queryset(self, request, queryset):
+        from django.utils import timezone
+        now = timezone.now()
+        if self.value() == 'today':
+            return queryset.filter(ThoiGian__date=now.date())
+        if self.value() == 'week':
+            return queryset.filter(ThoiGian__gte=now - __import__('datetime').timedelta(days=7))
+        if self.value() == 'month':
+            return queryset.filter(ThoiGian__year=now.year, ThoiGian__month=now.month)
+        return queryset
 # ─── PHIẾU NHẬP ──────────────────────────────────────────────
 @admin.register(PhieuNhap, site=admin_site)
 class PhieuNhapAdmin(admin.ModelAdmin):
     change_list_template = "admin/app/phieunhap/change_list.html"
     change_form_template = "admin/phieunhap_change_form.html"
     add_form_template    = "admin/phieunhap_change_form.html"
+    list_filter = (TrangThaiPhieuFilter, ThoiGianPhieuFilter)
  
     list_display  = (
         'ma_phieu_display', 'ThoiGian', 'ten_nguoi_nhap',
@@ -1920,6 +2394,9 @@ class PhieuNhapAdmin(admin.ModelAdmin):
         extra_context = extra_context or {}
  
         # Danh sách NCC + sản phẩm + tài khoản cho dropdowns
+        extra_context['thuong_hieu_list'] = list(
+            ThuongHieu.objects.values('id_ThuongHieu', 'TenThuongHieu').order_by('TenThuongHieu')
+        )
         extra_context['ncc_list']    = list(NhaCungCap.objects.values('id_NCC', 'Ten_NCC', 'SDT', 'Email'))
         extra_context['san_pham_list'] = [
             {
@@ -1934,7 +2411,11 @@ class PhieuNhapAdmin(admin.ModelAdmin):
             'role':     'Admin' if request.user.is_superuser else 'Staff',
         }
         extra_context['now'] = tz.now().strftime('%d/%m/%Y %H:%M')
- 
+        import json as _json
+        extra_context['ncc_list_json']      = _json.dumps(extra_context['ncc_list'], ensure_ascii=False, default=str)
+        extra_context['san_pham_list_json'] = _json.dumps(extra_context['san_pham_list'], ensure_ascii=False, default=str)
+        extra_context['tk_info_json']       = _json.dumps(extra_context['tk_info'], ensure_ascii=False, default=str)
+        
         # Nếu đang xem phiếu cũ, lấy chi tiết
         if object_id:
             try:
@@ -1951,7 +2432,7 @@ class PhieuNhapAdmin(admin.ModelAdmin):
                     chi_tiet_list.append({
                         'id':         ct.id_ChiTietNhap,
                         'san_pham':   sp.TenSanPham if sp else '—',
-                        'thuong_hieu': sp.id_ThuongHieu.TenThuongHieu if sp and sp.id_ThuongHieu else '—',
+                        'thuong_hieu': sp.id_ThuongHieu.TenThuongHieu if sp and sp.id_ThuongHieu_id else '—',
                         'sku':        bt.Sku if bt else '—',
                         'gia_nhap':   float(ct.GiaNhap or 0),
                         'so_luong':   ct.SoLuongNhap or 0,
@@ -1961,6 +2442,10 @@ class PhieuNhapAdmin(admin.ModelAdmin):
                     })
                 extra_context['chi_tiet_list'] = chi_tiet_list
                 extra_context['phieu'] = phieu
+                import json as _json
+                extra_context['chi_tiet_list_json'] = _json.dumps(
+                    chi_tiet_list, ensure_ascii=False, default=str
+                )
             except PhieuNhap.DoesNotExist:
                 pass
  
@@ -1982,8 +2467,21 @@ class PhieuNhapAdmin(admin.ModelAdmin):
  
     class Media:
         css = {'all': ('admin/css/ami_luxury.css',)}
-        js  = ('admin/js/phieunhap.js',)
+        # js  = ('admin/js/phieunhap.js',)
  
  
-
+@admin_site.admin_view
+def api_them_thuong_hieu(request):
+    """Tạo nhanh thương hiệu mới từ form phiếu nhập."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'Method not allowed'}, status=405)
+    try:
+        data = json.loads(request.body)
+        ten  = (data.get('ten') or '').strip()
+        if not ten:
+            return JsonResponse({'ok': False, 'error': 'Tên thương hiệu không được trống!'})
+        th, created = ThuongHieu.objects.get_or_create(TenThuongHieu=ten)
+        return JsonResponse({'ok': True, 'id': th.pk, 'ten': th.TenThuongHieu, 'created': created})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'error': str(e)})
  

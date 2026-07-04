@@ -16,6 +16,8 @@ class NhomHuong(models.Model):
     class Meta:
         managed  = False
         db_table = 'NhomHuong'
+        verbose_name = "Nhóm hương"
+        verbose_name_plural = "Nhóm hương"
  
     def __str__(self):
         return self.TenNhomHuong
@@ -134,6 +136,8 @@ class LoaiSanPham(models.Model):
     class Meta:
         managed = False
         db_table = 'LoaiSanPham'
+        verbose_name = "Loại sản phẩm"
+        verbose_name_plural = "Loại sản phẩm"
 
     def __str__(self):
         return self.TenLoaiSanPham
@@ -150,6 +154,8 @@ class ThuongHieu(models.Model):
     class Meta:
         managed = False
         db_table = 'ThuongHieu'
+        verbose_name = "Thương hiệu"
+        verbose_name_plural = "Thương hiệu"
 
     def __str__(self):
         return self.TenThuongHieu
@@ -194,6 +200,8 @@ class BaiViet(models.Model):
     class Meta:
         managed = False
         db_table = 'BaiViet'
+        verbose_name = "Bài viết"
+        verbose_name_plural = "Bài viết"
 
 
 # ===================== THUỘC TÍNH =====================
@@ -204,6 +212,8 @@ class ThuocTinh(models.Model):
     class Meta:
         managed = False
         db_table = 'ThuocTinh'
+        verbose_name = "Thuộc tính"
+        verbose_name_plural = "Thuộc tính"
 
     def __str__(self):
         return self.TenThuocTinh
@@ -271,6 +281,8 @@ class TaiKhoan(models.Model):
     class Meta:
         managed = False
         db_table = "TaiKhoan"
+        verbose_name = "Tài khoản"
+        verbose_name_plural = "Tài khoản"
 
 
 # ===================== KHUYẾN MÃI =====================
@@ -308,6 +320,8 @@ class KhuyenMai(models.Model):
     class Meta:
         managed = False
         db_table = 'KhuyenMai'
+        verbose_name = "Khuyến mãi"
+        verbose_name_plural = "Khuyến mãi"
 
     def __str__(self):
         return self.MaKhuyenMai
@@ -338,6 +352,8 @@ class KhuyenMaiTaiKhoan(models.Model):
     class Meta:
         managed = False
         db_table = 'KhuyenMai_TaiKhoan'
+        verbose_name = "Khuyến mãi tài khoản"
+        verbose_name_plural = "Khuyến mãi tài khoản"
 
 
 class DonHang(models.Model):
@@ -452,6 +468,9 @@ class DanhGia(models.Model):
         managed = False
         db_table = 'DanhGia'
 
+        verbose_name = "Đánh giá"
+        verbose_name_plural = "Đánh giá"
+
 
 # ═══════════════════════════════════════════════════════════════
 # 1. models.py — thay class LichSuDiem cho đúng DB thực tế
@@ -539,6 +558,8 @@ class HoiDap(models.Model):
     class Meta:
         managed = False
         db_table = 'HoiDap'
+        verbose_name = "Hỏi đáp"
+        verbose_name_plural = "Hỏi đáp"
 
 
 # ===================== GIAO HÀNG =====================
@@ -578,6 +599,8 @@ class KhachHang(models.Model):
     class Meta:
         managed = False
         db_table = 'KhachHang'
+        verbose_name = "Khách hàng"
+        verbose_name_plural = "Khách hàng"
 
     def __str__(self):
         return self.TenKhachHang or f"KH {self.id_KhachHang}"
@@ -625,6 +648,8 @@ class NhaCungCap(models.Model):
         return self.Ten_NCC or f"NCC {self.id_NCC}"
 
 
+
+
 # ===================== PHIẾU NHẬP =====================
 class PhieuNhap(models.Model):
     TRANG_THAI_CHOICES = [
@@ -655,6 +680,8 @@ class PhieuNhap(models.Model):
     class Meta:
         managed  = False
         db_table = 'PhieuNhap'
+        verbose_name = "Phiếu nhập"
+        verbose_name_plural = "Phiếu nhập"
 
     def __str__(self):
         return self.MaPhieu or f"PN-{self.id_PhieuNhap}"
